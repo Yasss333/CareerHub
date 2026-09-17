@@ -1,0 +1,28 @@
+{
+  "name": "algorank",
+  "version": "1.0.0",
+  "description": "This is a coding platfrom where users can practice dsa just like ",
+  "main": "src/index.js",
+  "type": "module",
+  "prisma": {
+  "seed": "node prisma/seed.js"
+},
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "prisma migrate deploy && prisma db seed && node src/index.js",
+    "seed": "node prisma/seed.js"
+  },
+  "author": "Yash M",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.19.1",
+    "axios": "^1.13.2",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "prisma": "^6.19.1"
+  }
+}

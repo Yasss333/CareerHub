@@ -1,0 +1,63 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient for hexagon border -->
+    <linearGradient id="hexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Inner shadow and glow for text -->
+    <filter id="textEffect">
+      <!-- Outer glow -->
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="blur1"/>
+      <feOffset in="blur1" dx="0" dy="0" result="offsetBlur1"/>
+      <feFlood flood-color="#ffffff" flood-opacity="0.4" result="color1"/>
+      <feComposite in="color1" in2="offsetBlur1" operator="in" result="glow"/>
+      
+      <!-- Inner shadow -->
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur2"/>
+      <feOffset in="blur2" dx="2" dy="2" result="offsetBlur2"/>
+      <feFlood flood-color="#000000" flood-opacity="0.7" result="color2"/>
+      <feComposite in="color2" in2="offsetBlur2" operator="in" result="shadow"/>
+      
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Dark background circle -->
+  <circle cx="100" cy="100" r="95" fill="#0f172a"/>
+  
+  <!-- Hexagon with gradient border -->
+  <polygon 
+    points="100,15 175,57.5 175,142.5 100,185 25,142.5 25,57.5" 
+    fill="#1e293b"
+    stroke="url(#hexGradient)"
+    stroke-width="6"
+    stroke-linejoin="round"
+  />
+  
+  <!-- Inner dark hexagon -->
+  <polygon 
+    points="100,20 170,60 170,140 100,180 30,140 30,60" 
+    fill="#0f172a"
+  />
+  
+  <!-- AR Text with stroke border -->
+  <text 
+    x="100" 
+    y="120" 
+    font-family="Arial, Helvetica, sans-serif" 
+    font-size="70" 
+    font-weight="700"
+    fill="#f0f0f0"
+    stroke="#1e293b"
+    stroke-width="2"
+    text-anchor="middle"
+    letter-spacing="-4"
+    filter="url(#textEffect)"
+  >AR</text>
+</svg>

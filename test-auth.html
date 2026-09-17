@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Authentication</title>
+</head>
+<body>
+    <h1>Test Authentication API</h1>
+    
+    <h2>Register</h2>
+    <button onclick="testRegister()">Test Register</button>
+    <pre id="registerResult"></pre>
+    
+    <h2>Login</h2>
+    <button onclick="testLogin()">Test Login</button>
+    <pre id="loginResult"></pre>
+    
+    <h2>Get Current User</h2>
+    <button onclick="testGetUser()">Test Get User</button>
+    <pre id="userResult"></pre>
+
+    <script>
+        async function testRegister() {
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: 'Test User',
+                        email: 'test@example.com',
+                        password: 'test123'
+                    })
+                });
+                const data = await response.json();
+                document.getElementById('registerResult').textContent = JSON.stringify(data, null, 2);
+                
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                }
+            } catch (error) {
+                document.getElementById('registerResult').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testLogin() {
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'test123'
+                    })
+                });
+                const data = await response.json();
+                document.getElementById('loginResult').textContent = JSON.stringify(data, null, 2);
+                
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                }
+            } catch (error) {
+                document.getElementById('loginResult').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testGetUser() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:5000/api/auth/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                });
+                const data = await response.json();
+                document.getElementById('userResult').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('userResult').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { @apply border-secondary-200; }
+  body { @apply bg-secondary-50 text-secondary-900 antialiased; }
+}
+
+@layer components {
+  /* ── Buttons ───────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+           transition-all duration-200 focus-visible:outline-none focus-visible:ring-2
+           focus-visible:ring-primary-500 focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-primary-600 text-white shadow-sm
+           hover:bg-primary-700 active:bg-primary-800;
+  }
+  .btn-secondary {
+    @apply btn border border-secondary-200 bg-white text-secondary-700 shadow-sm
+           hover:bg-secondary-50 hover:border-secondary-300 active:bg-secondary-100;
+  }
+  .btn-ghost {
+    @apply btn text-secondary-600 hover:bg-secondary-100 hover:text-secondary-800;
+  }
+
+  /* ── Cards ─────────────────────────────────────────────── */
+  .card {
+    @apply rounded-2xl border border-secondary-200 bg-white shadow-card;
+  }
+
+  /* ── Form inputs ────────────────────────────────────────── */
+  .input {
+    @apply w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm
+           text-secondary-800 placeholder:text-secondary-400 shadow-sm
+           transition-colors focus:border-primary-400 focus:outline-none
+           focus:ring-2 focus:ring-primary-100;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-secondary-700;
+  }
+
+  /* ── Chips / badges ─────────────────────────────────────── */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+  .chip-primary  { @apply chip bg-primary-100 text-primary-700; }
+  .chip-secondary { @apply chip bg-secondary-100 text-secondary-600; }
+  .chip-success  { @apply chip bg-success-100 text-success-700; }
+  .chip-accent   { @apply chip bg-accent-100 text-accent-700; }
+}

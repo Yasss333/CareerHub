@@ -1,0 +1,208 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String   @unique
+  image     String?
+  role      UserRole @default(USER)
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Ranking fields
+  totalProblemsSolved Int      @default(0)
+  acceptanceRate      Float    @default(0)
+  averageSolveTime    Float?
+  currentStreak       Int      @default(0)
+  longestStreak       Int      @default(0)
+  lastSolvedDate      DateTime?
+  rankingScore        Float    @default(0)
+
+  problems      Problem[]
+  submissions   Submission[]
+  problemSolved problemSolved[]
+  playlist playlist[]
+  likes Likes[]
+  comments Comments[]
+  nestedComments NestedComments[]
+
+  @@index([totalProblemsSolved])
+  @@index([rankingScore])
+  @@index([lastSolvedDate])
+}
+
+model Problem {
+  id           String     @id @default(uuid())
+  title        String
+  description  String
+  difficulty   Difficulty
+  tags         String[]
+  userID       String
+  examples     Json
+  constraints  String
+  hints        String?
+  editorial    String?
+  testcases    Json
+  codeSnippets  Json?
+  refrenceSolutions Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User            @relation(fields: [userID], references: [id], onDelete: Cascade)
+  submissions Submission[]   // ✅ ONE problem → MANY submissions
+  solvedBy problemSolved[]
+  problemInplaylist problemsInPlaylist[]
+  likes Likes[]
+  comments Comments[]
+}
+
+model Submission {
+  id            String   @id @default(uuid())
+  userID        String
+  problemID     String
+  sourceCode    String
+  language      String
+  stdin         String?
+  stdout        String?
+  stderr        String?
+  compileOutput String?
+  status        String
+  memory        String?
+  time          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user    User    @relation(fields: [userID], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemID], references: [id])
+
+  testcases Testcases[]
+}
+
+model Testcases {
+  id            String   @id @default(uuid())
+  submissionID  String
+  testCase      Int
+  passed        Boolean
+  stdout        String?
+  expected      String?
+  stderr        String?
+  compileOutput String?
+  status        String?
+  memory        String?
+  time          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  submission Submission @relation(fields: [submissionID], references: [id], onDelete: Cascade)
+
+  @@index([submissionID])
+}
+
+model problemSolved {
+  id        String   @id @default(uuid())
+  userID    String
+  problemID String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userID], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemID], references: [id], onDelete: Cascade)
+
+  @@unique([userID, problemID])
+}
+
+model playlist {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  userID      String
+  // problemID   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+
+  problems problemsInPlaylist[]
+  user    User    @relation(fields: [userID], references: [id], onDelete: Cascade)
+  @@unique([title,userID])// thsi si for unique playlist per user 
+  // @@unique([id,userID]) ---> removed becasue redundant as already playlist id is unique 
+  
+}
+
+model problemsInPlaylist{
+  id          String   @id @default(uuid())
+  playlistID String
+  problemID String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  playlist playlist @relation(fields: [playlistID],references: [id],onDelete: Cascade)
+  problem Problem @relation(fields: [problemID], references: [id], onDelete: Cascade)
+  @@unique([playlistID,problemID])
+}
+
+model Likes{
+  id String @id @default(uuid())
+   userID String
+   problemID String
+
+     createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userID] ,references: [id], onDelete: Cascade, onUpdate:Cascade)
+  problem Problem @relation(fields: [problemID], references: [id], onDelete: Cascade)
+
+  @@unique([userID,problemID])
+}
+
+model Comments{
+  id String @id @default(uuid())
+  content String
+  userID String
+  problemID String
+   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userID] ,references: [id], onDelete: Cascade, onUpdate:Cascade)
+  problem Problem @relation(fields: [problemID], references: [id], onDelete: Cascade)
+  
+  nestedComment NestedComments[]
+}
+
+model NestedComments{
+  id String @id @default(uuid())
+  content String
+  userID String
+  commentID String
+     createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  comment Comments @relation(fields: [commentID], references: [id],onDelete: Cascade, onUpdate: Cascade)
+  user User @relation(fields: [userID] ,references: [id], onDelete: Cascade, onUpdate:Cascade)
+  
+}
+

@@ -1,0 +1,388 @@
+// CareerHub Unified Prisma Schema
+// This schema merges models from AlgoRank, Resume Builder, AI Interview, and Senior Connect
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// UNIFIED USER MODEL (merged from all systems)
+// ============================================
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  passwordHash   String
+  role           Role     @default(USER)
+  isAlumniMentor Boolean  @default(false)
+  
+  // Profile fields (merged from all systems)
+  name           String?
+  image          String?
+  
+  // AlgoRank ranking fields
+  totalProblemsSolved Int      @default(0)
+  acceptanceRate      Float    @default(0)
+  averageSolveTime    Float?
+  currentStreak       Int      @default(0)
+  longestStreak       Int      @default(0)
+  lastSolvedDate      DateTime?
+  rankingScore        Float    @default(0)
+  
+  // Senior Connect fields
+  avatar         String?
+  university     String?
+  year           String?
+  interests      String[]
+  goals          Json[]
+  title          String?
+  company        String?
+  location       String?
+  credibilityScore Int     @default(0)
+  badges         String[]
+  
+  // AI Interview profile fields
+  displayName    String?
+  defaultRole    String?
+  defaultInterviewLength Int @default(30)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  resumes        Resume[]
+  submissions    Submission[]
+  interviewSessions InterviewSession[]
+  seniorProfile  SeniorProfile?
+  sessionBookingsAsJunior SessionBooking[] @relation("JuniorBookings")
+  sessionBookingsAsSenior SessionBooking[] @relation("SeniorBookings")
+  availabilitySlots AvailabilitySlot[]
+  
+  // AlgoRank relations
+  problems      Problem[]
+  problemSolved problemSolved[]
+  playlist     Playlist[]
+  likes         Likes[]
+  comments      Comments[]
+  nestedComments NestedComments[]
+  
+  @@index([totalProblemsSolved])
+  @@index([rankingScore])
+  @@index([lastSolvedDate])
+}
+
+// ============================================
+// RESUME BUILDER MODELS (MongoDB → Prisma)
+// ============================================
+
+model Resume {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String   @default("Untitled-resume")
+  public      Boolean  @default(false)
+  template    String   @default("classic")
+  accentColor String   @default("#3B82F6")
+  professionSummary String @default("")
+  skills      String[]
+  personalInfo Json
+  experience  Json[]
+  projects    Json[]
+  education   Json[]
+  profile     String   @default("")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// ALGORANK MODELS (PostgreSQL + Prisma - No Changes)
+// ============================================
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Problem {
+  id           String     @id @default(uuid())
+  title        String
+  description  String
+  difficulty   Difficulty
+  tags         String[]
+  userID       String
+  examples     Json
+  constraints  String
+  hints        String?
+  editorial    String?
+  testcases    Json
+  codeSnippets  Json?
+  refrenceSolutions Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User            @relation(fields: [userID], references: [id], onDelete: Cascade)
+  submissions Submission[]
+  solvedBy problemSolved[]
+  problemInplaylist problemsInPlaylist[]
+  likes Likes[]
+  comments Comments[]
+}
+
+model Submission {
+  id            String   @id @default(uuid())
+  userID        String
+  problemID     String
+  sourceCode    String
+  language      String
+  stdin         String?
+  stdout        String?
+  stderr        String?
+  compileOutput String?
+  status        String
+  memory        String?
+  time          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user    User    @relation(fields: [userID], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemID], references: [id])
+  testcases Testcases[]
+}
+
+model Testcases {
+  id            String   @id @default(uuid())
+  submissionID  String
+  testCase      Int
+  passed        Boolean
+  stdout        String?
+  expected      String?
+  stderr        String?
+  compileOutput String?
+  status        String?
+  memory        String?
+  time          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  submission Submission @relation(fields: [submissionID], references: [id], onDelete: Cascade)
+
+  @@index([submissionID])
+}
+
+model problemSolved {
+  id        String   @id @default(uuid())
+  userID    String
+  problemID String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userID], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemID], references: [id], onDelete: Cascade)
+
+  @@unique([userID, problemID])
+}
+
+model Playlist {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  userID      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  problems problemsInPlaylist[]
+  user    User    @relation(fields: [userID], references: [id], onDelete: Cascade)
+  @@unique([title,userID])
+}
+
+model problemsInPlaylist{
+  id          String   @id @default(uuid())
+  playlistID String
+  problemID String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  playlist Playlist @relation(fields: [playlistID],references: [id],onDelete: Cascade)
+  problem Problem @relation(fields: [problemID], references: [id], onDelete: Cascade)
+  @@unique([playlistID,problemID])
+}
+
+model Likes{
+  id String @id @default(uuid())
+   userID String
+   problemID String
+
+    createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userID] ,references: [id], onDelete: Cascade, onUpdate:Cascade)
+  problem Problem @relation(fields: [problemID], references: [id], onDelete: Cascade)
+
+  @@unique([userID,problemID])
+}
+
+model Comments{
+  id String @id @default(uuid())
+  content String
+  userID String
+  problemID String
+   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userID] ,references: [id], onDelete: Cascade, onUpdate:Cascade)
+  problem Problem @relation(fields: [problemID], references: [id], onDelete: Cascade)
+  
+  nestedComment NestedComments[]
+}
+
+model NestedComments{
+  id String @id @default(uuid())
+  content String
+  userID String
+  commentID String
+     createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  comment Comments @relation(fields: [commentID], references: [id],onDelete: Cascade, onUpdate: Cascade)
+  user User @relation(fields: [userID] ,references: [id], onDelete: Cascade, onUpdate:Cascade)
+  
+}
+
+// ============================================
+// SENIOR CONNECT MODELS (MongoDB → Prisma)
+// ============================================
+
+model SeniorProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  title       String
+  company     String
+  domain      String
+  role        String
+  bio         String
+  experience  Int      @default(0)
+  location    String
+  expertise   String[]
+  achievements String[]
+  rating      Float    @default(0)
+  reviewCount Int      @default(0)
+  sessionCount Int     @default(0)
+  availability String   @default("available")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SessionBooking {
+  id          String   @id @default(uuid())
+  juniorId    String
+  seniorId    String
+  scheduledTime DateTime
+  duration    Int      @default(45)
+  topic       String
+  notes       String   @default("")
+  status      String   @default("pending")
+  jitsiRoomName String @default("")
+  jitsiRoomUrl  String @default("")
+  feedback    Json?
+  
+  feedbacks   SessionFeedback[]
+  
+  junior      User     @relation("JuniorBookings", fields: [juniorId], references: [id])
+  senior      User     @relation("SeniorBookings", fields: [seniorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([juniorId, createdAt])
+  @@index([seniorId, createdAt])
+}
+
+// Additional Senior Connect models
+model AvailabilitySlot {
+  id          String   @id @default(uuid())
+  seniorId    String
+  date        DateTime
+  startTime   String
+  endTime     String
+  isBooked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  senior      User     @relation(fields: [seniorId], references: [id], onDelete: Cascade)
+}
+
+model SessionFeedback {
+  id          String   @id @default(uuid())
+  bookingId   String
+  rating      Int
+  comment     String
+  tags        String[]
+  createdAt   DateTime @default(now())
+  
+  booking     SessionBooking @relation(fields: [bookingId], references: [id])
+}
+
+model CredibilityScore {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  score       Int      @default(0)
+  factors     Json
+  lastUpdated DateTime @default(now())
+}
+
+// ============================================
+// AI INTERVIEW MODELS (Supabase → Prisma - Friend Handling)
+// ============================================
+
+model InterviewSession {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String   @default("custom")
+  topics      String[]
+  role        String?
+  experienceLevel String?
+  plannedDuration Int @default(30)
+  cameraEnabled Boolean @default(false)
+  status      String   @default("in_progress")
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  durationSeconds Int?
+  feedback    Json?
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions   InterviewQuestion[]
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model InterviewQuestion {
+  id          String   @id @default(uuid())
+  sessionId   String
+  questionText String
+  questionIndex Int
+  category    String?
+  answerText  String?
+  answeredAt  DateTime?
+  questionFeedback Json?
+  
+  session     InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  
+  @@index([sessionId])
+  @@index([questionIndex])
+}

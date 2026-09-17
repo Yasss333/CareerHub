@@ -1,0 +1,19 @@
+{
+  "name": "@careerhub/shared",
+  "version": "1.0.0",
+  "description": "CareerHub shared utilities and types",
+  "main": "index.js",
+  "type": "module",
+  "exports": {
+    "./auth": "./src/auth/index.js",
+    "./types": "./src/types/index.js",
+    "./utils": "./src/utils/index.js"
+  },
+  "scripts": {
+    "build": "echo 'No build step needed for shared package'"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3",
+    "bcryptjs": "^3.0.3"
+  }
+}
