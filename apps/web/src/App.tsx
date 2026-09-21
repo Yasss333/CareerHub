@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
+import ResumeList from './pages/ResumeList'
 import ResumeBuilder from './pages/ResumeBuilder'
 import SeniorConnect from './pages/SeniorConnect'
 import SeniorConnectBooking from './pages/SeniorConnectBooking'
@@ -21,7 +22,8 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<Dashboard />} />
-          <Route path="resume" element={<ResumeBuilder />} />
+          <Route path="resume" element={<ResumeList />} />
+          <Route path="resume-builder/:resumeId" element={<ResumeBuilder />} />
           <Route path="connect" element={<SeniorConnect />} />
           <Route path="connect/booking" element={<SeniorConnectBooking />} />
           <Route path="connect/sessions" element={<SeniorConnectSessions />} />
