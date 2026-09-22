@@ -13,9 +13,11 @@ The Resume Builder allows users to create, edit, and manage professional resumes
 
 ### Frontend
 - **Framework**: React 18 + TypeScript
-- **State Management**: Component state + future Zustand integration
+- **State Management**: Component state
 - **Styling**: Tailwind CSS
 - **Routing**: React Router v7
+- **Advanced Components**: ExperienceForm, EducationForm, ProjectForm, SkillsForm, ProfessionalSummaryForm
+- **AI Modals**: ATSModal, CoverLetterModal, InterviewModal
 
 ## Tech Stack
 
@@ -24,7 +26,8 @@ The Resume Builder allows users to create, edit, and manage professional resumes
 - **Server**: Express.js
 - **Database**: PostgreSQL (Prisma)
 - **Authentication**: JWT + bcrypt
-- **Image Storage**: ImageKit (planned)
+- **Image Storage**: ImageKit (implemented)
+- **AI Integration**: OpenRouter API via OpenAI SDK
 
 ### Frontend
 - **UI Framework**: React 18
@@ -41,9 +44,20 @@ The Resume Builder allows users to create, edit, and manage professional resumes
 - `apps/api/src/middleware/auth.middleware.js` - JWT authentication middleware
 
 ### Frontend Files
-- `apps/web/src/pages/ResumeBuilder.tsx` - Main resume builder page
-- `apps/web/src/components/Layout.tsx` - Shared layout component
-- `apps/web/src/components/ProtectedRoute.tsx` - Route protection wrapper
+- `apps/web/src/pages/ResumeBuilder.tsx` - Main resume builder page with advanced features
+- `apps/web/src/pages/ResumeList.tsx` - Resume list and management page
+- `apps/web/src/components/ExperienceForm.tsx` - Work experience form with AI enhancement
+- `apps/web/src/components/EducationForm.tsx` - Education details form
+- `apps/web/src/components/ProjectForm.tsx` - Projects form with AI enhancement
+- `apps/web/src/components/SkillsForm.tsx` - Skills management form
+- `apps/web/src/components/ProfessionalSummaryForm.tsx` - Professional summary with AI enhancement
+- `apps/web/src/components/ATSModal.tsx` - ATS analysis modal
+- `apps/web/src/components/CoverLetterModal.tsx` - Cover letter generation modal
+- `apps/web/src/components/InterviewModal.tsx` - Mock interview practice modal
+- `apps/web/src/components/templates/ModernTemplate.tsx` - Modern resume template
+- `apps/web/src/components/templates/ClassicTemplate.tsx` - Classic resume template
+- `apps/web/src/components/templates/MinimalTemplate.tsx` - Minimal resume template
+- `apps/web/src/components/templates/MinimalImageTemplate.tsx` - Minimal image resume template
 
 ### Database Model
 - `Resume` model in `apps/api/prisma/schema.prisma`
@@ -156,31 +170,34 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 - Basic resume CRUD API operations
 - Prisma data model for resumes
 - JWT authentication integration
-- Basic React frontend page
+- React frontend page with TypeScript
 - Protected route wrapper
-
-### In Progress
+- Advanced form components (ExperienceForm, EducationForm, ProjectForm, SkillsForm)
+- Professional summary form with AI enhancement
+- All 4 resume templates (Modern, Classic, Minimal, MinimalImage)
 - ImageKit integration for image uploads
-- Advanced resume templates
-- AI content generation
-
-### Not Started
-- Resume export functionality (PDF, Word)
-- Advanced template customization
-- AI-powered content suggestions
-- Resume sharing and public links
+- AI content generation (professional summary, job description enhancement)
+- ATS analysis with scoring and keyword matching
+- Cover letter generation
+- Mock interview practice with question generation and answer evaluation
+- PDF export functionality
+- Template selection and color customization
+- Resume listing and management
+- Duplicate and delete functionality
+- Public/private resume visibility
 
 ## Known Issues
 
-### ImageKit Integration
-- Integration identified but not implemented
-- Environment variables not configured
-- Upload endpoint not created
+### Configuration Required
+- **ImageKit API Keys**: Must be configured in `apps/api/.env` for image upload functionality
+- **OpenRouter API Key**: Must be configured in `apps/api/.env` for AI features to work
+- Current implementation uses placeholder keys and will not function without real credentials
 
 ### Frontend UI
-- Basic page structure exists but needs refinement
-- Form validation needs enhancement
-- Loading states and error handling need improvement
+- Forms are fully functional with proper validation
+- AI features require valid API keys to work
+- Loading states and error handling are implemented
+- Responsive design works across different screen sizes
 
 ## Development Guidelines
 

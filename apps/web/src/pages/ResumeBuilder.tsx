@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Briefcase, GraduationCap, FileText, User, Download, Eye, EyeOff, Sparkles, ArrowLeft, Share2 } from 'lucide-react';
+import { Briefcase, GraduationCap, FileText, User, Download, Eye, EyeOff, Sparkles, ArrowLeft, Share2, MessageSquare, FileQuestion } from 'lucide-react';
 import ModernTemplate from '../components/templates/ModernTemplate';
 import ClassicTemplate from '../components/templates/ClassicTemplate';
 import MinimalTemplate from '../components/templates/MinimalTemplate';
 import MinimalImageTemplate from '../components/templates/MinimalImageTemplate';
+import ExperienceForm from '../components/ExperienceForm';
+import EducationForm from '../components/EducationForm';
+import ProjectForm from '../components/ProjectForm';
+import SkillsForm from '../components/SkillsForm';
+import ProfessionalSummaryForm from '../components/ProfessionalSummaryForm';
+import ATSModal from '../components/ATSModal';
+import CoverLetterModal from '../components/CoverLetterModal';
+import InterviewModal from '../components/InterviewModal';
 
 interface PersonalInfo {
   fullName?: string;
@@ -72,6 +80,9 @@ const ResumeBuilder = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [showATSModal, setShowATSModal] = useState(false);
+  const [showCoverLetterModal, setShowCoverLetterModal] = useState(false);
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
 
   const token = localStorage.getItem('token');
 
@@ -406,12 +417,9 @@ const ResumeBuilder = () => {
                 <Sparkles className="w-5 h-5" />
                 Professional Summary
               </h2>
-              <textarea
-                value={resumeData.professionSummary}
-                onChange={(e) => setResumeData({ ...resumeData, professionSummary: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={4}
-                placeholder="Write a brief professional summary..."
+              <ProfessionalSummaryForm 
+                value={resumeData.professionSummary} 
+                onChange={(value) => setResumeData({ ...resumeData, professionSummary: value })} 
               />
             </div>
 
@@ -420,37 +428,31 @@ const ResumeBuilder = () => {
                 <Briefcase className="w-5 h-5" />
                 Skills
               </h2>
-              <div className="space-y-2">
-                {resumeData.skills.map((skill, index) => (
-                  <div key={index} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={skill}
-                      onChange={(e) => {
-                        const newSkills = [...resumeData.skills];
-                        newSkills[index] = e.target.value;
-                        setResumeData({ ...resumeData, skills: newSkills });
-                      }}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      onClick={() => {
-                        const newSkills = resumeData.skills.filter((_, i) => i !== index);
-                        setResumeData({ ...resumeData, skills: newSkills });
-                      }}
-                      className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() => setResumeData({ ...resumeData, skills: [...resumeData.skills, ''] })}
-                  className="w-full px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  Add Skill
-                </button>
-              </div>
+              <SkillsForm data={resumeData.skills} onChange={(skills) => setResumeData({ ...resumeData, skills })} />
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Work Experience
+              </h2>
+              <ExperienceForm data={resumeData.experience} onChange={(experience) => setResumeData({ ...resumeData, experience })} />
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <GraduationCap className="w-5 h-5" />
+                Education
+              </h2>
+              <EducationForm data={resumeData.education} onChange={(education) => setResumeData({ ...resumeData, education })} />
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Projects
+              </h2>
+              <ProjectForm data={resumeData.projects} onChange={(projects) => setResumeData({ ...resumeData, projects })} />
             </div>
 
             <div className="flex gap-4">
@@ -470,6 +472,33 @@ const ResumeBuilder = () => {
                 Print/Download PDF
               </button>
             </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowATSModal(true)}
+                disabled={!resumeId}
+                className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 disabled:bg-purple-300 flex items-center justify-center gap-2"
+              >
+                <FileQuestion className="w-4 h-4" />
+                ATS Analysis
+              </button>
+              <button
+                onClick={() => setShowCoverLetterModal(true)}
+                disabled={!resumeId}
+                className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 disabled:bg-pink-300 flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Cover Letter
+              </button>
+              <button
+                onClick={() => setShowInterviewModal(true)}
+                disabled={!resumeId}
+                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 disabled:bg-orange-300 flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Interview Prep
+              </button>
+            </div>
           </div>
 
           {/* Preview Section */}
@@ -485,6 +514,23 @@ const ResumeBuilder = () => {
           )}
         </div>
       </div>
+
+      {/* AI Modals */}
+      <ATSModal
+        isOpen={showATSModal}
+        onClose={() => setShowATSModal(false)}
+        resumeId={resumeId || ''}
+      />
+      <CoverLetterModal
+        isOpen={showCoverLetterModal}
+        onClose={() => setShowCoverLetterModal(false)}
+        resumeId={resumeId || ''}
+      />
+      <InterviewModal
+        isOpen={showInterviewModal}
+        onClose={() => setShowInterviewModal(false)}
+        resumeId={resumeId || ''}
+      />
     </div>
   );
 };

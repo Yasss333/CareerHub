@@ -174,7 +174,7 @@ router.post('/cover-letter', authenticate, async (req, res) => {
 });
 
 // Generate interview questions
-router.post('/interview-questions', authenticate, async (req, res) => {
+router.post('/interview/generate', authenticate, async (req, res) => {
   try {
     const { resumeId, count = 5, types = ["technical", "behavioral"], focus = "", jobDescription = "" } = req.body;
     const userId = req.user.id;
@@ -211,7 +211,7 @@ router.post('/interview-questions', authenticate, async (req, res) => {
 });
 
 // Evaluate interview answer
-router.post('/evaluate-answer', authenticate, async (req, res) => {
+router.post('/interview/evaluate', authenticate, async (req, res) => {
   try {
     const { resumeId, question, answer } = req.body;
     const userId = req.user.id;

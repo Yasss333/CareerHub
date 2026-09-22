@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup with monorepo structure using npm workspaces
 - PostgreSQL database with Docker container
 - Unified JWT authentication system with bcrypt password hashing
-- Resume Builder module with full CRUD operations
+- Resume Builder module with full CRUD operations and advanced features
 - Senior Connect module with mentorship features and Jitsi integration
 - Shared design system with Tailwind CSS
 - React 18 + TypeScript frontend with Vite
@@ -21,14 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture documentation including API design and database schema
 - Root AGENTS.md with project-level AI agent control guidelines
 - Keep a Changelog format for project change tracking
+- Advanced Resume Builder form components (ExperienceForm, EducationForm, ProjectForm, SkillsForm)
+- Professional summary form with AI enhancement
+- ATS analysis modal with scoring and keyword matching
+- Cover letter generation modal with PDF export
+- Mock interview practice modal with question generation and answer evaluation
+- All 4 resume templates (Modern, Classic, Minimal, MinimalImage) in TypeScript
+- ImageKit integration for profile image uploads
+- AI content generation for professional summaries and job descriptions
+- PDF export functionality with print-to-PDF
 
 ### Changed
-- Migrated Resume Builder from MongoDB to PostgreSQL + Prisma (backend API complete, frontend basic)
+- Migrated Resume Builder from MongoDB to PostgreSQL + Prisma (backend and frontend complete with all advanced features)
 - Migrated Senior Connect from MongoDB to PostgreSQL + Prisma (backend API complete, frontend basic)
 - Updated all frontends to React 18 + TypeScript
 - Replaced legacy authentication systems with custom JWT authentication
 - Unified user model with role-based access control (ADMIN/USER + isAlumniMentor)
-- Identified ImageKit integration for resume image uploads (not yet implemented)
+- Implemented ImageKit integration for resume image uploads
+- Added comprehensive AI features to Resume Builder (ATS analysis, cover letter generation, interview prep)
 
 ### Deprecated
 - Legacy Supabase authentication (replaced with custom JWT)
@@ -70,8 +80,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared app shell and navigation
 
 ### Known Limitations
-- Resume Builder ImageKit integration identified but not implemented (available in legacy)
-- Resume Builder frontend needs significant UI refinement (complete UI available in legacy)
+- Resume Builder ImageKit integration requires API keys in environment variables
+- Resume Builder AI features require OpenRouter API key in environment variables
 - Senior Connect availability system is basic (advanced system available in legacy)
 - AlgoRank module assessment complete but not implemented (complete functional code available in legacy)
 - AI Interview module assessment complete but not implemented (deferred to end - most complex)
@@ -85,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AI Interview: Functional code but requires complex migration (Supabase → CareerHub)
 
 ### Implementation Priorities
-1. Resume Builder (START NOW - copy + adapt from legacy)
+1. ~~Resume Builder~~ (COMPLETED - all advanced features migrated from legacy)
 2. Senior Connect (copy + adapt from legacy)
 3. AlgoRank (copy + adapt from legacy)
 4. Landing Page (integration when provided)
