@@ -1,250 +1,538 @@
-import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Copy, FileText } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Briefcase, GraduationCap, FileText, User, Download, Eye, EyeOff, Sparkles, ArrowLeft, Share2, MessageSquare, FileQuestion } from 'lucide-react';
+import ModernTemplate from '../components/templates/ModernTemplate';
+import ClassicTemplate from '../components/templates/ClassicTemplate';
+import MinimalTemplate from '../components/templates/MinimalTemplate';
+import MinimalImageTemplate from '../components/templates/MinimalImageTemplate';
+import ExperienceForm from '../components/ExperienceForm';
+import EducationForm from '../components/EducationForm';
+import ProjectForm from '../components/ProjectForm';
+import SkillsForm from '../components/SkillsForm';
+import ProfessionalSummaryForm from '../components/ProfessionalSummaryForm';
+import ATSModal from '../components/ATSModal';
+import CoverLetterModal from '../components/CoverLetterModal';
+import InterviewModal from '../components/InterviewModal';
 
-interface Resume {
-  id: string
-  title: string
-  template: string
-  public: boolean
-  createdAt: string
-  skills: string[]
-  personalInfo: any
-  experience: any[]
-  projects: any[]
-  education: any[]
+interface PersonalInfo {
+  fullName?: string;
+  profession?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  linkedin?: string;
+  website?: string;
+  image?: string;
 }
 
-export default function ResumeBuilder() {
-  const [resumes, setResumes] = useState<Resume[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [error, setError] = useState('')
+interface Experience {
+  position?: string;
+  company?: string;
+  startDate?: string;
+  endDate?: string;
+  isCurrent?: boolean;
+  description?: string;
+}
+
+interface Project {
+  name?: string;
+  type?: string;
+  description?: string;
+}
+
+interface Education {
+  degree?: string;
+  field?: string;
+  institution?: string;
+  graduationDate?: string;
+  gpa?: number;
+}
+
+interface ResumeData {
+  id?: string;
+  title: string;
+  personalInfo: PersonalInfo;
+  professionSummary: string;
+  experience: Experience[];
+  education: Education[];
+  projects: Project[];
+  skills: string[];
+  template: string;
+  accentColor: string;
+  public: boolean;
+}
+
+const ResumeBuilder = () => {
+  const { resumeId } = useParams();
+  const navigate = useNavigate();
+  const [resumeData, setResumeData] = useState<ResumeData>({
+    title: '',
+    personalInfo: {},
+    professionSummary: '',
+    experience: [],
+    education: [],
+    projects: [],
+    skills: [],
+    template: 'modern',
+    accentColor: '#3B82F6',
+    public: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [showATSModal, setShowATSModal] = useState(false);
+  const [showCoverLetterModal, setShowCoverLetterModal] = useState(false);
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
+
+  const token = localStorage.getItem('token');
 
   useEffect(() => {
-    fetchResumes()
-  }, [])
-
-  const fetchResumes = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        setError('Please login to view your resumes')
-        setLoading(false)
-        return
-      }
-
-      const response = await fetch('/api/resume', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch resumes')
-      }
-
-      const data = await response.json()
-      setResumes(data)
-    } catch (error) {
-      console.error('Failed to fetch resumes:', error)
-      setError('Failed to load resumes. Please try again.')
-    } finally {
-      setLoading(false)
+    if (resumeId && token) {
+      loadExistingResume(resumeId);
     }
-  }
+  }, [resumeId, token]);
 
-  const handleCreateResume = async () => {
+  const loadExistingResume = async (id: string) => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/resume', {
-        method: 'POST',
+      setIsLoading(true);
+      const response = await fetch(`http://localhost:5000/api/resume/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data) {
+        setResumeData(data);
+      }
+    } catch (error) {
+      console.error('Error loading resume:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveResume = async () => {
+    try {
+      setIsSaving(true);
+      const url = resumeId 
+        ? `http://localhost:5000/api/resume/${resumeId}`
+        : 'http://localhost:5000/api/resume';
+      
+      const method = resumeId ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          title: 'Untitled-resume',
-          template: 'classic',
-          accentColor: '#3B82F6',
-          professionSummary: '',
-          skills: [],
-          personalInfo: {},
-          experience: [],
-          projects: [],
-          education: [],
-          profile: '',
-          public: false
-        })
-      })
+        body: JSON.stringify(resumeData),
+      });
 
-      if (!response.ok) {
-        throw new Error('Failed to create resume')
-      }
-
-      const newResume = await response.json()
-      setResumes([newResume, ...resumes])
-      setShowCreateModal(false)
-    } catch (error) {
-      console.error('Failed to create resume:', error)
-      setError('Failed to create resume. Please try again.')
-    }
-  }
-
-  const handleEditResume = (id: string) => {
-    // Navigate to resume editor (to be implemented)
-    console.log('Edit resume:', id)
-  }
-
-  const handleDeleteResume = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this resume?')) {
-      return
-    }
-
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/resume/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const data = await response.json();
+      
+      if (response.ok) {
+        if (!resumeId && data.id) {
+          navigate(`/resume-builder/${data.id}`);
         }
-      })
+        alert('Resume saved successfully!');
+      } else {
+        alert('Failed to save resume');
+      }
+    } catch (error) {
+      console.error('Error saving resume:', error);
+      alert('Error saving resume');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-      if (!response.ok) {
-        throw new Error('Failed to delete resume')
+  const downloadPDF = async () => {
+    try {
+      const url = resumeId 
+        ? `http://localhost:5000/api/pdf/${resumeId}/pdf`
+        : null;
+      
+      if (!url) {
+        alert('Please save the resume first');
+        return;
       }
 
-      setResumes(resumes.filter(resume => resume.id !== id))
-    } catch (error) {
-      console.error('Failed to delete resume:', error)
-      setError('Failed to delete resume. Please try again.')
-    }
-  }
-
-  const handleDuplicateResume = async (id: string) => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/resume/${id}/duplicate`, {
+      const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const htmlContent = await response.text();
+        
+        // Create a new window with the HTML content
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(htmlContent);
+          printWindow.document.close();
+          
+          // Wait for the content to load before printing
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
         }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to duplicate resume')
+      } else {
+        alert('Failed to generate PDF');
       }
-
-      const duplicatedResume = await response.json()
-      setResumes([duplicatedResume, ...resumes])
     } catch (error) {
-      console.error('Failed to duplicate resume:', error)
-      setError('Failed to duplicate resume. Please try again.')
+      console.error('Error downloading PDF:', error);
+      alert('Error downloading PDF');
     }
-  }
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading resumes...</div>
-      </div>
-    )
-  }
+  const getTemplateComponent = () => {
+    const templates: Record<string, any> = {
+      modern: ModernTemplate,
+      classic: ClassicTemplate,
+      minimal: MinimalTemplate,
+      minimalImage: MinimalImageTemplate,
+    };
+    const TemplateComponent = templates[resumeData.template] || ModernTemplate;
+    
+    // Convert data format for templates
+    const templateData = {
+      personal_info: {
+        full_name: resumeData.personalInfo.fullName,
+        profession: resumeData.personalInfo.profession,
+        email: resumeData.personalInfo.email,
+        phone: resumeData.personalInfo.phone,
+        location: resumeData.personalInfo.location,
+        linkedin: resumeData.personalInfo.linkedin,
+        website: resumeData.personalInfo.website,
+        image: resumeData.personalInfo.image,
+      },
+      professional_summary: resumeData.professionSummary,
+      experience: resumeData.experience.map(exp => ({
+        position: exp.position,
+        company: exp.company,
+        start_date: exp.startDate,
+        end_date: exp.endDate,
+        is_current: exp.isCurrent,
+        description: exp.description,
+      })),
+      project: resumeData.projects,
+      education: resumeData.education.map(edu => ({
+        degree: edu.degree,
+        field: edu.field,
+        institution: edu.institution,
+        graduation_date: edu.graduationDate,
+        gpa: edu.gpa,
+      })),
+      skills: resumeData.skills,
+    };
 
-  if (error) {
+    return <TemplateComponent data={templateData} accentColor={resumeData.accentColor} />;
+  };
+
+  if (isLoading) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-        {error}
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
       </div>
-    )
+    );
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Resume Builder</h1>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Create Resume</span>
-        </button>
-      </div>
-
-      {resumes.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No resumes yet</h3>
-          <p className="text-gray-600 mb-6">Create your first resume to get started</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Create Your First Resume
-          </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-200 rounded-full">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Resume Builder</h1>
+              <p className="text-gray-600">Create your professional resume</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowPreview(!showPreview)}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center gap-2"
+            >
+              {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPreview ? 'Hide Preview' : 'Show Preview'}
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {resumes.map((resume) => (
-            <div key={resume.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
+
+        <div className={`grid ${showPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'} gap-8`}>
+          {/* Form Section */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Basic Information
+              </h2>
+              <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{resume.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {resume.template} template • {resume.public ? 'Public' : 'Private'}
-                  </p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Resume Title</label>
+                  <input
+                    type="text"
+                    value={resumeData.title}
+                    onChange={(e) => setResumeData({ ...resumeData, title: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="My Resume"
+                  />
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleEditResume(resume.id)}
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDuplicateResume(resume.id)}
-                    className="text-gray-600 hover:text-green-600 transition-colors"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteResume(resume.id)}
-                    className="text-gray-600 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Template</label>
+                    <select
+                      value={resumeData.template}
+                      onChange={(e) => setResumeData({ ...resumeData, template: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="modern">Modern</option>
+                      <option value="classic">Classic</option>
+                      <option value="minimal">Minimal</option>
+                      <option value="minimalImage">Minimal with Image</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Accent Color</label>
+                    <input
+                      type="color"
+                      value={resumeData.accentColor}
+                      onChange={(e) => setResumeData({ ...resumeData, accentColor: e.target.value })}
+                      className="w-full h-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-gray-500">
-                Created {new Date(resume.createdAt).toLocaleDateString()}
-              </p>
             </div>
-          ))}
-        </div>
-      )}
 
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Create New Resume</h2>
-            <p className="text-gray-600 mb-6">A new resume will be created with default settings. You can customize it after creation.</p>
-            <div className="flex justify-end space-x-3">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Personal Information
+              </h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      value={resumeData.personalInfo.fullName || ''}
+                      onChange={(e) => setResumeData({
+                        ...resumeData,
+                        personalInfo: { ...resumeData.personalInfo, fullName: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                    <input
+                      type="text"
+                      value={resumeData.personalInfo.profession || ''}
+                      onChange={(e) => setResumeData({
+                        ...resumeData,
+                        personalInfo: { ...resumeData.personalInfo, profession: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Software Engineer"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={resumeData.personalInfo.email || ''}
+                      onChange={(e) => setResumeData({
+                        ...resumeData,
+                        personalInfo: { ...resumeData.personalInfo, email: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="john@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      value={resumeData.personalInfo.phone || ''}
+                      onChange={(e) => setResumeData({
+                        ...resumeData,
+                        personalInfo: { ...resumeData.personalInfo, phone: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="+1 234 567 890"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <input
+                      type="text"
+                      value={resumeData.personalInfo.location || ''}
+                      onChange={(e) => setResumeData({
+                        ...resumeData,
+                        personalInfo: { ...resumeData.personalInfo, location: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="San Francisco, CA"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn</label>
+                    <input
+                      type="url"
+                      value={resumeData.personalInfo.linkedin || ''}
+                      onChange={(e) => setResumeData({
+                        ...resumeData,
+                        personalInfo: { ...resumeData.personalInfo, linkedin: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://linkedin.com/in/johndoe"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                  <input
+                    type="url"
+                    value={resumeData.personalInfo.website || ''}
+                    onChange={(e) => setResumeData({
+                      ...resumeData,
+                      personalInfo: { ...resumeData.personalInfo, website: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://johndoe.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                Professional Summary
+              </h2>
+              <ProfessionalSummaryForm 
+                value={resumeData.professionSummary} 
+                onChange={(value) => setResumeData({ ...resumeData, professionSummary: value })} 
+              />
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Skills
+              </h2>
+              <SkillsForm data={resumeData.skills} onChange={(skills) => setResumeData({ ...resumeData, skills })} />
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Work Experience
+              </h2>
+              <ExperienceForm data={resumeData.experience} onChange={(experience) => setResumeData({ ...resumeData, experience })} />
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <GraduationCap className="w-5 h-5" />
+                Education
+              </h2>
+              <EducationForm data={resumeData.education} onChange={(education) => setResumeData({ ...resumeData, education })} />
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Projects
+              </h2>
+              <ProjectForm data={resumeData.projects} onChange={(projects) => setResumeData({ ...resumeData, projects })} />
+            </div>
+
+            <div className="flex gap-4">
               <button
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={saveResume}
+                disabled={isSaving}
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 flex items-center justify-center gap-2"
               >
-                Cancel
+                {isSaving ? 'Saving...' : 'Save Resume'}
               </button>
               <button
-                onClick={handleCreateResume}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={downloadPDF}
+                disabled={!resumeId}
+                className="flex-1 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-green-300 flex items-center justify-center gap-2"
               >
-                Create Resume
+                <Download className="w-4 h-4" />
+                Print/Download PDF
+              </button>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowATSModal(true)}
+                disabled={!resumeId}
+                className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 disabled:bg-purple-300 flex items-center justify-center gap-2"
+              >
+                <FileQuestion className="w-4 h-4" />
+                ATS Analysis
+              </button>
+              <button
+                onClick={() => setShowCoverLetterModal(true)}
+                disabled={!resumeId}
+                className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 disabled:bg-pink-300 flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Cover Letter
+              </button>
+              <button
+                onClick={() => setShowInterviewModal(true)}
+                disabled={!resumeId}
+                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 disabled:bg-orange-300 flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Interview Prep
               </button>
             </div>
           </div>
+
+          {/* Preview Section */}
+          {showPreview && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-xl font-semibold mb-4">Preview</h2>
+                <div className="border rounded-lg p-4 min-h-[500px] overflow-auto">
+                  {getTemplateComponent()}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* AI Modals */}
+      <ATSModal
+        isOpen={showATSModal}
+        onClose={() => setShowATSModal(false)}
+        resumeId={resumeId || ''}
+      />
+      <CoverLetterModal
+        isOpen={showCoverLetterModal}
+        onClose={() => setShowCoverLetterModal(false)}
+        resumeId={resumeId || ''}
+      />
+      <InterviewModal
+        isOpen={showInterviewModal}
+        onClose={() => setShowInterviewModal(false)}
+        resumeId={resumeId || ''}
+      />
     </div>
-  )
-}
+  );
+};
+
+export default ResumeBuilder;

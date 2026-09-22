@@ -2,6 +2,8 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import ImageKit from '@imagekit/nodejs';
+import multer from 'multer';
+import fs from 'fs';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -17,6 +19,9 @@ if (process.env.IMAGEKIT_PUBLIC_KEY && process.env.IMAGEKIT_PRIVATE_KEY && proce
     urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
   });
 }
+
+// Multer setup for file uploads
+const upload = multer({ dest: 'uploads/' });
 
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -143,8 +148,8 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
-// Update resume
-router.put('/:id', authenticate, async (req, res) => {
+// Update resume with image upload support
+router.put('/:id', authenticate, upload.single('image'), async (req, res) => {
   try {
     const resume = await prisma.resume.findFirst({
       where: { 
@@ -157,18 +162,57 @@ router.put('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Resume not found' });
     }
     
+    let resumeData = req.body;
+    const image = req.file;
+    const removeBackground = req.body.removeBackground;
+    
+    // Parse resume data if it's a string
+    if (typeof resumeData === 'string') {
+      resumeData = JSON.parse(resumeData);
+    }
+    
+    const shouldRemoveBackground = 
+      removeBackground === true ||
+      removeBackground === "true" ||
+      removeBackground === "1" ||
+      removeBackground === "yes";
+    
+    // Handle image upload with ImageKit
+    if (image && imagekit) {
+      const bufferData = fs.createReadStream(image.path);
+      const uploadResponse = await imagekit.files.upload({
+        file: bufferData,
+        fileName: `resume-${Date.now()}.png`,
+        folder: "user-resumes",
+      });
+
+      // Use delivery-time transforms for better reliability
+      const transforms = ["w-400", "h-400", "c-thumb", "fo-face"];
+      if (shouldRemoveBackground) transforms.push("e-bgremove");
+
+      if (!resumeData.personalInfo) {
+        resumeData.personalInfo = {};
+      }
+      resumeData.personalInfo.image = `${uploadResponse.url}?tr=${transforms.join(",")}`;
+      
+      // Clean up uploaded file
+      fs.unlink(image.path, (err) => {
+        if (err) console.error('Error deleting uploaded file:', err);
+      });
+    }
+    
     const updateData = {};
-    if (req.body.title !== undefined) updateData.title = req.body.title;
-    if (req.body.template !== undefined) updateData.template = req.body.template;
-    if (req.body.accentColor !== undefined) updateData.accentColor = req.body.accentColor;
-    if (req.body.professionSummary !== undefined) updateData.professionSummary = req.body.professionSummary;
-    if (req.body.skills !== undefined) updateData.skills = req.body.skills;
-    if (req.body.personalInfo !== undefined) updateData.personalInfo = req.body.personalInfo;
-    if (req.body.experience !== undefined) updateData.experience = req.body.experience;
-    if (req.body.projects !== undefined) updateData.projects = req.body.projects;
-    if (req.body.education !== undefined) updateData.education = req.body.education;
-    if (req.body.profile !== undefined) updateData.profile = req.body.profile;
-    if (req.body.public !== undefined) updateData.public = req.body.public;
+    if (resumeData.title !== undefined) updateData.title = resumeData.title;
+    if (resumeData.template !== undefined) updateData.template = resumeData.template;
+    if (resumeData.accentColor !== undefined) updateData.accentColor = resumeData.accentColor;
+    if (resumeData.professionSummary !== undefined) updateData.professionSummary = resumeData.professionSummary;
+    if (resumeData.skills !== undefined) updateData.skills = resumeData.skills;
+    if (resumeData.personalInfo !== undefined) updateData.personalInfo = resumeData.personalInfo;
+    if (resumeData.experience !== undefined) updateData.experience = resumeData.experience;
+    if (resumeData.projects !== undefined) updateData.projects = resumeData.projects;
+    if (resumeData.education !== undefined) updateData.education = resumeData.education;
+    if (resumeData.profile !== undefined) updateData.profile = resumeData.profile;
+    if (resumeData.public !== undefined) updateData.public = resumeData.public;
     
     const updatedResume = await prisma.resume.update({
       where: { id: req.params.id },
