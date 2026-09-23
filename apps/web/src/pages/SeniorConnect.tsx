@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Users, Search, Calendar, MessageSquare, Star } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Users, Search, Calendar, Star, Award } from 'lucide-react'
 
 interface Senior {
   id: string
@@ -12,6 +12,7 @@ interface Senior {
   experience: number
   location: string
   expertise: string[]
+  achievements: string[]
   rating: number
   reviewCount: number
   availability: string
@@ -38,6 +39,7 @@ export default function SeniorConnect() {
   }, [search, domain])
 
   const fetchSeniors = async () => {
+    setLoading(true)
     try {
       const token = localStorage.getItem('token')
       const params = new URLSearchParams()
@@ -56,12 +58,22 @@ export default function SeniorConnect() {
 
       const data = await response.json()
       setSeniors(data)
+      setError('')
     } catch (error) {
       console.error('Failed to fetch seniors:', error)
       setError('Failed to load seniors. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const getAvailabilityBadge = (availability: string) => {
+    const config: Record<string, string> = {
+      available: 'bg-green-50 text-green-700',
+      limited: 'bg-yellow-50 text-yellow-700',
+      booked: 'bg-red-50 text-red-700'
+    }
+    return config[availability] || 'bg-gray-50 text-gray-700'
   }
 
   if (loading) {
@@ -87,13 +99,22 @@ export default function SeniorConnect() {
           <h1 className="text-3xl font-bold text-gray-900">Senior Connect</h1>
           <p className="text-gray-600 mt-2">Find and connect with experienced professionals</p>
         </div>
-        <a
-          href="/connect/sessions"
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          <Calendar className="w-4 h-4" />
-          My Sessions
-        </a>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/connect/profile"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+          >
+            <Award className="w-4 h-4" />
+            Mentor Profile
+          </Link>
+          <Link
+            to="/connect/sessions"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <Calendar className="w-4 h-4" />
+            My Sessions
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -124,7 +145,7 @@ export default function SeniorConnect() {
       {seniors.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
           <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No seniors found</h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No mentors found</h3>
           <p className="text-gray-600">Try adjusting your search filters</p>
         </div>
       ) : (
@@ -144,11 +165,18 @@ export default function SeniorConnect() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">{senior.user.name}</h3>
                     <p className="text-sm text-gray-600">{senior.title} at {senior.company}</p>
+                    {senior.domain && (
+                      <span className="inline-block mt-1 text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                        {senior.domain}
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="text-lg font-bold text-gray-900">{senior.rating.toFixed(1)}</span>
+                      <span className="text-lg font-bold text-gray-900">
+                        {senior.rating ? senior.rating.toFixed(1) : '0.0'}
+                      </span>
                     </div>
                     <p className="text-xs text-gray-500">{senior.reviewCount} reviews</p>
                   </div>
@@ -167,17 +195,13 @@ export default function SeniorConnect() {
                     {senior.experience} years experience
                   </span>
                   <span>{senior.location}</span>
-                  <span className={`px-2 py-1 rounded-full ${
-                    senior.availability === 'available' ? 'bg-green-50 text-green-700' :
-                    senior.availability === 'limited' ? 'bg-yellow-50 text-yellow-700' :
-                    'bg-red-50 text-red-700'
-                  }`}>
+                  <span className={`px-2 py-1 rounded-full ${getAvailabilityBadge(senior.availability)}`}>
                     {senior.availability}
                   </span>
                 </div>
               </div>
               <button
-                onClick={() => handleBookSession(senior.id)}
+                onClick={() => navigate(`/connect/booking/${senior.id}`)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Book Session
@@ -188,10 +212,4 @@ export default function SeniorConnect() {
       )}
     </div>
   )
-
-  function handleBookSession(senior: Senior) {
-    // For now, just navigate to booking page
-    // In a real app, we'd pass the senior data via state or URL params
-    navigate('/connect/booking', { state: { senior } })
-  }
 }

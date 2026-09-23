@@ -13,14 +13,14 @@ This document tracks the implementation progress of the Senior Connect module mi
 - [x] Test basic mentor profile creation and viewing
 
 ## Phase 2: Core Features
-- [ ] Implement comprehensive mentor profile editing interface
-- [ ] Add expertise tags and skills management
-- [ ] Implement availability slot management UI
-- [ ] Add session booking interface with time slot selection
-- [ ] Implement session status management (scheduled, completed, cancelled)
-- [ ] Add session feedback collection system
-- [ ] Implement mentor search and filtering
-- [ ] Add mentor rating and review display
+- [x] Implement comprehensive mentor profile editing interface
+- [x] Add expertise tags and skills management
+- [x] Implement availability slot management UI
+- [x] Add session booking interface with time slot selection
+- [x] Implement session status management (scheduled, completed, cancelled)
+- [x] Add session feedback collection system
+- [x] Implement mentor search and filtering
+- [x] Add mentor rating and review display
 
 ## Phase 3: Availability System
 - [ ] Implement day-of-week availability slots
@@ -81,7 +81,7 @@ This document tracks the implementation progress of the Senior Connect module mi
 - [ ] Add mentorship progress tracking
 
 ## Current Status
-**Overall Progress: ~40%**
+**Overall Progress: ~60%**
 
 ### Completed Work
 - Basic Senior Connect API routes
@@ -90,11 +90,21 @@ This document tracks the implementation progress of the Senior Connect module mi
 - React frontend pages for mentor discovery, booking, and sessions
 - Jitsi URL generation for video sessions
 - User ownership validation
+- Comprehensive mentor profile editing interface
+- Expertise/achievements tag management
+- Availability slot management UI (date + time slots, conflict detection)
+- Session booking with availability slot selection + conflict detection
+- Session status workflow (pending → accepted/rejected/cancelled → started → completed)
+- Feedback collection with star rating, comment, and tags
+- Mentor search and filtering (search, domain, expertise)
+- Mentor rating and review display
+- Slot-based booking: availabilitySlotId links booking → slot, slot freed on cancel/reject
 
 ### In Progress
-- Profile editing enhancements
-- Availability management UI improvements
-- Session history and analytics
+- Session calendar view (Phase 4)
+- Timezone support for availability (Phase 3)
+- Session reminders and notifications (Phase 4)
+- Session history and analytics (Phase 4)
 
 ### Available in Legacy (Ready to Migrate)
 - ✅ Advanced availability system (date-specific, timezone support)
@@ -108,17 +118,17 @@ This document tracks the implementation progress of the Senior Connect module mi
 - ❌ Payment integration (not required - removed from scope)
 
 ### Next Steps
-1. Copy advanced availability system from legacy/SeniorConnect
-2. Copy complete frontend UI from legacy
-3. Copy session calendar and management features
-4. Adapt legacy components to new Prisma schema
-5. Test end-to-end mentorship flow
+1. Implement session calendar view (Phase 4)
+2. Add session reminders and notifications
+3. Implement timezone support and recurring availability patterns (Phase 3)
+4. Test end-to-end mentorship flow
 
 ## Known Issues
 - Legacy code needs adaptation to new Prisma schema
 - Legacy frontend needs adaptation to React 18 + TypeScript
 - Jitsi integration uses public URLs (enhanced features available in legacy)
 - Timezone handling needs careful implementation
+- `availabilitySlotId` migration (`20260923120000_add_availability_slot_booking`) still needs to be applied to the dev database
 
 ## Dependencies
 - Jitsi Meet service (public integration)

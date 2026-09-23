@@ -30,6 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ImageKit integration for profile image uploads
 - AI content generation for professional summaries and job descriptions
 - PDF export functionality with print-to-PDF
+- Senior Connect Phase 2: comprehensive mentor profile editing interface
+- Senior Connect mentor expertise/achievements tag management
+- Senior Connect availability slot management UI with conflict detection
+- Senior Connect session booking with availability slot selection and conflict detection (junior + senior)
+- Senior Connect session status workflow (pending → accepted/rejected/cancelled → started → completed)
+- Senior Connect feedback collection with star rating, comment, and tags
+- Senior Connect mentor search/filtering (search, domain, expertise)
+- Senior Connect availabilitySlotId linking (slot marked booked on booking, freed on cancel/reject)
+
+### Changed
+- Extend Senior Connect SessionBooking model with optional availabilitySlotId (Prisma migration required)
+- Enhanced Senior Connect booking to accept either User id or SeniorProfile id
 
 ### Changed
 - Migrated Resume Builder from MongoDB to PostgreSQL + Prisma (backend and frontend complete with all advanced features)
@@ -53,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JWT token validation middleware
 - Auth middleware token expiration handling
 - Prisma SQLite to PostgreSQL migration
+- Senior Connect booking passed SeniorProfile id where User id was expected (resolved via profile lookup)
+- Senior Connect feedback endpoint now rejects duplicate feedback and recomputes senior rating from all reviews
 
 ### Security
 - Added JWT secret management with environment variables

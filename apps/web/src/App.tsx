@@ -7,6 +7,7 @@ import ResumeBuilder from './pages/ResumeBuilder'
 import SeniorConnect from './pages/SeniorConnect'
 import SeniorConnectBooking from './pages/SeniorConnectBooking'
 import SeniorConnectSessions from './pages/SeniorConnectSessions'
+import SeniorConnectProfile from './pages/SeniorConnectProfile'
 import Login from './pages/Login'
 import Register from './pages/Register'
 
@@ -25,8 +26,9 @@ function App() {
           <Route path="resume" element={<ResumeList />} />
           <Route path="resume-builder/:resumeId" element={<ResumeBuilder />} />
           <Route path="connect" element={<SeniorConnect />} />
-          <Route path="connect/booking" element={<SeniorConnectBooking />} />
+          <Route path="connect/booking/:seniorId" element={<SeniorConnectBooking />} />
           <Route path="connect/sessions" element={<SeniorConnectSessions />} />
+          <Route path="connect/profile" element={<SeniorConnectProfile />} />
           {/* Add more routes as we implement other modules */}
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

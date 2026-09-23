@@ -290,6 +290,7 @@ model SessionBooking {
   id          String   @id @default(uuid())
   juniorId    String
   seniorId    String
+  availabilitySlotId String?
   scheduledTime DateTime
   duration    Int      @default(45)
   topic       String
@@ -299,6 +300,7 @@ model SessionBooking {
   jitsiRoomUrl  String @default("")
   feedback    Json?
   
+  availabilitySlot AvailabilitySlot? @relation(fields: [availabilitySlotId], references: [id])
   feedbacks   SessionFeedback[]
   
   junior      User     @relation("JuniorBookings", fields: [juniorId], references: [id])
@@ -308,6 +310,7 @@ model SessionBooking {
   
   @@index([juniorId, createdAt])
   @@index([seniorId, createdAt])
+  @@index([availabilitySlotId])
 }
 
 // Additional Senior Connect models
@@ -322,6 +325,7 @@ model AvailabilitySlot {
   updatedAt   DateTime @updatedAt
   
   senior      User     @relation(fields: [seniorId], references: [id], onDelete: Cascade)
+  bookings    SessionBooking[]
 }
 
 model SessionFeedback {
