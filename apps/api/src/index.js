@@ -7,6 +7,7 @@ import resumeRoutes from './routes/resume.routes.js';
 import connectRoutes from './routes/connect.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import pdfRoutes from './routes/pdf.routes.js';
+import algorankRoutes from './routes/algorank.routes.js';
 
 dotenv.config();
 
@@ -32,7 +33,7 @@ app.use('/api/resume', resumeRoutes);
 app.use('/api/connect', connectRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/pdf', pdfRoutes);
-// app.use('/api/algorank', algorankRoutes);
+app.use('/api/algorank', algorankRoutes);
 // app.use('/api/interview', interviewRoutes);
 
 // Error handling

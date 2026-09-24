@@ -38,10 +38,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Senior Connect feedback collection with star rating, comment, and tags
 - Senior Connect mentor search/filtering (search, domain, expertise)
 - Senior Connect availabilitySlotId linking (slot marked booked on booking, freed on cancel/reject)
+- AlgoRank backend foundation: problem management API with pagination, difficulty/tag filtering and search
+- AlgoRank Piston code execution integration (dry-run execute endpoint and language map ported from legacy)
+- AlgoRank submission grading against stored testcases with per-testcase results and submission history
+- AlgoRank playlist management (create, list, add/remove problems)
+- AlgoRank community features (comments, nested replies, like/unlike)
+- AlgoRank leaderboard and ranking endpoints (global leaderboard, user rank, detailed stats, streak recalculation)
+- AlgoRank frontend: problem list page with difficulty/tag filters, search and pagination (AlgoRank.tsx)
+- AlgoRank frontend: problem detail page with examples, constraints, hints, editorial, likes and discussion (ProblemDetail.tsx)
+- AlgoRank frontend: solve page with language tabs, code editor, run/submit and per-testcase results (ProblemEditor.tsx)
+- AlgoRank frontend: submission history page (Submissions.tsx)
+- Shared AlgoRank frontend helpers (lib/api.ts token-bearing fetch, components/ProblemBadges.tsx)
 
 ### Changed
 - Extend Senior Connect SessionBooking model with optional availabilitySlotId (Prisma migration required)
 - Enhanced Senior Connect booking to accept either User id or SeniorProfile id
+- Ported AlgoRank backend from legacy into unified API (apps/api/src/routes/algorank.routes.js)
+- Added Piston integration library at apps/api/src/libs/piston.js with timeout and error handling
+- Added axios dependency to apps/api for the Piston API client
+- Wired AlgoRank frontend routes in apps/web/src/App.tsx (/algorank, /algorank/problems/:id, /algorank/problems/:id/solve, /algorank/submissions)
 
 ### Changed
 - Migrated Resume Builder from MongoDB to PostgreSQL + Prisma (backend and frontend complete with all advanced features)
