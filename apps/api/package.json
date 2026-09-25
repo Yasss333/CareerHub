@@ -13,6 +13,9 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "node prisma/seed.js"
   },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "dependencies": {
     "@imagekit/nodejs": "^7.3.0",
     "@prisma/client": "^6.19.1",

@@ -10,7 +10,7 @@ This document tracks the implementation progress of the AlgoRank module migratio
 - [x] Create Express API routes for problem management
 - [x] Implement Piston API integration library
 - [x] Create React frontend pages for problem solving (AlgoRank list, ProblemDetail, ProblemEditor solve page, Submissions history)
-- [x] Test basic problem viewing and code submission (backend E2E + frontend data-contract verified live; full grading pending running Piston)
+- [x] Test basic problem viewing and code submission (backend E2E + frontend data-contract verified live; full grading verified vs running Piston)
 
 ## Phase 2: Core Features
 - [x] Implement problem creation interface (backend admin-only; frontend admin UI pending)
@@ -29,7 +29,7 @@ This document tracks the implementation progress of the AlgoRank module migratio
 - [x] Add error handling for Piston API failures
 - [x] Implement resource limit enforcement (time, memory)
 - [x] Add code execution result parsing
-- [ ] Test with multiple languages (JS harness unit-tested; full test needs live Piston)
+- [x] Test with multiple languages (JS harness unit-tested; JS + PYTHON verified live against Piston)
 - [ ] Implement caching for repeated executions
 
 ## Phase 4: Community Features
@@ -85,7 +85,9 @@ This document tracks the implementation progress of the AlgoRank module migratio
 - [ ] Optimize code editor performance
 
 ## Phase 10: Testing & Validation
-- [ ] Test problem CRUD operations (admin)
+- [x] Test problem CRUD operations (admin create/delete verified live)
+- [x] Test code submission and execution via Piston (live E2E vs real Piston container)
+- [x] Test submission status tracking (Accepted / Wrong Answer verified live)
 - [ ] Test code submission and execution via Piston
 - [ ] Test submission status tracking
 - [ ] Test playlist creation and management
@@ -105,7 +107,7 @@ This document tracks the implementation progress of the AlgoRank module migratio
 - [ ] Add cross-module achievements
 
 ## Current Status
-**Overall Progress: ~65%**
+**Overall Progress: ~80%**
 
 ### Completed Work
 - Prisma data models for problems, submissions, playlists, comments, likes
@@ -125,9 +127,10 @@ This document tracks the implementation progress of the AlgoRank module migratio
 - Routes wired in `apps/web/src/App.tsx` (/algorank, /algorank/problems/:id, /algorank/problems/:id/solve, /algorank/submissions)
 - TypeScript build (`tsc --noEmit`) + Vite production build pass
 - Live backend E2E (24 checks) + frontend data-contract checks verified against running API+DB
+- Problem data set seeded: `apps/api/prisma/seed.js` ported from legacy — 500 problems (47 curated + 453 auto-generated), 53+ tags, difficulty spread; demo accounts `admin@algorank.com` / `admin123` (ADMIN) and `recruiter@algorank.com` / `recruiter123`, with 3 demo solved problems + flagged sample; idempotent re-runs (skips existing by title, resets demo passwords/roles). Wired via `prisma:seed` script + `prisma.seed` config
+- Full live Piston grading E2E (22/22 checks): admin problem create → detail shape → execute dry-run round-trip → correct JS `Accepted` with per-testcase `Testcases` rows → wrong JS `Wrong Answer` → correct PYTHON `Accepted` → ranking stats updated (`totalProblemsSolved`, acceptanceRate, streak, rankingScore) → leaderboard inclusion → problem deletion + test-user cleanup
 
 ### In Progress
-- Full end-to-end grading flow (requires running Piston service on localhost:2000)
 - Monaco Editor integration (lightweight textarea editor currently in place)
 
 ### Available in Legacy (Ready to Copy)
@@ -140,12 +143,11 @@ This document tracks the implementation progress of the AlgoRank module migratio
 - ✅ Complete UI components and functionality
 
 ### Next Steps
-1. Adopt problem data set from legacy seed for initial problems (seed script or admin import)
-2. Start Piston service (Docker): `docker run -p 2000:2000 ghcr.io/engineer-man/piston:latest` and run live grading E2E
-3. Integrate Monaco Editor for the solve page
-4. Admin problem-creation UI (frontend form)
-5. Leaderboard + ranking frontend pages (dashboard integration)
-6. Full playlist management page (/algorank/playlists) with remove-problem support
+1. Integrate Monaco Editor for the solve page (`@monaco-editor/react`)
+2. Admin problem-creation UI (frontend form) — backend + seed already in place
+3. Leaderboard + ranking frontend page (`/algorank/leaderboard`)
+4. Full playlist management page (`/algorank/playlists`) with add/remove-problem support
+5. CPP/JAVA live grading verification (harness ported; JS + PYTHON verified against Piston)
 
 ## Known Issues
 - Legacy code needs adaptation to new Prisma schema

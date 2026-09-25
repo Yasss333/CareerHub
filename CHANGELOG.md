@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AlgoRank frontend: solve page with language tabs, code editor, run/submit and per-testcase results (ProblemEditor.tsx)
 - AlgoRank frontend: submission history page (Submissions.tsx)
 - Shared AlgoRank frontend helpers (lib/api.ts token-bearing fetch, components/ProblemBadges.tsx)
+- AlgoRank problem data set seeded: apps/api/prisma/seed.js ported from legacy (500 problems: 47 curated + 453 auto-generated; 56 tags) with idempotent demo accounts admin@algorank.com/admin123 (ADMIN) and recruiter@algorank.com/recruiter123, 3 demo solved problems + flagged sample; wired via prisma:seed script + prisma.seed config (re-running resets demo password/role and skips existing problems)
+- Verified full live Piston grading flow end-to-end (22/22 checks: admin problem create, execute dry-run, correct JS Accepted with per-testcase Testcases rows, wrong JS Wrong Answer, correct PYTHON Accepted, ranking stats + leaderboard updates, problem deletion)
 
 ### Changed
 - Extend Senior Connect SessionBooking model with optional availabilitySlotId (Prisma migration required)
@@ -56,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ported AlgoRank backend from legacy into unified API (apps/api/src/routes/algorank.routes.js)
 - Added Piston integration library at apps/api/src/libs/piston.js with timeout and error handling
 - Added axios dependency to apps/api for the Piston API client
+- Made AlgoRank seed idempotent for demo accounts (update passwordHash + role on re-run)
 - Wired AlgoRank frontend routes in apps/web/src/App.tsx (/algorank, /algorank/problems/:id, /algorank/problems/:id/solve, /algorank/submissions)
 
 ### Changed
