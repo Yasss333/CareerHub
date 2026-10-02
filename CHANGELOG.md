@@ -51,6 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared AlgoRank frontend helpers (lib/api.ts token-bearing fetch, components/ProblemBadges.tsx)
 - AlgoRank problem data set seeded: apps/api/prisma/seed.js ported from legacy (500 problems: 47 curated + 453 auto-generated; 56 tags) with idempotent demo accounts admin@algorank.com/admin123 (ADMIN) and recruiter@algorank.com/recruiter123, 3 demo solved problems + flagged sample; wired via prisma:seed script + prisma.seed config (re-running resets demo password/role and skips existing problems)
 - Verified full live Piston grading flow end-to-end (22/22 checks: admin problem create, execute dry-run, correct JS Accepted with per-testcase Testcases rows, wrong JS Wrong Answer, correct PYTHON Accepted, ranking stats + leaderboard updates, problem deletion)
+- Senior Connect session calendar view with month navigation and session indicators (react-calendar integration)
+- Senior Connect timezone support for availability slots (timezone field added to User and AvailabilitySlot models)
+- Senior Connect notification system for session lifecycle events (request, accepted, rejected)
+- Senior Connect session history and analytics dashboard with metrics, trends, and status breakdowns
+- Senior Connect notifications panel in global layout with unread count indicator
+- Senior Connect SessionAnalytics component with overview stats, metrics, monthly trends, and recent sessions
 
 ### Changed
 - Extend Senior Connect SessionBooking model with optional availabilitySlotId (Prisma migration required)
@@ -58,8 +64,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ported AlgoRank backend from legacy into unified API (apps/api/src/routes/algorank.routes.js)
 - Added Piston integration library at apps/api/src/libs/piston.js with timeout and error handling
 - Added axios dependency to apps/api for the Piston API client
+- Added react-calendar and date-fns dependencies to apps/web for calendar functionality
 - Made AlgoRank seed idempotent for demo accounts (update passwordHash + role on re-run)
 - Wired AlgoRank frontend routes in apps/web/src/App.tsx (/algorank, /algorank/problems/:id, /algorank/problems/:id/solve, /algorank/submissions)
+- Added timezone field to User model (default: UTC) and AvailabilitySlot model for timezone-aware scheduling
+- Added Notification model for session lifecycle notifications with user relation and read status
+- Applied Prisma migrations: add_timezone_support, add_notifications
 
 ### Changed
 - Migrated Resume Builder from MongoDB to PostgreSQL + Prisma (backend and frontend complete with all advanced features)

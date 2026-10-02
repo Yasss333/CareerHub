@@ -232,17 +232,27 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 - React frontend pages for mentor discovery, booking, and sessions
 - Jitsi URL generation for video sessions
 - User ownership validation
-
-### In Progress
 - Profile editing enhancements
 - Availability management UI improvements
-- Session history and analytics
+- Session history and analytics dashboard
+- Session calendar view with month navigation
+- Timezone support for availability slots
+- Session notifications system (request, accepted, rejected events)
+- Notifications panel in global layout
+
+### In Progress
+- End-to-end testing of mentorship flow
+- Availability bulk editing
+- Session rescheduling functionality
 
 ### Not Started
 - Session recording integration
 - Advanced scheduling features
 - Mentorship program management
 - Payment integration for paid sessions
+- Session rescheduling functionality
+- Availability bulk editing
+- Recurring availability patterns
 
 ## Known Issues
 

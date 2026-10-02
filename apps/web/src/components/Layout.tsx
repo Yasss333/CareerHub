@@ -1,9 +1,12 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, FileText, MessageSquare, Code, Users, LogOut } from 'lucide-react'
+import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell } from 'lucide-react'
+import { useState } from 'react'
+import NotificationsPanel from './NotificationsPanel'
 
 export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -33,8 +36,15 @@ export default function Layout() {
             <span className="text-xl font-bold text-gray-900">CareerHub</span>
           </div>
           <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setNotificationsOpen(true)}
+              className="relative text-gray-600 hover:text-gray-900"
+              title="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+            </button>
             <span className="text-sm text-gray-600">Welcome, {user.name || 'User'}</span>
-            <button 
+            <button
               onClick={handleLogout}
               className="text-gray-600 hover:text-gray-900"
               title="Logout"
@@ -76,6 +86,12 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Notifications Panel */}
+      <NotificationsPanel
+        isOpen={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+      />
     </div>
   )
 }

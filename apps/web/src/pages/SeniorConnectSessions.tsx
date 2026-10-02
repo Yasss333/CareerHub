@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Clock, Video, Star, MessageSquare, CheckCircle, XCircle, X, Trash2 } from 'lucide-react'
+import { Calendar, Clock, Video, Star, MessageSquare, CheckCircle, XCircle, X, Trash2, List, TrendingUp, Calendar as CalendarIcon } from 'lucide-react'
+import SessionCalendar from '../components/SessionCalendar'
+import SessionAnalytics from '../components/SessionAnalytics'
 
 interface Session {
   id: string
@@ -158,6 +160,8 @@ export default function SeniorConnectSessions() {
   const [feedbackSession, setFeedbackSession] = useState<Session | null>(null)
   const [acting, setActing] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'analytics'>('list')
+  const [rescheduleSession, setRescheduleSession] = useState<Session | null>(null)
 
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
 
@@ -305,6 +309,24 @@ export default function SeniorConnectSessions() {
     )
   }
 
+  const handleSessionClick = (session: Session) => {
+    if (session.status === 'started' && session.jitsiRoomUrl) {
+      window.open(session.jitsiRoomUrl, '_blank')
+    }
+  }
+
+  const calendarSessions = sessions.map(session => ({
+    id: session.id,
+    seniorId: session.senior.id,
+    seniorName: session.senior.name,
+    seniorAvatar: session.senior.avatar,
+    topic: session.topic,
+    scheduledTime: session.scheduledTime,
+    duration: session.duration,
+    status: session.status,
+    jitsiRoomUrl: session.jitsiRoomUrl
+  }))
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -312,19 +334,44 @@ export default function SeniorConnectSessions() {
           <h1 className="text-3xl font-bold text-gray-900">My Sessions</h1>
           <p className="text-gray-600 mt-2">Manage your mentorship sessions</p>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="accepted">Accepted</option>
-          <option value="rejected">Rejected</option>
-          <option value="started">Started</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm' : 'text-gray-600'}`}
+            >
+              <List className="w-4 h-4" />
+              List
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${viewMode === 'calendar' ? 'bg-white shadow-sm' : 'text-gray-600'}`}
+            >
+              <Calendar className="w-4 h-4" />
+              Calendar
+            </button>
+            <button
+              onClick={() => setViewMode('analytics')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${viewMode === 'analytics' ? 'bg-white shadow-sm' : 'text-gray-600'}`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              Analytics
+            </button>
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+            <option value="started">Started</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
       </div>
 
       {actionError && (
@@ -333,7 +380,14 @@ export default function SeniorConnectSessions() {
         </div>
       )}
 
-      {sessions.length === 0 ? (
+      {viewMode === 'calendar' ? (
+        <SessionCalendar
+          sessions={calendarSessions}
+          onSessionClick={handleSessionClick}
+        />
+      ) : viewMode === 'analytics' ? (
+        <SessionAnalytics />
+      ) : sessions.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
           <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No sessions yet</h3>

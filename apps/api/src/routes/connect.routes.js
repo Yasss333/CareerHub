@@ -259,15 +259,16 @@ const upsertProfile = async (req, res) => {
   try {
     const {
       title, company, domain, role, bio, experience, location,
-      expertise, achievements, availability, name, avatar
+      expertise, achievements, availability, name, avatar, timezone
     } = req.body;
-    
+
     const userData = {};
     if (name !== undefined) userData.name = name;
     if (avatar !== undefined) userData.avatar = avatar;
     if (title !== undefined) userData.title = title;
     if (company !== undefined) userData.company = company;
     if (location !== undefined) userData.location = location;
+    if (timezone !== undefined) userData.timezone = timezone;
 
     await prisma.user.update({
       where: { id: req.user.id },
@@ -411,40 +412,41 @@ const assertNoAvailabilityConflict = async (seniorId, date, startTime, endTime, 
 };
 
 // Create availability slot(s). Accepts either a single
-// { date, startTime, endTime } or { slots: [...] }
+// { date, startTime, endTime, timezone } or { slots: [...] }
 router.post('/availability', authenticate, requireAlumniMentor, async (req, res) => {
   try {
     const body = req.body || {};
     const list = Array.isArray(body.slots) ? body.slots : (body.date ? [body] : null);
-    
+
     if (!list || list.length === 0) {
       return res.status(400).json({ error: 'Provide a date, startTime and endTime (or a slots array)' });
     }
-    
+
     const created = [];
     for (const item of list) {
-      const { date, startTime, endTime } = item;
+      const { date, startTime, endTime, timezone } = item;
       if (!date || !startTime || !endTime) {
         return res.status(400).json({ error: 'Each slot requires date, startTime and endTime' });
       }
-      
+
       const conflict = await assertNoAvailabilityConflict(req.user.id, date, startTime, endTime);
       if (conflict) {
         return res.status(409).json({ error: `${conflict.error}: ${date}` });
       }
-      
+
       const slot = await prisma.availabilitySlot.create({
         data: {
           seniorId: req.user.id,
           date: dateOnly(date),
           startTime: String(startTime),
           endTime: String(endTime),
+          timezone: timezone || 'UTC',
           isBooked: false
         }
       });
       created.push(slot);
     }
-    
+
     res.status(201).json(created);
   } catch (error) {
     console.error('Create availability error:', error);
@@ -701,6 +703,15 @@ router.post('/sessions', authenticate, async (req, res) => {
     });
     
     res.status(201).json(session);
+
+    // Create notification for senior
+    await createNotification(
+      seniorUserId,
+      'session_request',
+      'New Session Request',
+      `${req.user.name || 'A junior'} wants to book a session with you on ${topic}`,
+      { bookingId: session.id, juniorId: req.user.id }
+    );
   } catch (error) {
     console.error('Create session error:', error);
     res.status(500).json({ error: 'Failed to create session' });
@@ -788,7 +799,18 @@ router.put('/sessions/:id/status', authenticate, requireAlumniMentor, async (req
         senior: { select: { id: true, name: true, avatar: true, title: true, company: true } }
       }
     });
-    
+
+    // Create notification for junior
+    await createNotification(
+      session.juniorId,
+      status === 'accepted' ? 'session_accepted' : 'session_rejected',
+      status === 'accepted' ? 'Session Accepted' : 'Session Rejected',
+      status === 'accepted'
+        ? `Your session request has been accepted by ${req.user.name || 'your mentor'}`
+        : `Your session request has been declined by ${req.user.name || 'your mentor'}`,
+      { bookingId: session.id, seniorId: req.user.id }
+    );
+
     res.json(updatedSession);
   } catch (error) {
     console.error('Update session status error:', error);
@@ -965,7 +987,7 @@ router.get('/feedback/:seniorId', async (req, res) => {
     if (!userId) {
       return res.status(404).json({ error: 'Senior not found' });
     }
-    
+
     const [feedbacks, profile] = await Promise.all([
       prisma.sessionFeedback.findMany({
         where: {
@@ -988,7 +1010,7 @@ router.get('/feedback/:seniorId', async (req, res) => {
         select: { rating: true, reviewCount: true }
       })
     ]);
-    
+
     res.json({
       rating: profile?.rating || 0,
       reviewCount: profile?.reviewCount || 0,
@@ -997,6 +1019,311 @@ router.get('/feedback/:seniorId', async (req, res) => {
   } catch (error) {
     console.error('Fetch feedback error:', error);
     res.status(500).json({ error: 'Failed to fetch feedback' });
+  }
+});
+
+// ============================================
+// NOTIFICATION ROUTES
+// ============================================
+
+// Create notification helper
+const createNotification = async (userId, type, title, message, data = null) => {
+  try {
+    await prisma.notification.create({
+      data: {
+        userId,
+        type,
+        title,
+        message,
+        data
+      }
+    });
+  } catch (error) {
+    console.error('Failed to create notification:', error);
+  }
+};
+
+// Get user's notifications
+router.get('/notifications', authenticate, async (req, res) => {
+  try {
+    const { unreadOnly } = req.query;
+
+    const where = { userId: req.user.id };
+    if (unreadOnly === 'true') {
+      where.isRead = false;
+    }
+
+    const notifications = await prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+
+    res.json(notifications);
+  } catch (error) {
+    console.error('Fetch notifications error:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// Mark notification as read
+router.put('/notifications/:id/read', authenticate, async (req, res) => {
+  try {
+    const notification = await prisma.notification.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.user.id
+      }
+    });
+
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    await prisma.notification.update({
+      where: { id: req.params.id },
+      data: { isRead: true }
+    });
+
+    res.json({ message: 'Notification marked as read' });
+  } catch (error) {
+    console.error('Mark notification read error:', error);
+    res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
+});
+
+// Mark all notifications as read
+router.put('/notifications/read-all', authenticate, async (req, res) => {
+  try {
+    await prisma.notification.updateMany({
+      where: {
+        userId: req.user.id,
+        isRead: false
+      },
+      data: { isRead: true }
+    });
+
+    res.json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    console.error('Mark all notifications read error:', error);
+    res.status(500).json({ error: 'Failed to mark all notifications as read' });
+  }
+});
+
+// Get notification count
+router.get('/notifications/count', authenticate, async (req, res) => {
+  try {
+    const unreadCount = await prisma.notification.count({
+      where: {
+        userId: req.user.id,
+        isRead: false
+      }
+    });
+
+    res.json({ unreadCount });
+  } catch (error) {
+    console.error('Fetch notification count error:', error);
+    res.status(500).json({ error: 'Failed to fetch notification count' });
+  }
+});
+
+// ============================================
+// RESCHEDULE ROUTES
+// ============================================
+
+// Reschedule session
+router.put('/sessions/:id/reschedule', authenticate, async (req, res) => {
+  try {
+    const { scheduledTime, duration } = req.body;
+
+    if (!scheduledTime) {
+      return res.status(400).json({ error: 'scheduledTime is required' });
+    }
+
+    const session = await prisma.sessionBooking.findFirst({
+      where: {
+        id: req.params.id,
+        OR: [
+          { juniorId: req.user.id },
+          { seniorId: req.user.id }
+        ]
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found or unauthorized' });
+    }
+
+    if (!['pending', 'accepted'].includes(session.status)) {
+      return res.status(400).json({ error: 'Only pending or accepted sessions can be rescheduled' });
+    }
+
+    const newStart = new Date(scheduledTime);
+    if (isNaN(newStart.getTime())) {
+      return res.status(400).json({ error: 'Invalid scheduledTime' });
+    }
+
+    const dur = duration ? Math.min(Math.max(parseInt(duration, 10) || 45, 15), 120) : session.duration;
+    const newEnd = new Date(newStart.getTime() + dur * 60000);
+
+    // Check for conflicts with the senior
+    const seniorBookings = await prisma.sessionBooking.findMany({
+      where: {
+        seniorId: session.seniorId,
+        status: { in: ['pending', 'accepted', 'started'] },
+        id: { not: req.params.id }
+      },
+      select: { scheduledTime: true, duration: true }
+    });
+
+    const seniorConflict = seniorBookings.some((b) => {
+      const bStart = new Date(b.scheduledTime);
+      const bEnd = new Date(bStart.getTime() + b.duration * 60000);
+      return dateOverlap(newStart, newEnd, bStart, bEnd);
+    });
+
+    if (seniorConflict) {
+      return res.status(409).json({ error: 'Senior already has a session at this time' });
+    }
+
+    // Check for conflicts with the junior
+    const juniorBookings = await prisma.sessionBooking.findMany({
+      where: {
+        juniorId: session.juniorId,
+        status: { in: ['pending', 'accepted', 'started'] },
+        id: { not: req.params.id }
+      },
+      select: { scheduledTime: true, duration: true }
+    });
+
+    const juniorConflict = juniorBookings.some((b) => {
+      const bStart = new Date(b.scheduledTime);
+      const bEnd = new Date(bStart.getTime() + b.duration * 60000);
+      return dateOverlap(newStart, newEnd, bStart, bEnd);
+    });
+
+    if (juniorConflict) {
+      return res.status(409).json({ error: 'You already have a session at this time' });
+    }
+
+    // Update session
+    const updatedSession = await prisma.sessionBooking.update({
+      where: { id: req.params.id },
+      data: {
+        scheduledTime: newStart,
+        duration: dur
+      },
+      include: {
+        junior: { select: { id: true, name: true, avatar: true, university: true } },
+        senior: { select: { id: true, name: true, avatar: true, title: true, company: true } }
+      }
+    });
+
+    // Notify the other party
+    const otherUserId = req.user.id === session.juniorId ? session.seniorId : session.juniorId;
+    await createNotification(
+      otherUserId,
+      'session_rescheduled',
+      'Session Rescheduled',
+      `Session has been rescheduled to ${newStart.toLocaleString()}`,
+      { bookingId: session.id, newTime: newStart.toISOString() }
+    );
+
+    res.json(updatedSession);
+  } catch (error) {
+    console.error('Reschedule session error:', error);
+    res.status(500).json({ error: 'Failed to reschedule session' });
+  }
+});
+
+// ============================================
+// ANALYTICS ROUTES
+// ============================================
+
+// Get session analytics for current user
+router.get('/analytics', authenticate, async (req, res) => {
+  try {
+    const { role } = req.query;
+
+    const sessions = await prisma.sessionBooking.findMany({
+      where: {
+        OR: [
+          { juniorId: req.user.id },
+          { seniorId: req.user.id }
+        ]
+      },
+      include: {
+        junior: {
+          select: { id: true, name: true, avatar: true }
+        },
+        senior: {
+          select: { id: true, name: true, avatar: true }
+        },
+        feedbacks: true
+      },
+      orderBy: { scheduledTime: 'desc' }
+    });
+
+    const userSessions = role === 'senior'
+      ? sessions.filter(s => s.seniorId === req.user.id)
+      : role === 'junior'
+      ? sessions.filter(s => s.juniorId === req.user.id)
+      : sessions;
+
+    const totalSessions = userSessions.length;
+    const completedSessions = userSessions.filter(s => s.status === 'completed').length;
+    const pendingSessions = userSessions.filter(s => s.status === 'pending').length;
+    const acceptedSessions = userSessions.filter(s => s.status === 'accepted').length;
+    const cancelledSessions = userSessions.filter(s => s.status === 'cancelled').length;
+    const rejectedSessions = userSessions.filter(s => s.status === 'rejected').length;
+
+    const upcomingSessions = userSessions.filter(s =>
+      ['pending', 'accepted'].includes(s.status) && new Date(s.scheduledTime) > new Date()
+    );
+
+    const averageDuration = totalSessions > 0
+      ? userSessions.reduce((sum, s) => sum + s.duration, 0) / totalSessions
+      : 0;
+
+    const sessionsWithFeedback = userSessions.filter(s => s.feedbacks.length > 0);
+    const averageRating = sessionsWithFeedback.length > 0
+      ? sessionsWithFeedback.reduce((sum, s) => sum + s.feedbacks[0].rating, 0) / sessionsWithFeedback.length
+      : 0;
+
+    const sessionsByMonth = {};
+    userSessions.forEach(session => {
+      const month = new Date(session.scheduledTime).toISOString().slice(0, 7);
+      if (!sessionsByMonth[month]) {
+        sessionsByMonth[month] = { total: 0, completed: 0, cancelled: 0 };
+      }
+      sessionsByMonth[month].total++;
+      if (session.status === 'completed') sessionsByMonth[month].completed++;
+      if (session.status === 'cancelled') sessionsByMonth[month].cancelled++;
+    });
+
+    const recentSessions = userSessions.slice(0, 10);
+
+    res.json({
+      overview: {
+        totalSessions,
+        completedSessions,
+        pendingSessions,
+        acceptedSessions,
+        cancelledSessions,
+        rejectedSessions,
+        upcomingSessions: upcomingSessions.length
+      },
+      metrics: {
+        averageDuration: Math.round(averageDuration),
+        averageRating: Math.round(averageRating * 10) / 10,
+        completionRate: totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0
+      },
+      sessionsByMonth,
+      recentSessions
+    });
+  } catch (error) {
+    console.error('Fetch analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 });
 

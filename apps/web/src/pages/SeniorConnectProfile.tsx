@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Save, Plus, Trash2, Calendar, Clock, X } from 'lucide-react'
+import { Save, Plus, Trash2, Calendar, Clock, X, Layers } from 'lucide-react'
+import BulkAvailabilityModal from '../components/BulkAvailabilityModal'
 
 interface SeniorProfile {
   id: string
@@ -73,6 +74,7 @@ export default function SeniorConnectProfile() {
   const [addingSlot, setAddingSlot] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showBulkModal, setShowBulkModal] = useState(false)
 
   const [form, setForm] = useState({
     name: '',
@@ -229,6 +231,28 @@ export default function SeniorConnectProfile() {
       setSuccess('Slot deleted')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete slot')
+    }
+  }
+
+  const handleBulkAdd = async (bulkSlots: Array<{ date: string; startTime: string; endTime: string; timezone: string }>) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/connect/availability', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ slots: bulkSlots })
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || 'Failed to add slots')
+      }
+      setSuccess(`${bulkSlots.length} availability slots added`)
+      await fetchSlots()
+    } catch (err) {
+      throw err
     }
   }
 
@@ -463,6 +487,13 @@ export default function SeniorConnectProfile() {
               <Calendar className="w-5 h-5 text-blue-600" />
               Availability Slots
             </h2>
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
+            >
+              <Layers className="w-4 h-4" />
+              Bulk Add
+            </button>
           </div>
 
           <form onSubmit={handleAddSlot} className="grid md:grid-cols-4 gap-4 bg-gray-50 rounded-lg p-4">
@@ -556,6 +587,12 @@ export default function SeniorConnectProfile() {
           )}
         </div>
       )}
+
+      <BulkAvailabilityModal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        onAdd={handleBulkAdd}
+      />
     </div>
   )
 }
