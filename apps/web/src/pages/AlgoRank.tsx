@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, CheckCircle2, MessageSquare, ThumbsUp, ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react'
+import { Search, CheckCircle2, MessageSquare, ThumbsUp, ChevronLeft, ChevronRight, FolderOpen, Trophy, Settings } from 'lucide-react'
 import { api } from '../lib/api'
 import { DifficultyBadge, type Difficulty } from '../components/ProblemBadges'
 
@@ -73,13 +73,29 @@ export default function AlgoRank() {
           <h1 className="text-3xl font-bold text-gray-900">AlgoRank</h1>
           <p className="text-gray-600 mt-2">Practice DSA problems and climb the leaderboard</p>
         </div>
-        <Link
-          to="/algorank/submissions"
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          <FolderOpen className="w-4 h-4" />
-          My Submissions
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            to="/algorank/leaderboard"
+            className="flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors"
+          >
+            <Trophy className="w-4 h-4" />
+            Leaderboard
+          </Link>
+          <Link
+            to="/algorank/submissions"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <FolderOpen className="w-4 h-4" />
+            My Submissions
+          </Link>
+          <Link
+            to="/algorank/admin"
+            className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            Admin
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

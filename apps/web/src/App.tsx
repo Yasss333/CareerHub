@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
-import Dashboard from './pages/Dashboard'
+import Landing from './pages/Landing'
+import Dashboard from './pages/DashboardNew'
 import ResumeList from './pages/ResumeList'
 import ResumeBuilder from './pages/ResumeBuilder'
 import SeniorConnect from './pages/SeniorConnect'
@@ -12,6 +13,8 @@ import AlgoRank from './pages/AlgoRank'
 import ProblemDetail from './pages/ProblemDetail'
 import ProblemEditor from './pages/ProblemEditor'
 import Submissions from './pages/Submissions'
+import AdminProblems from './pages/AdminProblems'
+import Leaderboard from './pages/Leaderboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
 
@@ -19,6 +22,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/" element={
@@ -37,9 +41,11 @@ function App() {
           <Route path="algorank/problems/:id" element={<ProblemDetail />} />
           <Route path="algorank/problems/:id/solve" element={<ProblemEditor />} />
           <Route path="algorank/submissions" element={<Submissions />} />
+          <Route path="algorank/admin" element={<AdminProblems />} />
+          <Route path="algorank/leaderboard" element={<Leaderboard />} />
           {/* Add more routes as we implement other modules */}
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>
     </BrowserRouter>
   )

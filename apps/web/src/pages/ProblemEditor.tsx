@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Play, Send, ChevronLeft, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { api } from '../lib/api'
 import { DifficultyBadge, SubmissionStatusBadge, languageLabel, type Difficulty } from '../components/ProblemBadges'
+import Editor from '@monaco-editor/react'
 
 interface Example {
   input?: string
@@ -115,20 +116,6 @@ export default function ProblemEditor() {
     setLanguage(key)
     const snippets = problem?.codeSnippets || {}
     setCode(snippets[key] || snippets[Object.keys(snippets)[0]] || '// Write your solution here')
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
-      e.preventDefault()
-      const target = e.currentTarget
-      const start = target.selectionStart
-      const end = target.selectionEnd
-      const next = code.slice(0, start) + '  ' + code.slice(end)
-      setCode(next)
-      requestAnimationFrame(() => {
-        target.selectionStart = target.selectionEnd = start + 2
-      })
-    }
   }
 
   const runCode = async () => {
@@ -265,12 +252,21 @@ export default function ProblemEditor() {
                 Run
               </button>
             </div>
-            <textarea
+            <Editor
+              height="384px"
+              language={language.toLowerCase()}
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={handleKeyDown}
-              spellCheck={false}
-              className="w-full h-96 p-4 font-mono text-sm bg-gray-50 focus:outline-none resize-none"
+              onChange={(value) => setCode(value || '')}
+              theme="vs-light"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2,
+                insertSpaces: true,
+              }}
             />
           </div>
 

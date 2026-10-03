@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Calendar, Clock, Video, Star, MessageSquare, CheckCircle, XCircle, X, Trash2, List, TrendingUp, Calendar as CalendarIcon } from 'lucide-react'
 import SessionCalendar from '../components/SessionCalendar'
 import SessionAnalytics from '../components/SessionAnalytics'
+import RescheduleModal from '../components/RescheduleModal'
 
 interface Session {
   id: string
@@ -511,6 +512,16 @@ export default function SeniorConnectSessions() {
                     </button>
                   )}
 
+                  {['pending', 'accepted'].includes(session.status) && (
+                    <button
+                      onClick={() => setRescheduleSession(session)}
+                      className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                    >
+                      <CalendarIcon className="w-4 h-4" />
+                      Reschedule
+                    </button>
+                  )}
+
                   {canCancel && (
                     <button
                       onClick={() => handleCancel(session.id)}
@@ -534,6 +545,17 @@ export default function SeniorConnectSessions() {
           onClose={() => setFeedbackSession(null)}
           onSubmitted={() => {
             setFeedbackSession(null)
+            fetchSessions()
+          }}
+        />
+      )}
+
+      {rescheduleSession && (
+        <RescheduleModal
+          session={rescheduleSession}
+          onClose={() => setRescheduleSession(null)}
+          onRescheduled={() => {
+            setRescheduleSession(null)
             fetchSessions()
           }}
         />
