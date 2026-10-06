@@ -11,6 +11,39 @@ const PISTON_API_URL = (() => {
 
 const PISTON_TIMEOUT = parseInt(process.env.PISTON_TIMEOUT || '30000', 10);
 
+// Simple in-memory cache for Piston executions
+const executionCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
+
+const getCacheKey = ({ language, sourceCode, stdin }) => {
+  return `${language}:${sourceCode}:${stdin || ''}`;
+};
+
+const getCachedResult = (key) => {
+  const cached = executionCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.result;
+  }
+  return null;
+};
+
+const setCachedResult = (key, result) => {
+  executionCache.set(key, {
+    result,
+    timestamp: Date.now(),
+  });
+};
+
+// Clean up expired cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of executionCache.entries()) {
+    if (now - value.timestamp >= CACHE_TTL) {
+      executionCache.delete(key);
+    }
+  }
+}, 60 * 1000); // Clean up every minute
+
 const languageMap = {
   PYTHON: { language: 'python', version: '3.12.0' },
   JAVASCRIPT: { language: 'javascript', version: '20.11.1' },
@@ -26,6 +59,13 @@ export const runCodeWithPiston = async ({ language, sourceCode, stdin }) => {
   const config = getLanguageConfig(language);
   if (!config) throw new Error('Unsupported language');
 
+  // Check cache first
+  const cacheKey = getCacheKey({ language, sourceCode, stdin });
+  const cached = getCachedResult(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const { data } = await axios.post(
     PISTON_API_URL,
     {
@@ -37,7 +77,7 @@ export const runCodeWithPiston = async ({ language, sourceCode, stdin }) => {
     { timeout: PISTON_TIMEOUT }
   );
 
-  return {
+  const result = {
     stdout: data.run.stdout,
     stderr: data.run.stderr,
     exitCode: data.run.code,
@@ -45,6 +85,11 @@ export const runCodeWithPiston = async ({ language, sourceCode, stdin }) => {
     cpuTime: data.run.cpu_time,
     wallTime: data.run.wall_time
   };
+
+  // Cache the result
+  setCachedResult(cacheKey, result);
+
+  return result;
 };
 
 export const safeRunCodeWithPiston = async (opts) => {

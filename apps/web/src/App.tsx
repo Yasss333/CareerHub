@@ -12,9 +12,12 @@ import SeniorConnectProfile from './pages/SeniorConnectProfile'
 import AlgoRank from './pages/AlgoRank'
 import ProblemDetail from './pages/ProblemDetail'
 import ProblemEditor from './pages/ProblemEditor'
+import ProblemCreate from './pages/ProblemCreate'
 import Submissions from './pages/Submissions'
 import AdminProblems from './pages/AdminProblems'
 import Leaderboard from './pages/Leaderboard'
+import Playlists from './pages/Playlists'
+import PlaylistDetail from './pages/PlaylistDetail'
 import Login from './pages/Login'
 import Register from './pages/Register'
 
@@ -40,9 +43,12 @@ function App() {
           <Route path="algorank" element={<AlgoRank />} />
           <Route path="algorank/problems/:id" element={<ProblemDetail />} />
           <Route path="algorank/problems/:id/solve" element={<ProblemEditor />} />
+          <Route path="algorank/problems/create" element={<ProblemCreate />} />
           <Route path="algorank/submissions" element={<Submissions />} />
           <Route path="algorank/admin" element={<AdminProblems />} />
           <Route path="algorank/leaderboard" element={<Leaderboard />} />
+          <Route path="algorank/playlists" element={<Playlists />} />
+          <Route path="algorank/playlists/:id" element={<PlaylistDetail />} />
           {/* Add more routes as we implement other modules */}
         </Route>
         <Route path="*" element={<Navigate to="/landing" replace />} />

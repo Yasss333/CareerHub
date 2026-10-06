@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, CheckCircle2, MessageSquare, ThumbsUp, ChevronLeft, ChevronRight, FolderOpen, Trophy, Settings } from 'lucide-react'
+import { Search, CheckCircle2, MessageSquare, ThumbsUp, ChevronLeft, ChevronRight, FolderOpen, Trophy, Settings, Plus, ListMusic } from 'lucide-react'
 import { api } from '../lib/api'
 import { DifficultyBadge, type Difficulty } from '../components/ProblemBadges'
 
@@ -35,6 +35,9 @@ export default function AlgoRank() {
   const [totalProblems, setTotalProblems] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const isAdmin = user.role === 'ADMIN'
 
   useEffect(() => {
     api<{ tags: string[] }>('/algorank/problems/tags')
@@ -74,6 +77,15 @@ export default function AlgoRank() {
           <p className="text-gray-600 mt-2">Practice DSA problems and climb the leaderboard</p>
         </div>
         <div className="flex gap-2">
+          {isAdmin && (
+            <Link
+              to="/algorank/problems/create"
+              className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Problem
+            </Link>
+          )}
           <Link
             to="/algorank/leaderboard"
             className="flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors"
@@ -82,19 +94,28 @@ export default function AlgoRank() {
             Leaderboard
           </Link>
           <Link
+            to="/algorank/playlists"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors"
+          >
+            <ListMusic className="w-4 h-4" />
+            Playlists
+          </Link>
+          <Link
             to="/algorank/submissions"
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
           >
             <FolderOpen className="w-4 h-4" />
             My Submissions
           </Link>
-          <Link
-            to="/algorank/admin"
-            className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
-          >
-            <Settings className="w-4 h-4" />
-            Admin
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/algorank/admin"
+              className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              Admin
+            </Link>
+          )}
         </div>
       </div>
 

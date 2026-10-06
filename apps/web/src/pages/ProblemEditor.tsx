@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Play, Send, ChevronLeft, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { Play, Send, ChevronLeft, Loader2, CheckCircle2, XCircle, Settings } from 'lucide-react'
 import { api } from '../lib/api'
 import { DifficultyBadge, SubmissionStatusBadge, languageLabel, type Difficulty } from '../components/ProblemBadges'
 import Editor from '@monaco-editor/react'
+import type { editor } from 'monaco-editor'
 
 interface Example {
   input?: string
@@ -63,6 +64,46 @@ const LANGUAGES = [
   { key: 'JAVA', label: 'Java' },
 ]
 
+const CODE_TEMPLATES: Record<string, string> = {
+  JAVASCRIPT: `// Write your solution here
+function solve(input) {
+  // Parse input if needed
+  // Your code here
+  return result
+}
+
+// Read from stdin (if needed)
+// process.stdin.on('data', data => {
+//   const input = data.toString().trim()
+//   console.log(solve(input))
+// })`,
+  PYTHON: `# Write your solution here
+def solve():
+    # Read input if needed
+    # Your code here
+    pass
+
+if __name__ == "__main__":
+    solve()`,
+  CPP: `#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+int main() {
+    // Write your solution here
+    return 0;
+}`,
+  JAVA: `import java.util.*;
+import java.io.*;
+
+public class Main {
+    public static void main(String[] args) {
+        // Write your solution here
+    }
+}`,
+}
+
 export default function ProblemEditor() {
   const { id } = useParams<{ id: string }>()
   const [problem, setProblem] = useState<Problem | null>(null)
@@ -79,6 +120,15 @@ export default function ProblemEditor() {
   const [submissionStatus, setSubmissionStatus] = useState('')
   const [testCaseResults, setTestCaseResults] = useState<TestCaseResult[]>([])
   const [recentSubmissions, setRecentSubmissions] = useState<SubmissionRow[]>([])
+
+  const [showSettings, setShowSettings] = useState(false)
+  const [editorSettings, setEditorSettings] = useState({
+    fontSize: 14,
+    tabSize: 2,
+    wordWrap: 'off' as 'off' | 'on',
+    minimap: false,
+    lineNumbers: 'on' as 'on' | 'off',
+  })
 
   const loadProblem = useCallback(async () => {
     try {
@@ -115,7 +165,18 @@ export default function ProblemEditor() {
   const switchLanguage = (key: string) => {
     setLanguage(key)
     const snippets = problem?.codeSnippets || {}
-    setCode(snippets[key] || snippets[Object.keys(snippets)[0]] || '// Write your solution here')
+    setCode(snippets[key] || CODE_TEMPLATES[key] || CODE_TEMPLATES['JAVASCRIPT'])
+  }
+
+  const handleEditorMount = (editor: editor.IStandaloneCodeEditor) => {
+    editor.addCommand(editor.KeyMod.CtrlCmd | editor.KeyCode.KeyS, () => {
+      // Auto-save logic could be added here
+      console.log('Code saved to local state')
+    })
+
+    editor.addCommand(editor.KeyMod.CtrlCmd | editor.KeyCode.KeyF, () => {
+      editor.getAction('editor.action.formatDocument')?.run()
+    })
   }
 
   const runCode = async () => {
@@ -243,29 +304,105 @@ export default function ProblemEditor() {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={runCode}
-                disabled={running}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-              >
-                {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                Run
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Editor Settings"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={runCode}
+                  disabled={running}
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                  Run
+                </button>
+              </div>
             </div>
+
+            {/* Editor Settings Panel */}
+            {showSettings && (
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Font Size</label>
+                    <select
+                      value={editorSettings.fontSize}
+                      onChange={(e) => setEditorSettings({ ...editorSettings, fontSize: Number(e.target.value) })}
+                      className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+                    >
+                      <option value={12}>12px</option>
+                      <option value={14}>14px</option>
+                      <option value={16}>16px</option>
+                      <option value={18}>18px</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Tab Size</label>
+                    <select
+                      value={editorSettings.tabSize}
+                      onChange={(e) => setEditorSettings({ ...editorSettings, tabSize: Number(e.target.value) })}
+                      className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+                    >
+                      <option value={2}>2 spaces</option>
+                      <option value={4}>4 spaces</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Word Wrap</label>
+                    <select
+                      value={editorSettings.wordWrap}
+                      onChange={(e) => setEditorSettings({ ...editorSettings, wordWrap: e.target.value as 'off' | 'on' })}
+                      className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+                    >
+                      <option value="off">Off</option>
+                      <option value="on">On</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Minimap</label>
+                    <select
+                      value={editorSettings.minimap ? 'on' : 'off'}
+                      onChange={(e) => setEditorSettings({ ...editorSettings, minimap: e.target.value === 'on' })}
+                      className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+                    >
+                      <option value="off">Off</option>
+                      <option value="on">On</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
             <Editor
               height="384px"
               language={language.toLowerCase()}
               value={code}
               onChange={(value) => setCode(value || '')}
               theme="vs-light"
+              onMount={handleEditorMount}
               options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
+                minimap: { enabled: editorSettings.minimap },
+                fontSize: editorSettings.fontSize,
+                lineNumbers: editorSettings.lineNumbers,
                 scrollBeyondLastLine: false,
                 automaticLayout: true,
-                tabSize: 2,
+                tabSize: editorSettings.tabSize,
                 insertSpaces: true,
+                wordWrap: editorSettings.wordWrap,
+                formatOnPaste: true,
+                formatOnType: true,
+                suggestOnTriggerCharacters: true,
+                quickSuggestions: true,
+                parameterHints: { enabled: true },
+                folding: true,
+                bracketPairColorization: { enabled: true },
+                guides: {
+                  bracketPairs: true,
+                  indentation: true,
+                },
               }}
             />
           </div>
