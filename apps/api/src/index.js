@@ -7,6 +7,7 @@ import resumeRoutes from './routes/resume.routes.js';
 import connectRoutes from './routes/connect.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import pdfRoutes from './routes/pdf.routes.js';
+import algorankRoutes from './routes/algorank.routes.js';
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://127.0.0.1:54046', 'http://localhost:54046'],
   credentials: true
 }));
 app.use(express.json());
@@ -32,7 +33,7 @@ app.use('/api/resume', resumeRoutes);
 app.use('/api/connect', connectRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/pdf', pdfRoutes);
-// app.use('/api/algorank', algorankRoutes);
+app.use('/api/algorank', algorankRoutes);
 // app.use('/api/interview', interviewRoutes);
 
 // Error handling

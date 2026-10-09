@@ -30,6 +30,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ImageKit integration for profile image uploads
 - AI content generation for professional summaries and job descriptions
 - PDF export functionality with print-to-PDF
+- Senior Connect Phase 2: comprehensive mentor profile editing interface
+- Senior Connect mentor expertise/achievements tag management
+- Senior Connect availability slot management UI with conflict detection
+- Senior Connect session booking with availability slot selection and conflict detection (junior + senior)
+- Senior Connect session status workflow (pending → accepted/rejected/cancelled → started → completed)
+- Senior Connect feedback collection with star rating, comment, and tags
+- Senior Connect mentor search/filtering (search, domain, expertise)
+- Senior Connect availabilitySlotId linking (slot marked booked on booking, freed on cancel/reject)
+- AlgoRank backend foundation: problem management API with pagination, difficulty/tag filtering and search
+- AlgoRank Piston code execution integration (dry-run execute endpoint and language map ported from legacy)
+- AlgoRank submission grading against stored testcases with per-testcase results and submission history
+- AlgoRank playlist management (create, list, add/remove problems)
+- AlgoRank community features (comments, nested replies, like/unlike)
+- AlgoRank leaderboard and ranking endpoints (global leaderboard, user rank, detailed stats, streak recalculation)
+- AlgoRank frontend: problem list page with difficulty/tag filters, search and pagination (AlgoRank.tsx)
+- AlgoRank frontend: problem detail page with examples, constraints, hints, editorial, likes and discussion (ProblemDetail.tsx)
+- AlgoRank frontend: solve page with language tabs, code editor, run/submit and per-testcase results (ProblemEditor.tsx)
+- AlgoRank frontend: submission history page (Submissions.tsx)
+- AlgoRank Monaco Editor integration with advanced features (syntax highlighting, code templates, keyboard shortcuts, auto-formatting, code completion)
+- AlgoRank admin problem creation UI with comprehensive form (title, description, difficulty, tags, examples, constraints, hints, editorial, test cases, code snippets)
+- AlgoRank playlist management pages (Playlists.tsx, PlaylistDetail.tsx) with create/list/detail/add-remove functionality
+- AlgoRank Piston execution caching with 5-minute TTL for improved performance
+- Senior Connect session rescheduling functionality with conflict detection and notifications
+- Senior Connect availability bulk editing with recurring pattern generation (weekly, 4 weeks)
+- Senior Connect session notes and preparation materials editing for both mentors and mentees
+- Cross-module dashboard integration with unified stats from Resume Builder, AlgoRank, and Senior Connect
+- Dashboard widgets: resume count/completion, problems solved/rank, mentorship sessions/completed, upcoming sessions
+- Dashboard activity feeds: recent sessions, recent submissions, recent resumes
+- Dashboard performance metrics: acceptance rate, current streak, ranking score
+- Shared AlgoRank frontend helpers (lib/api.ts token-bearing fetch, components/ProblemBadges.tsx)
+- AlgoRank problem data set seeded: apps/api/prisma/seed.js ported from legacy (500 problems: 47 curated + 453 auto-generated; 56 tags) with idempotent demo accounts admin@algorank.com/admin123 (ADMIN) and recruiter@algorank.com/recruiter123, 3 demo solved problems + flagged sample; wired via prisma:seed script + prisma.seed config (re-running resets demo password/role and skips existing problems)
+- Verified full live Piston grading flow end-to-end (22/22 checks: admin problem create, execute dry-run, correct JS Accepted with per-testcase Testcases rows, wrong JS Wrong Answer, correct PYTHON Accepted, ranking stats + leaderboard updates, problem deletion)
+- Senior Connect session calendar view with month navigation and session indicators (react-calendar integration)
+- Senior Connect timezone support for availability slots (timezone field added to User and AvailabilitySlot models)
+- Senior Connect notification system for session lifecycle events (request, accepted, rejected)
+- Senior Connect session history and analytics dashboard with metrics, trends, and status breakdowns
+- Senior Connect notifications panel in global layout with unread count indicator
+- Senior Connect SessionAnalytics component with overview stats, metrics, monthly trends, and recent sessions
+
+### Changed
+- Extend Senior Connect SessionBooking model with optional availabilitySlotId (Prisma migration required)
+- Enhanced Senior Connect booking to accept either User id or SeniorProfile id
+- Ported AlgoRank backend from legacy into unified API (apps/api/src/routes/algorank.routes.js)
+- Added Piston integration library at apps/api/src/libs/piston.js with timeout and error handling
+- Added axios dependency to apps/api for the Piston API client
+- Added react-calendar and date-fns dependencies to apps/web for calendar functionality
+- Made AlgoRank seed idempotent for demo accounts (update passwordHash + role on re-run)
+- Wired AlgoRank frontend routes in apps/web/src/App.tsx (/algorank, /algorank/problems/:id, /algorank/problems/:id/solve, /algorank/submissions)
+- Added timezone field to User model (default: UTC) and AvailabilitySlot model for timezone-aware scheduling
+- Added Notification model for session lifecycle notifications with user relation and read status
+- Applied Prisma migrations: add_timezone_support, add_notifications
 
 ### Changed
 - Migrated Resume Builder from MongoDB to PostgreSQL + Prisma (backend and frontend complete with all advanced features)
@@ -53,6 +104,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JWT token validation middleware
 - Auth middleware token expiration handling
 - Prisma SQLite to PostgreSQL migration
+- Senior Connect booking passed SeniorProfile id where User id was expected (resolved via profile lookup)
+- Senior Connect feedback endpoint now rejects duplicate feedback and recomputes senior rating from all reviews
 
 ### Security
 - Added JWT secret management with environment variables

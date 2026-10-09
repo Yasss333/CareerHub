@@ -1,86 +1,296 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Test Authentication</title>
-</head>
-<body>
-    <h1>Test Authentication API</h1>
-    
-    <h2>Register</h2>
-    <button onclick="testRegister()">Test Register</button>
-    <pre id="registerResult"></pre>
-    
-    <h2>Login</h2>
-    <button onclick="testLogin()">Test Login</button>
-    <pre id="loginResult"></pre>
-    
-    <h2>Get Current User</h2>
-    <button onclick="testGetUser()">Test Get User</button>
-    <pre id="userResult"></pre>
+# WIRELESS TECHNOLOGY — MODEL SOLUTIONS
 
-    <script>
-        async function testRegister() {
-            try {
-                const response = await fetch('http://localhost:5000/api/auth/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        name: 'Test User',
-                        email: 'test@example.com',
-                        password: 'test123'
-                    })
-                });
-                const data = await response.json();
-                document.getElementById('registerResult').textContent = JSON.stringify(data, null, 2);
-                
-                if (data.token) {
-                    localStorage.setItem('token', data.token);
-                }
-            } catch (error) {
-                document.getElementById('registerResult').textContent = 'Error: ' + error.message;
-            }
-        }
+Department of Electronics and Computer Science | Modules 1–2
 
-        async function testLogin() {
-            try {
-                const response = await fetch('http://localhost:5000/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        email: 'test@example.com',
-                        password: 'test123'
-                    })
-                });
-                const data = await response.json();
-                document.getElementById('loginResult').textContent = JSON.stringify(data, null, 2);
-                
-                if (data.token) {
-                    localStorage.setItem('token', data.token);
-                }
-            } catch (error) {
-                document.getElementById('loginResult').textContent = 'Error: ' + error.message;
-            }
-        }
+---
 
-        async function testGetUser() {
-            try {
-                const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:5000/api/auth/me', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    }
-                });
-                const data = await response.json();
-                document.getElementById('userResult').textContent = JSON.stringify(data, null, 2);
-            } catch (error) {
-                document.getElementById('userResult').textContent = 'Error: ' + error.message;
-            }
-        }
-    </script>
-</body>
-</html>
+## MODULE 1 — Introduction to Wireless Communication
+
+### 2-Mark Questions
+
+Q1. Define wireless communication. What is the basic communication system model?
+
+- Wireless communication is the transfer of information between two or more points without a physical (wired) connection, using electromagnetic waves as the carrier.
+- Basic model: Information Source → Transmitter → Channel (with noise) → Receiver → Destination.
+- Example: A mobile phone call, where voice is converted to an electrical signal, modulated, transmitted through air, and demodulated at the receiver.
+
+Q2. What is the wireless spectrum? Why is spectrum regulation important?
+
+- The wireless spectrum is the range of electromagnetic frequencies (typically a few kHz to several GHz) used to transmit wireless signals.
+- It is a finite, shared natural resource — only a limited number of frequency bands are usable for communication.
+- Regulation (by bodies like ITU, TRAI/FCC) prevents interference between users/services and ensures fair, efficient allocation.
+- Example: Cellular operators are allotted specific bands (e.g., 900 MHz, 1800 MHz) to avoid overlap with TV or defense frequencies.
+
+Q3. Differentiate between PAN, LAN, MAN, and WAN.
+
+- PAN (Personal Area Network): very short range (\~10 m), e.g., Bluetooth, Zigbee.
+- LAN (Local Area Network): covers a building/campus (\~100 m–1 km), e.g., Wi-Fi.
+- MAN (Metropolitan Area Network): covers a city (\~few km–50 km), e.g., WiMAX.
+- WAN (Wide Area Network): covers countries/continents, e.g., cellular networks, satellite links.
+
+Q4. List any four challenges in wireless communication.
+
+- Limited and shared spectrum availability.
+- Multipath fading and signal attenuation over distance.
+- Interference from other wireless sources and noise.
+- Security vulnerabilities (eavesdropping, jamming) due to open-air transmission.
+
+Q5. Trace the evolution of wireless systems from 1G to current generations.
+
+- 1G (1980s): Analog voice-only communication (AMPS).
+- 2G (1990s): Digital voice + SMS (GSM, CDMA).
+- 3G (2000s): Mobile internet, video calling (UMTS, CDMA2000).
+- 4G (2010s): High-speed broadband, all-IP network (LTE).
+- 5G (2020s onward): Ultra-low latency, massive device connectivity, IoT support.
+
+Q6. What is a wireless network? Give two real-world examples.
+
+- A wireless network is a group of interconnected devices that communicate using radio waves instead of physical cables.
+- Example 1: Home/office Wi-Fi network connecting laptops and phones to the internet.
+- Example 2: Cellular mobile network connecting phones for calls and data.
+
+### 5-Mark Questions
+
+Q1. Explain the basic communication system model with a neat diagram.
+
+\[Diagram: Block diagram — Source → Transmitter → Channel (with Noise) → Receiver → Destination\]
+
+- Information Source: generates the message (voice, data, image) to be communicated.
+- Transmitter: converts the message into a suitable electrical/electromagnetic signal (encoding + modulation).
+- Channel: the medium through which the signal travels; introduces attenuation, noise, and distortion.
+- Receiver: captures the transmitted signal and performs demodulation/decoding to recover the message.
+- Destination: the end user or device that receives the recovered information.
+- Noise source: models unwanted disturbances (thermal noise, interference) added during transmission.
+- The goal of system design is to maximize the fidelity of the recovered message despite channel impairments.
+
+Q2. Describe the evolution of wireless systems. How has the wireless spectrum evolved with each generation?
+
+- 1G: Analog FDMA systems, used low-frequency narrow bands (\~800–900 MHz), voice only.
+- 2G: Digital TDMA/CDMA systems, similar bands (900/1800 MHz), added SMS and low-rate data.
+- 3G: Introduced wider bands (1900–2100 MHz) using WCDMA/CDMA2000, enabling mobile internet.
+- 4G: Adopted OFDMA over broader bands (700 MHz–2.6 GHz) for high-speed all-IP data (LTE).
+- 5G: Uses sub-6 GHz and mmWave bands (24–100 GHz) for very high capacity and low latency.
+- Each generation demanded more spectrum and higher frequencies to support increasing data rates.
+- Spectrum reuse and efficient modulation techniques evolved alongside to use the limited spectrum better.
+
+Q3. Compare PAN, LAN, MAN, and WAN in terms of range, speed, and use cases.
+
+- PAN: Range \~10 m, speed up to a few Mbps, used for personal device connectivity (Bluetooth headsets, wearables).
+- LAN: Range \~100 m–1 km, speed up to Gbps (Wi-Fi 6/6E), used in homes, offices, campuses.
+- MAN: Range \~5–50 km, speed up to hundreds of Mbps, used for city-wide broadband (WiMAX, cable networks).
+- WAN: Range spans countries/continents, speed varies (Mbps–Gbps via backbone), used for cellular and satellite communication.
+- As range increases, achievable speed generally decreases due to path loss and shared infrastructure.
+- Choice of network type depends on coverage need, mobility, and cost.
+
+Q4. What are the major challenges in wireless communication? Explain any three in detail.
+
+- List: spectrum scarcity, multipath fading, interference, security, mobility management, power consumption.
+- **Spectrum scarcity:** usable frequency bands are limited and must be shared among many users/services, requiring careful allocation and reuse.
+- **Multipath fading:** signals reach the receiver via multiple reflected paths, causing constructive/destructive interference and signal strength fluctuation.
+- **Security:** since transmission is over open air, signals can be intercepted or jammed, requiring encryption and authentication.
+- Interference from co-channel and adjacent-channel users also degrades signal quality.
+- Mobility causes handoff challenges as users move between cells.
+- These challenges are addressed using techniques like diversity, encryption, and adaptive power control.
+
+Q5. Explain wireless spectrum and its regulations. Why is spectrum a limited resource?
+
+- Wireless spectrum refers to the band of electromagnetic frequencies allocated for wireless transmission.
+- It is limited because only certain frequency ranges propagate well and are practical for communication (e.g., RF band 3 kHz–300 GHz).
+- Higher frequencies suffer more attenuation and require line-of-sight, limiting usable ranges further.
+- Regulatory bodies (ITU internationally, national bodies like TRAI/FCC) allocate specific bands to specific services (broadcasting, cellular, defense, satellite).
+- Licensing and auctioning of spectrum ensures controlled, interference-free usage among operators.
+- Unlicensed bands (e.g., 2.4 GHz, 5 GHz) are reserved for shared use (Wi-Fi, Bluetooth) under power limits.
+- Because demand for wireless services keeps growing while spectrum remains fixed, efficient reuse (cellular concept, spectrum sharing) becomes essential.
+
+Q6. Explain the fundamental characteristics, advantages, limitations, and applications of wireless communication systems.
+
+- **Characteristics:** uses electromagnetic waves, supports mobility, time-varying and unpredictable channel behavior, broadcast in nature.
+- **Advantages:** mobility and flexibility for users, easy and low-cost deployment (no cabling), scalability, supports remote/inaccessible areas.
+- **Limitations:** limited bandwidth/spectrum, susceptible to interference and fading, lower security than wired links, higher power consumption at times.
+- **Applications:** mobile telephony, Wi-Fi internet access, satellite communication, IoT and sensor networks, broadcasting (radio/TV).
+- Wireless systems trade off reliability and security for the convenience of mobility and rapid deployment.
+
+---
+
+## MODULE 2 — Radio Propagation & Channel Modeling
+
+### 2-Mark Questions
+
+Q1. State Friis transmission equation (free space propagation model).
+
+- Friis equation: Pr = Pt·Gt·Gr·(λ / 4πd)², relating received power (Pr) to transmitted power (Pt), antenna gains (Gt, Gr), wavelength (λ) and distance (d).
+- It applies to free-space (line-of-sight, no obstructions) propagation.
+- It shows received power decreases with the square of distance.
+
+Q2. What is path loss? How does it differ from shadowing?
+
+- Path loss is the reduction in signal power as it travels from transmitter to receiver, mainly due to distance (free-space spreading).
+- It is a large-scale, distance-dependent, deterministic effect.
+- Shadowing is an additional random signal loss caused by obstacles (buildings, terrain) blocking the path.
+- Shadowing varies randomly around the mean path loss and is modeled statistically (log-normal distribution).
+
+Q3. State Shannon's theorem. What does channel capacity depend on?
+
+- Shannon's theorem: C = B·log₂(1 + S/N), where C is channel capacity, B is bandwidth, S/N is signal-to-noise ratio.
+- It gives the maximum error-free data rate achievable over a noisy channel.
+- Capacity depends on available bandwidth and the SNR of the channel.
+
+Q4. What is the Doppler effect in wireless communication? Give the formula.
+
+- The Doppler effect is the apparent shift in received signal frequency caused by relative motion between transmitter and receiver.
+- Formula: fd = (v/c)·f0·cosθ, where v = relative velocity, c = speed of light, f0 = carrier frequency, θ = angle between motion and signal direction.
+- It causes frequency spreading and affects mobile receivers most at high speeds.
+
+Q5. Define multipath fading. What causes it?
+
+- Multipath fading is the rapid fluctuation in received signal amplitude/phase due to multiple copies of the signal arriving via different paths.
+- Caused by reflection, diffraction, and scattering off buildings, terrain, and other obstacles.
+- These multiple copies combine constructively or destructively at the receiver, causing fading.
+
+Q6. What is shadowing in a wireless channel?
+
+- Shadowing (large-scale fading) is signal attenuation caused by large obstacles like buildings or hills blocking the line of sight.
+- It causes slow, random variations in average received signal power over distance.
+- Statistically modeled using the log-normal distribution.
+
+Q7. State the Okumura model. In what scenario is it used?
+
+- The Okumura model is an empirical path-loss model based on extensive field measurements in Tokyo.
+- It predicts median path loss using correction factors for terrain, antenna height, and environment.
+- Used for urban macrocell prediction in the 150 MHz–1920 MHz frequency range, over distances of 1–100 km.
+
+Q8. How does the Hata model differ from the Okumura model?
+
+- The Hata model is a closed-form mathematical formula derived from Okumura's measurement data.
+- Unlike Okumura's graphical/tabular approach, Hata's model is easier to compute directly.
+- Hata model has defined sub-models for urban, suburban, and open (rural) areas.
+
+### 5-Mark Questions
+
+Q1. Derive the free space path loss equation and explain each parameter.
+
+\[Diagram: Transmitter and receiver antenna separated by distance d, showing spreading wavefront\]
+
+- Start from Friis equation: Pr = Pt·Gt·Gr·(λ/4πd)².
+- Path loss (dB) is defined as PL = 10·log₁₀(Pt/Pr).
+- Substituting and simplifying gives: PL(dB) = 20log₁₀(d) + 20log₁₀(f) + 32.44 (with d in km, f in MHz).
+- Pt, Pr: transmitted and received power.
+- Gt, Gr: transmitter and receiver antenna gains.
+- λ: wavelength of the carrier signal; d: distance between transmitter and receiver.
+- The equation shows path loss increases with both distance and frequency, following an inverse-square power law.
+
+Q2. Compare the Okumura and Hata path loss models. When is each preferred?
+
+- Okumura: empirical, based on graphs/tables from field measurements in Tokyo; highly accurate but computationally cumbersome.
+- Hata: mathematical closed-form model derived from Okumura's data, easy to use in software/simulations.
+- Okumura covers 150 MHz–1920 MHz and distances 1–100 km; Hata is valid for similar ranges but simplified.
+- Hata provides separate formulas for urban, suburban, and rural areas.
+- Okumura is preferred when high accuracy from real measurement data is needed for detailed planning.
+- Hata is preferred for quick computer-based simulation and initial system design due to its simplicity.
+- Both are used for macrocellular outdoor coverage prediction.
+
+Q3. Explain shadowing and multipath fading with examples. How do they affect signal quality?
+
+\[Diagram: Transmitted signal reaching receiver via direct, reflected, and diffracted paths\]
+
+- Shadowing: large obstacles (buildings, hills) block or attenuate the signal, causing slow variation in average power.
+- Example: signal strength drops sharply when a mobile user moves behind a tall building.
+- Multipath fading: signal reaches the receiver through multiple paths (direct, reflected, diffracted, scattered) with different delays and phases.
+- Example: in a city, signals reflecting off buildings cause rapid fluctuations in received amplitude as a user walks.
+- Shadowing causes long-term (large-scale) signal variation; multipath fading causes short-term (small-scale) rapid variation.
+- Both degrade signal quality by reducing SNR and causing intersymbol interference, leading to higher bit error rates.
+- Diversity techniques and equalization are used to combat these effects.
+
+Q4. Derive and explain Shannon's channel capacity theorem. What is its significance?
+
+- Shannon's capacity theorem defines the theoretical maximum error-free data rate over a bandwidth-limited, noisy channel.
+- Formula: C = B·log₂(1 + S/N), where C = capacity (bits/sec), B = bandwidth (Hz), S/N = signal-to-noise ratio.
+- Derivation basis: the number of distinguishable signal levels is limited by noise; more levels allow more bits per symbol.
+- As S/N increases, more information can be reliably packed into the same bandwidth.
+- Significance: sets an upper bound on achievable data rate — no coding scheme can exceed this limit reliably.
+- It guides system design trade-offs between bandwidth and transmit power.
+- It forms the theoretical basis for modern modulation and coding scheme design (e.g., choosing QAM order based on available SNR).
+
+Q5. Explain the Doppler effect in wireless communication with the formula. How does it impact moving receivers?
+
+\[Diagram: Moving receiver approaching/receding from transmitter with velocity vector and angle θ\]
+
+- Doppler effect: apparent change in received frequency due to relative motion between transmitter and receiver.
+- Formula: fd = (v/c)·f0·cosθ, where v is relative velocity, c is speed of light, f0 is carrier frequency, θ is angle of motion relative to signal path.
+- Positive Doppler shift occurs when receiver moves toward the transmitter; negative shift when moving away.
+- Impact: causes frequency spreading (Doppler spread) of the received signal spectrum.
+- At high vehicle speeds, this can cause inter-carrier interference in OFDM-based systems.
+- It affects channel coherence time — faster movement means the channel changes more rapidly, requiring frequent channel estimation.
+- Systems compensate using frequency tracking, robust modulation, and adaptive equalization.
+
+Q6. Describe channel capacity and its relationship with bandwidth and SNR using Shannon's theorem.
+
+- Channel capacity (C) is the theoretical maximum rate at which information can be transmitted error-free over a channel.
+- Shannon's formula: C = B·log₂(1 + S/N).
+- Increasing bandwidth (B) increases capacity linearly (more Hz to carry information).
+- Increasing SNR increases capacity logarithmically — diminishing returns at high SNR.
+- There is a fundamental trade-off: a system can use wide bandwidth with lower power, or narrow bandwidth with higher power, to achieve similar capacity.
+- In practice, real systems operate below Shannon capacity due to implementation constraints (imperfect coding, hardware limitations).
+- This relationship guides spectrum-efficient design in modern systems (e.g., 5G uses wide bandwidth + high-order modulation to push capacity higher).
+
+Q7. Derive the Friis transmission equation and explain the significance of each parameter.
+
+\[Diagram: Isotropic transmitter radiating power over a sphere of radius d, receiver antenna capturing effective area\]
+
+- Consider an isotropic antenna radiating power Pt uniformly over a sphere of radius d; power density at receiver = Pt / 4πd².
+- With transmit antenna gain Gt, power density becomes Pt·Gt / 4πd².
+- Receiver antenna has effective aperture Ae = Gr·λ² / 4π.
+- Received power: Pr = (Pt·Gt / 4πd²) × Ae = Pt·Gt·Gr·(λ/4πd)².
+- Pt: transmitted power; Gt, Gr: antenna gains of transmitter and receiver.
+- λ: signal wavelength (related to frequency: λ = c/f).
+- d: distance between transmitter and receiver — received power falls off as 1/d².
+- This equation is the foundation for link budget calculations in wireless system design.
+
+Q8. Discuss the Okumura and Hata propagation models in detail, including the scenarios in which each is preferred.
+
+- Okumura model: developed from extensive signal strength measurements in and around Tokyo; results presented as correction-factor graphs.
+- It accounts for terrain irregularity, antenna height gain, street orientation, and urban/suburban/open area corrections.
+- Valid for frequencies 150 MHz–1920 MHz, distances 1–100 km, base station heights 30–1000 m.
+- Hata model: mathematical formulation of Okumura's graphical data, giving direct closed-form equations for path loss.
+- Provides separate equations for urban, suburban, and open rural areas.
+- Hata's simplicity makes it suitable for computer simulation and automated network planning tools.
+- Okumura is preferred for detailed, high-accuracy manual planning; Hata is preferred for rapid, software-based estimation.
+- Both models are widely used for macrocellular system coverage and interference planning.
+
+Q9. Derive the Doppler frequency equation and explain its significance for moving receivers.
+
+\[Diagram: Vector triangle showing receiver velocity v, direction of motion, and incoming wave angle θ\]
+
+- Consider a receiver moving with velocity v at angle θ relative to the direction of the incoming signal from the transmitter.
+- The path length difference traveled per unit time causes an apparent frequency shift.
+- Change in path length per second = v·cosθ; corresponding phase change relates to wavelength λ.
+- Doppler shift: fd = (v·cosθ)/λ = (v/c)·f0·cosθ (since λ = c/f0).
+- Maximum Doppler shift occurs when θ = 0° (motion directly toward/away from transmitter): fd(max) = v·f0/c.
+- Significance: determines the Doppler spread and coherence time of the wireless channel.
+- High-speed mobile users (e.g., in vehicles/trains) experience larger Doppler shifts, requiring the receiver to track frequency changes for correct demodulation.
+
+Q10. Explain the effect of bandwidth and SNR on Shannon's channel capacity, with reference to the capacity formula.
+
+- Capacity formula: C = B·log₂(1 + S/N).
+- Effect of bandwidth: capacity increases directly (linearly) with B — doubling bandwidth roughly doubles capacity (for fixed SNR).
+- However, increasing bandwidth also increases the amount of noise power captured, which can limit the actual gain.
+- Effect of SNR: capacity increases logarithmically with SNR — large increases in power give only modest capacity gains at high SNR.
+- At very high SNR, capacity becomes bandwidth-limited; at very low SNR (noise-limited), capacity becomes power-limited.
+- This shows two ways to increase capacity: widen the bandwidth or improve SNR (increase power/reduce noise), with bandwidth being the more efficient lever at high rates.
+- Real-world systems (5G, Wi-Fi 6) exploit both wider bandwidths and higher-order modulation (requiring higher SNR) to approach Shannon limits.
+
+Q11. Explain the different radio propagation mechanisms — reflection, diffraction, and scattering — and their effect on signal propagation.
+
+\[Diagram: Wave hitting a smooth wall (reflection), an edge/corner (diffraction), and rough surface/foliage (scattering)\]
+
+- **Reflection:** occurs when a radio wave strikes a smooth surface (much larger than wavelength) like a building wall or ground, bouncing the wave in a new direction.
+- Reflection causes multiple signal copies to reach the receiver, contributing to multipath fading.
+- **Diffraction:** occurs when a wave bends around an obstacle's edge (like a building corner or hilltop), allowing signals to reach receivers even without direct line of sight.
+- Diffraction explains why signals can still be received in shadowed regions behind obstacles, though with reduced strength.
+- **Scattering:** occurs when a wave hits a rough surface or small objects (foliage, lamp posts, irregular surfaces) comparable to or smaller than the wavelength, spreading energy in many directions.
+- Scattering generally weakens the signal further and adds random small-scale fading components.
+- Together, these three mechanisms explain the multipath nature of real-world wireless channels and are the basis for statistical channel/fading models.
+
+---
+
+— End of Module 1 & 2 Solutions — Module 3 to follow —
