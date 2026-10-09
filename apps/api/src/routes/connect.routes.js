@@ -1128,6 +1128,45 @@ router.get('/notifications/count', authenticate, async (req, res) => {
 });
 
 // ============================================
+// SESSION NOTES ROUTES
+// ============================================
+
+// Update session notes
+router.put('/sessions/:id/notes', authenticate, async (req, res) => {
+  try {
+    const { notes } = req.body;
+
+    const session = await prisma.sessionBooking.findFirst({
+      where: {
+        id: req.params.id,
+        OR: [
+          { juniorId: req.user.id },
+          { seniorId: req.user.id }
+        ]
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found or unauthorized' });
+    }
+
+    const updatedSession = await prisma.sessionBooking.update({
+      where: { id: req.params.id },
+      data: { notes: notes || '' },
+      include: {
+        junior: { select: { id: true, name: true, avatar: true, university: true } },
+        senior: { select: { id: true, name: true, avatar: true, title: true, company: true } }
+      }
+    });
+
+    res.json(updatedSession);
+  } catch (error) {
+    console.error('Update session notes error:', error);
+    res.status(500).json({ error: 'Failed to update session notes' });
+  }
+});
+
+// ============================================
 // RESCHEDULE ROUTES
 // ============================================
 

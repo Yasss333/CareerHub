@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Clock, Video, Star, MessageSquare, CheckCircle, XCircle, X, Trash2, List, TrendingUp, Calendar as CalendarIcon } from 'lucide-react'
+import { Calendar, Clock, Video, Star, MessageSquare, CheckCircle, XCircle, X, Trash2, List, TrendingUp, Calendar as CalendarIcon, Edit3, Save } from 'lucide-react'
 import SessionCalendar from '../components/SessionCalendar'
 import SessionAnalytics from '../components/SessionAnalytics'
 import RescheduleModal from '../components/RescheduleModal'
@@ -163,6 +163,8 @@ export default function SeniorConnectSessions() {
   const [statusFilter, setStatusFilter] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'analytics'>('list')
   const [rescheduleSession, setRescheduleSession] = useState<Session | null>(null)
+  const [editingNotesSession, setEditingNotesSession] = useState<Session | null>(null)
+  const [editingNotes, setEditingNotes] = useState('')
 
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
 
@@ -258,6 +260,41 @@ export default function SeniorConnectSessions() {
       await fetchSessions()
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to complete session')
+    } finally {
+      setActing('')
+    }
+  }
+
+  const handleEditNotes = (session: Session) => {
+    setEditingNotesSession(session)
+    setEditingNotes(session.notes || '')
+  }
+
+  const handleSaveNotes = async () => {
+    if (!editingNotesSession) return
+
+    setActing(`${editingNotesSession.id}:notes`)
+    setActionError('')
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/connect/sessions/${editingNotesSession.id}/notes`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ notes: editingNotes })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save notes')
+      }
+
+      setEditingNotesSession(null)
+      setEditingNotes('')
+      fetchSessions()
+    } catch (err) {
+      setActionError('Failed to save notes')
     } finally {
       setActing('')
     }
@@ -454,8 +491,58 @@ export default function SeniorConnectSessions() {
                   </span>
                 </div>
 
-                {session.notes && (
-                  <p className="text-sm text-gray-600 mb-4 italic">"{session.notes}"</p>
+                {editingNotesSession?.id === session.id ? (
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                    <textarea
+                      value={editingNotes}
+                      onChange={(e) => setEditingNotes(e.target.value)}
+                      placeholder="Add session notes or preparation materials..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      rows={3}
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={handleSaveNotes}
+                        disabled={isBusy(session.id, 'notes')}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm"
+                      >
+                        <Save className="w-3 h-3" />
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingNotesSession(null)}
+                        className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {session.notes && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <p className="text-sm text-gray-600 italic">"{session.notes}"</p>
+                          <button
+                            onClick={() => handleEditNotes(session)}
+                            className="text-gray-400 hover:text-blue-600 ml-2"
+                            title="Edit notes"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {!session.notes && (
+                      <button
+                        onClick={() => handleEditNotes(session)}
+                        className="mb-4 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                        Add notes
+                      </button>
+                    )}
+                  </>
                 )}
 
                 <div className="flex flex-wrap gap-2">

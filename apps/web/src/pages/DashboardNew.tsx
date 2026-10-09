@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Home, FileText, Code, Users, MessageSquare, Trophy, Settings, LogOut, Bell, Sun, Moon, ChevronRight, ArrowUpRight, Plus, TrendingUp, DollarSign, Users as UsersIcon, Target, Activity } from 'lucide-react';
+import { Home, FileText, Code, Users, MessageSquare, Trophy, Settings, LogOut, Bell, Sun, Moon, ChevronRight, ArrowUpRight, Plus, TrendingUp, DollarSign, Users as UsersIcon, Target, Activity, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useDarkMode } from '../contexts/DarkModeContext';
@@ -9,15 +9,21 @@ export default function Dashboard() {
   const { darkMode, toggleDarkMode } = useDarkMode();
   const [stats, setStats] = useState({
     resumesCount: 0,
+    resumesCompleted: 0,
     problemsSolved: 0,
     totalProblems: 0,
-    connectSessions: 0,
-    upcomingSessions: 0,
     acceptanceRate: 0,
     currentStreak: 0,
     rankingScore: 0,
+    userRank: 0,
+    connectSessions: 0,
+    upcomingSessions: 0,
+    completedSessions: 0,
+    mentorRating: 0,
   });
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
+  const [recentResumes, setRecentResumes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,12 +34,16 @@ export default function Dashboard() {
     try {
       const token = localStorage.getItem('token');
 
+      // Resume Builder stats
       const resumesResponse = await fetch('/api/resume', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const resumesData = await resumesResponse.json();
-      const resumesCount = Array.isArray(resumesData) ? resumesData.length : 0;
+      const resumes = Array.isArray(resumesData) ? resumesData : [];
+      const resumesCount = resumes.length;
+      const resumesCompleted = resumes.filter((r: any) => r.template && r.sections).length;
 
+      // Senior Connect stats
       const connectResponse = await fetch('/api/connect/sessions', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -42,28 +52,63 @@ export default function Dashboard() {
       const upcomingSessions = connectSessions.filter((s: any) =>
         ['pending', 'accepted'].includes(s.status) && new Date(s.scheduledTime) > new Date()
       ).length;
+      const completedSessions = connectSessions.filter((s: any) => s.status === 'completed').length;
 
+      // User stats (includes AlgoRank data)
       const userResponse = await fetch('/api/auth/me', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const userData = await userResponse.json();
 
+      // AlgoRank stats
       const problemsResponse = await fetch('/api/algorank/problems?limit=1');
       const problemsData = await problemsResponse.json();
       const totalProblems = problemsData.pagination?.totalProblems || 0;
 
+      // User rank
+      let userRank = 0;
+      try {
+        const rankResponse = await fetch('/api/algorank/ranking/user/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (rankResponse.ok) {
+          const rankData = await rankResponse.json();
+          userRank = rankData.rank || 0;
+        }
+      } catch (e) {
+        // Ignore rank fetch errors
+      }
+
+      // Recent submissions
+      try {
+        const submissionsResponse = await fetch('/api/algorank/submissions?limit=5', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (submissionsResponse.ok) {
+          const submissionsData = await submissionsResponse.json();
+          setRecentSubmissions(Array.isArray(submissionsData.submissions) ? submissionsData.submissions : []);
+        }
+      } catch (e) {
+        // Ignore submission fetch errors
+      }
+
       setStats({
         resumesCount,
+        resumesCompleted,
         problemsSolved: userData.totalProblemsSolved || 0,
         totalProblems,
-        connectSessions: connectSessions.length,
-        upcomingSessions,
         acceptanceRate: userData.acceptanceRate || 0,
         currentStreak: userData.currentStreak || 0,
         rankingScore: userData.rankingScore || 0,
+        userRank,
+        connectSessions: connectSessions.length,
+        upcomingSessions,
+        completedSessions,
+        mentorRating: userData.rating || 0,
       });
 
       setRecentSessions(connectSessions.slice(0, 5));
+      setRecentResumes(resumes.slice(0, 3));
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);
     } finally {
@@ -75,6 +120,7 @@ export default function Dashboard() {
     {
       title: 'Resumes Created',
       value: stats.resumesCount,
+      subtitle: `${stats.resumesCompleted} completed`,
       icon: FileText,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
@@ -82,7 +128,8 @@ export default function Dashboard() {
     },
     {
       title: 'Problems Solved',
-      value: `${stats.problemsSolved}/${stats.totalProblems}`,
+      value: stats.problemsSolved,
+      subtitle: `Rank #${stats.userRank}`,
       icon: Code,
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
@@ -91,6 +138,7 @@ export default function Dashboard() {
     {
       title: 'Mentorship Sessions',
       value: stats.connectSessions,
+      subtitle: `${stats.completedSessions} completed`,
       icon: Users,
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
@@ -99,6 +147,7 @@ export default function Dashboard() {
     {
       title: 'Upcoming Sessions',
       value: stats.upcomingSessions,
+      subtitle: 'Scheduled',
       icon: Bell,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
@@ -231,6 +280,9 @@ export default function Dashboard() {
                       <div>
                         <p className="text-sm text-gray-400 mb-1">{card.title}</p>
                         <p className="text-2xl font-bold">{card.value}</p>
+                        {card.subtitle && (
+                          <p className="text-xs text-gray-500 mt-1">{card.subtitle}</p>
+                        )}
                       </div>
                       <div className={`p-3 rounded-lg ${card.bgColor}`}>
                         <Icon className={`w-6 h-6 ${card.color}`} />
@@ -265,7 +317,7 @@ export default function Dashboard() {
           })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Sessions */}
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
@@ -306,31 +358,105 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
+          {/* Recent Submissions */}
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Get started with these common tasks</CardDescription>
+              <CardTitle>Recent Submissions</CardTitle>
+              <CardDescription>Your latest AlgoRank submissions</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {quickActions.map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <Link key={action.label} to={action.href}>
-                      <div className="flex flex-col items-center justify-center p-6 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer">
-                        <div className={`p-3 rounded-full ${action.color} mb-3`}>
-                          <Icon className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="text-sm font-medium">{action.label}</span>
+              {recentSubmissions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Code className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No submissions yet</p>
+                  <Link to="/algorank" className="text-blue-400 hover:text-blue-300 mt-2 inline-block">
+                    Start solving →
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentSubmissions.slice(0, 5).map((sub: any) => (
+                    <div key={sub.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                      <div>
+                        <p className="font-medium text-sm">{sub.problem?.title || 'Unknown Problem'}</p>
+                        <p className="text-sm text-gray-400">
+                          {new Date(sub.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
-                    </Link>
-                  );
-                })}
-              </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        sub.status === 'Accepted' ? 'bg-green-500/20 text-green-400' :
+                        sub.status === 'Wrong Answer' ? 'bg-red-500/20 text-red-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {sub.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Resumes */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <CardTitle>Recent Resumes</CardTitle>
+              <CardDescription>Your latest resume drafts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {recentResumes.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No resumes yet</p>
+                  <Link to="/resume" className="text-blue-400 hover:text-blue-300 mt-2 inline-block">
+                    Create resume →
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recentResumes.slice(0, 5).map((resume: any) => (
+                    <div key={resume.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                      <div>
+                        <p className="font-medium text-sm">{resume.template || 'Untitled'}</p>
+                        <p className="text-sm text-gray-400">
+                          {new Date(resume.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {resume.sections && Object.keys(resume.sections).length > 0 && (
+                        <CheckCircle className="w-4 h-4 text-green-400" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Quick Actions */}
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Get started with these common tasks</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <Link key={action.label} to={action.href}>
+                    <div className="flex flex-col items-center justify-center p-6 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer">
+                      <div className={`p-3 rounded-full ${action.color} mb-3`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <span className="text-sm font-medium">{action.label}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

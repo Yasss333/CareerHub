@@ -48,6 +48,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AlgoRank frontend: problem detail page with examples, constraints, hints, editorial, likes and discussion (ProblemDetail.tsx)
 - AlgoRank frontend: solve page with language tabs, code editor, run/submit and per-testcase results (ProblemEditor.tsx)
 - AlgoRank frontend: submission history page (Submissions.tsx)
+- AlgoRank Monaco Editor integration with advanced features (syntax highlighting, code templates, keyboard shortcuts, auto-formatting, code completion)
+- AlgoRank admin problem creation UI with comprehensive form (title, description, difficulty, tags, examples, constraints, hints, editorial, test cases, code snippets)
+- AlgoRank playlist management pages (Playlists.tsx, PlaylistDetail.tsx) with create/list/detail/add-remove functionality
+- AlgoRank Piston execution caching with 5-minute TTL for improved performance
+- Senior Connect session rescheduling functionality with conflict detection and notifications
+- Senior Connect availability bulk editing with recurring pattern generation (weekly, 4 weeks)
+- Senior Connect session notes and preparation materials editing for both mentors and mentees
+- Cross-module dashboard integration with unified stats from Resume Builder, AlgoRank, and Senior Connect
+- Dashboard widgets: resume count/completion, problems solved/rank, mentorship sessions/completed, upcoming sessions
+- Dashboard activity feeds: recent sessions, recent submissions, recent resumes
+- Dashboard performance metrics: acceptance rate, current streak, ranking score
 - Shared AlgoRank frontend helpers (lib/api.ts token-bearing fetch, components/ProblemBadges.tsx)
 - AlgoRank problem data set seeded: apps/api/prisma/seed.js ported from legacy (500 problems: 47 curated + 453 auto-generated; 56 tags) with idempotent demo accounts admin@algorank.com/admin123 (ADMIN) and recruiter@algorank.com/recruiter123, 3 demo solved problems + flagged sample; wired via prisma:seed script + prisma.seed config (re-running resets demo password/role and skips existing problems)
 - Verified full live Piston grading flow end-to-end (22/22 checks: admin problem create, execute dry-run, correct JS Accepted with per-testcase Testcases rows, wrong JS Wrong Answer, correct PYTHON Accepted, ranking stats + leaderboard updates, problem deletion)
