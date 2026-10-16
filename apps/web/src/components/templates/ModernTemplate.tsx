@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin, Linkedin, Globe } from "lucide-react";
+import { Mail, Phone, MapPin, Globe, Link } from "lucide-react";
 
 interface PersonalInfo {
   full_name?: string;
@@ -50,7 +50,7 @@ const ModernTemplate = ({ data, accentColor }: ModernTemplateProps) => {
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "";
     const [year, month] = dateStr.split("-");
-    return new Date(year, parseInt(month) - 1).toLocaleDateString("en-US", {
+    return new Date(year, Number(month) - 1).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short"
     });
@@ -85,10 +85,10 @@ const ModernTemplate = ({ data, accentColor }: ModernTemplateProps) => {
           )}
           {data.personal_info?.linkedin && (
             <a target="_blank" href={data.personal_info.linkedin} className="flex items-center gap-2">
-              <Linkedin className="size-4" />
+              <Link className="size-4" />
               <span className="break-all text-xs">
-                {data.personal_info.linkedin.split("https://www.")[1] 
-                  ? data.personal_info.linkedin.split("https://www.")[1] 
+                {data.personal_info.linkedin.split("https://www.")[1]
+                  ? data.personal_info.linkedin.split("https://www.")[1]
                   : data.personal_info.linkedin}
               </span>
             </a>

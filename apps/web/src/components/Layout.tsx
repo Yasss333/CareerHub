@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell, Moon, Sun } from 'lucide-react'
+import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell, Moon, Sun, Map } from 'lucide-react'
 import { useState } from 'react'
 import NotificationsPanel from './NotificationsPanel'
 import { DarkModeProvider, useDarkMode } from '../contexts/DarkModeContext'
@@ -24,6 +24,7 @@ function LayoutContent() {
     { path: '/connect', label: 'Senior Connect', icon: Users },
     { path: '/interview', label: 'AI Interview', icon: MessageSquare },
     { path: '/algorank', label: 'AlgoRank', icon: Code },
+    { path: '/roadmaps', label: 'Roadmaps', icon: Map },
   ]
 
   return (

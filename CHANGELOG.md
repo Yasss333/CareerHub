@@ -58,6 +58,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-module dashboard integration with unified stats from Resume Builder, AlgoRank, and Senior Connect
 - Dashboard widgets: resume count/completion, problems solved/rank, mentorship sessions/completed, upcoming sessions
 - Dashboard activity feeds: recent sessions, recent submissions, recent resumes
+- Roadmap Generator module with hybrid AI-powered learning paths
+- Roadmap database models (Roadmap, RoadmapMilestone) with progress tracking
+- Predefined career role templates (Frontend, Backend, Full Stack, DevOps, Data Scientist)
+- Roadmap API with full CRUD operations and milestone management
+- AI-powered roadmap personalization based on skill level and user goals
+- AI-generated free learning resources (GFG, YouTube, blogs, documentation, practice platforms)
+- Roadmap frontend pages (RoadmapList, RoadmapBuilder, RoadmapDetail)
+- ResourceCard component for displaying learning resources
+- Milestone tracking with completion status and progress calculation
+- Roadmap navigation integration with Map icon
 - Dashboard performance metrics: acceptance rate, current streak, ranking score
 - Shared AlgoRank frontend helpers (lib/api.ts token-bearing fetch, components/ProblemBadges.tsx)
 - AlgoRank problem data set seeded: apps/api/prisma/seed.js ported from legacy (500 problems: 47 curated + 453 auto-generated; 56 tags) with idempotent demo accounts admin@algorank.com/admin123 (ADMIN) and recruiter@algorank.com/recruiter123, 3 demo solved problems + flagged sample; wired via prisma:seed script + prisma.seed config (re-running resets demo password/role and skips existing problems)

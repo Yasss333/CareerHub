@@ -18,6 +18,9 @@ import AdminProblems from './pages/AdminProblems'
 import Leaderboard from './pages/Leaderboard'
 import Playlists from './pages/Playlists'
 import PlaylistDetail from './pages/PlaylistDetail'
+import RoadmapList from './pages/RoadmapList'
+import RoadmapBuilder from './pages/RoadmapBuilder'
+import RoadmapDetail from './pages/RoadmapDetail'
 import Login from './pages/Login'
 import Register from './pages/Register'
 
@@ -49,6 +52,9 @@ function App() {
           <Route path="algorank/leaderboard" element={<Leaderboard />} />
           <Route path="algorank/playlists" element={<Playlists />} />
           <Route path="algorank/playlists/:id" element={<PlaylistDetail />} />
+          <Route path="roadmaps" element={<RoadmapList />} />
+          <Route path="roadmaps/builder" element={<RoadmapBuilder />} />
+          <Route path="roadmaps/:id" element={<RoadmapDetail />} />
           {/* Add more routes as we implement other modules */}
         </Route>
         <Route path="*" element={<Navigate to="/landing" replace />} />
