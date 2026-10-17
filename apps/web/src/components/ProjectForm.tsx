@@ -14,6 +14,7 @@ interface ProjectFormProps {
 
 const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
   const [generatingIndex, setGeneratingIndex] = useState(-1);
+  const [aiError, setAiError] = useState('');
 
   const addProject = () => {
     const newProject: Project = {
@@ -37,12 +38,13 @@ const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
 
   const generateDescription = async (index: number) => {
     setGeneratingIndex(index);
+    setAiError('');
     const project = data[index];
     const prompt = `enhance this project description "${project.description}" for project "${project.name}" of type "${project.type}"`;
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/ai/enhance-job-desc', {
+      const response = await fetch('/api/ai/enhance-job-desc', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,15 +53,15 @@ const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
         body: JSON.stringify({ userContent: prompt })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        updateProject(index, "description", result.enhancedSolution);
-      } else {
-        alert('Failed to generate AI description');
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.message || result?.error || 'AI enhancement failed. Please try again.');
+      if (typeof result?.enhancedSolution !== 'string' || !result.enhancedSolution.trim()) {
+        throw new Error('AI returned an empty description. Please try again.');
       }
+      updateProject(index, "description", result.enhancedSolution.trim());
     } catch (error) {
       console.error('AI generation error:', error);
-      alert('Error generating AI description');
+      setAiError(error instanceof Error ? error.message : 'AI enhancement failed. Please try again.');
     } finally {
       setGeneratingIndex(-1);
     }
@@ -67,6 +69,7 @@ const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
 
   return (
     <div>
+      {aiError && <p role="alert" className="px-3 text-sm text-red-600">{aiError}</p>}
       <div className="flex justify-between items-center p-3">
         <div>
           <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">

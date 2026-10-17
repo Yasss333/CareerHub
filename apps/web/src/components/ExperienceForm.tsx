@@ -17,6 +17,7 @@ interface ExperienceFormProps {
 
 const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
   const [generatingIndex, setGeneratingIndex] = useState(-1);
+  const [aiError, setAiError] = useState('');
 
   const addExperience = () => {
     const newExperience: Experience = {
@@ -43,12 +44,13 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
 
   const generateDescription = async (index: number) => {
     setGeneratingIndex(index);
+    setAiError('');
     const experience = data[index];
     const prompt = `enhance this job description "${experience.description}" for the position of "${experience.position}" at "${experience.company}"`;
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/ai/enhance-job-desc', {
+      const response = await fetch('/api/ai/enhance-job-desc', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,15 +59,15 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
         body: JSON.stringify({ userContent: prompt })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        updateExperience(index, "description", result.enhancedSolution);
-      } else {
-        alert('Failed to generate AI description');
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.message || result?.error || 'AI enhancement failed. Please try again.');
+      if (typeof result?.enhancedSolution !== 'string' || !result.enhancedSolution.trim()) {
+        throw new Error('AI returned an empty description. Please try again.');
       }
+      updateExperience(index, "description", result.enhancedSolution.trim());
     } catch (error) {
       console.error('AI generation error:', error);
-      alert('Error generating AI description');
+      setAiError(error instanceof Error ? error.message : 'AI enhancement failed. Please try again.');
     } finally {
       setGeneratingIndex(-1);
     }
@@ -73,6 +75,7 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
 
   return (
     <div className="space-y-6">
+      {aiError && <p role="alert" className="text-sm text-red-600">{aiError}</p>}
       <div className="flex justify-between items-center">
         <div>
           <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">

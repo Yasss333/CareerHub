@@ -17,6 +17,7 @@ datasource db {
 enum Role {
   ADMIN
   USER
+  MENTOR
 }
 
 model User {
@@ -25,6 +26,7 @@ model User {
   passwordHash   String
   role           Role     @default(USER)
   isAlumniMentor Boolean  @default(false)
+  mentorApprovalStatus String @default("NONE")
   
   // Profile fields (merged from all systems)
   name           String?
@@ -69,6 +71,7 @@ model User {
   sessionBookingsAsSenior SessionBooking[] @relation("SeniorBookings")
   availabilitySlots AvailabilitySlot[]
   notifications   Notification[]
+  roadmaps       Roadmap[]
   
   // AlgoRank relations
   problems      Problem[]
@@ -408,4 +411,48 @@ model InterviewQuestion {
   
   @@index([sessionId])
   @@index([questionIndex])
+}
+
+// ============================================
+// ROADMAP GENERATOR MODELS
+// ============================================
+
+model Roadmap {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String
+  roleType    String   // Frontend, Backend, Full Stack, DevOps, Data Science, etc.
+  skillLevel  String   @default("beginner") // beginner, intermediate, advanced
+  status      String   @default("draft") // draft, in_progress, completed
+  topics      Json     // Structured roadmap topics/milestones
+  resources   Json     // AI-generated free resources (GFG, YouTube, etc.)
+  progress    Float    @default(0) // Overall progress percentage
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones  RoadmapMilestone[]
+
+  @@index([userId])
+  @@index([roleType])
+}
+
+model RoadmapMilestone {
+  id          String   @id @default(uuid())
+  roadmapId   String
+  title       String
+  description String
+  order       Int
+  isCompleted Boolean  @default(false)
+  topics      Json     // Array of sub-topics for this milestone
+  resources   Json     // Specific resources for this milestone
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  roadmap     Roadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  @@index([roadmapId])
+  @@index([order])
 }

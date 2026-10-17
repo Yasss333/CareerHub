@@ -15,7 +15,8 @@ const generateToken = (user) => {
     id: user.id,
     email: user.email,
     role: user.role,
-    isAlumniMentor: user.isAlumniMentor
+    isAlumniMentor: user.isAlumniMentor,
+    mentorApprovalStatus: user.mentorApprovalStatus
   };
   
   return jwt.sign(payload, JWT_SECRET, {
@@ -71,6 +72,7 @@ router.post('/register', async (req, res) => {
         name: true,
         role: true,
         isAlumniMentor: true,
+        mentorApprovalStatus: true,
         createdAt: true
       }
     });
@@ -91,7 +93,11 @@ router.post('/register', async (req, res) => {
 // Login user
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, accountType } = req.body;
+
+    if (accountType !== undefined && !['USER', 'ADMIN', 'MENTOR'].includes(accountType)) {
+      return res.status(400).json({ error: 'Invalid account type' });
+    }
     
     // Find user
     const user = await prisma.user.findUnique({
@@ -107,6 +113,14 @@ router.post('/login', async (req, res) => {
     
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (
+      (accountType && user.role !== accountType) ||
+      (user.role === 'MENTOR' &&
+        (!user.isAlumniMentor || user.mentorApprovalStatus !== 'APPROVED'))
+    ) {
+      return res.status(401).json({ error: 'Invalid credentials for the selected account type' });
     }
     
     // Generate token
@@ -148,6 +162,7 @@ router.get('/me', async (req, res) => {
         name: true,
         role: true,
         isAlumniMentor: true,
+        mentorApprovalStatus: true,
         image: true,
         avatar: true,
         createdAt: true

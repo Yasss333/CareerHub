@@ -23,13 +23,20 @@ This document describes the PostgreSQL database schema for the CareerHub platfor
 The central user model for authentication and profile management.
 
 ```prisma
+enum Role {
+  ADMIN
+  USER
+  MENTOR
+}
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
   password      String
   name          String?
-  role          String    @default("USER")
+  role          Role      @default(USER)
   isAlumniMentor Boolean  @default(false)
+  mentorApprovalStatus String @default("NONE")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -44,13 +51,16 @@ model User {
 }
 ```
 
+Account roles are `USER`, `ADMIN`, and `MENTOR`. Mentor accounts are assigned only after administrator approval.
+
 **Fields**:
 - `id`: Unique identifier (UUID)
 - `email`: User email (unique)
 - `password`: Hashed password (bcrypt)
 - `name`: User display name
-- `role`: User role (USER, ADMIN)
-- `isAlumniMentor`: Alumni mentor capability flag
+- `role`: Account role (USER, ADMIN, MENTOR)
+- `isAlumniMentor`: Approved mentor capability flag; set only after administrator approval
+- `mentorApprovalStatus`: Mentor application state (`NONE`, `PENDING`, `APPROVED`, or `REJECTED`)
 - `createdAt`: Account creation timestamp
 - `updatedAt`: Last update timestamp
 

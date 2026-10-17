@@ -347,7 +347,10 @@ export default function SeniorConnectSessions() {
     )
   }
 
-  const handleSessionClick = (session: Session) => {
+  const handleSessionClick = (sessionId: string) => {
+    const session = sessions.find((item) => item.id === sessionId)
+    if (!session) return
+
     if (session.status === 'started' && session.jitsiRoomUrl) {
       window.open(session.jitsiRoomUrl, '_blank')
     }

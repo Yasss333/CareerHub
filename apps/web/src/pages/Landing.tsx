@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle, Code, FileText, Users, Target, Zap, Star, TrendingUp, Award, Menu, X } from 'lucide-react';
+import { ArrowRight, CheckCircle, Code, FileText, Users, Target, Zap, Star, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 
 export default function Landing() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -84,9 +87,9 @@ export default function Landing() {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-b border-gray-800">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
@@ -100,19 +103,21 @@ export default function Landing() {
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
-              <a href="#how-it-works" className="text-gray-300 hover:text-white transition-colors">How It Works</a>
-              <a href="#testimonials" className="text-gray-300 hover:text-white transition-colors">Success Stories</a>
-              <Link to="/login" className="text-gray-300 hover:text-white transition-colors">Login</Link>
-              <Link to="/register" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-6 py-2 rounded-lg font-medium transition-all">
-                Get Started Free
+              <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
+              <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+              <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors">Success Stories</a>
+              <Link to="/login" className="text-muted-foreground hover:text-foreground transition-colors">Login</Link>
+              <Link to="/register">
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                  Get Started Free
+                </Button>
               </Link>
             </div>
 
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-gray-300 hover:text-white"
+              className="md:hidden text-muted-foreground hover:text-foreground"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -121,14 +126,16 @@ export default function Landing() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-black/95 border-t border-gray-800">
+          <div className="md:hidden bg-background/95 border-t border-border">
             <div className="px-4 py-4 space-y-4">
-              <a href="#features" className="block text-gray-300 hover:text-white transition-colors">Features</a>
-              <a href="#how-it-works" className="block text-gray-300 hover:text-white transition-colors">How It Works</a>
-              <a href="#testimonials" className="block text-gray-300 hover:text-white transition-colors">Success Stories</a>
-              <Link to="/login" className="block text-gray-300 hover:text-white transition-colors">Login</Link>
-              <Link to="/register" className="block bg-gradient-to-r from-blue-600 to-purple-600 text-center px-6 py-2 rounded-lg font-medium">
-                Get Started Free
+              <a href="#features" className="block text-muted-foreground hover:text-foreground transition-colors">Features</a>
+              <a href="#how-it-works" className="block text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+              <a href="#testimonials" className="block text-muted-foreground hover:text-foreground transition-colors">Success Stories</a>
+              <Link to="/login" className="block text-muted-foreground hover:text-foreground transition-colors">Login</Link>
+              <Link to="/register">
+                <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                  Get Started Free
+                </Button>
               </Link>
             </div>
           </div>
@@ -146,10 +153,10 @@ export default function Landing() {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500 rounded-full filter blur-[128px] opacity-30 animate-pulse" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-2 mb-8">
-            <Zap className="w-4 h-4 text-blue-400" />
-            <span className="text-blue-300 text-sm font-medium">Now with AI-Powered Features</span>
-          </div>
+          <Badge className="mb-8 bg-blue-500/10 border-blue-500/20 text-blue-300">
+            <Zap className="w-4 h-4 mr-2" />
+            Now with AI-Powered Features
+          </Badge>
 
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
             <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -165,12 +172,16 @@ export default function Landing() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Link to="/register" className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-8 py-4 rounded-lg font-semibold text-lg transition-all transform hover:scale-105">
-              Get Started Free
-              <ArrowRight className="w-5 h-5" />
+            <Link to="/register">
+              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg">
+                Get Started Free
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
             </Link>
-            <a href="#how-it-works" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-8 py-4 rounded-lg font-semibold text-lg transition-all">
-              See How It Works
+            <a href="#how-it-works">
+              <Button size="lg" variant="outline" className="bg-white/10 hover:bg-white/20 border-white/20 text-lg">
+                See How It Works
+              </Button>
             </a>
           </div>
 
@@ -213,19 +224,18 @@ export default function Landing() {
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <div
-                  key={index}
-                  className="group relative bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-2xl p-8 hover:border-blue-500/50 transition-all duration-300"
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity`} />
-                  <div className="relative">
+                <Card key={index} className="group relative bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 hover:border-blue-500/50 transition-all duration-300">
+                  <div className={`absolute inset-0 bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-10 rounded-lg transition-opacity`} />
+                  <CardHeader>
                     <div className={`w-14 h-14 bg-gradient-to-r ${feature.color} rounded-xl flex items-center justify-center mb-6`}>
                       <Icon className="w-7 h-7 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-3">{feature.title}</h3>
-                    <p className="text-gray-400 leading-relaxed">{feature.description}</p>
-                  </div>
-                </div>
+                    <CardTitle className="text-white">{feature.title}</CardTitle>
+                    <CardDescription className="text-gray-400 leading-relaxed">
+                      {feature.description}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
               );
             })}
           </div>
@@ -278,26 +288,25 @@ export default function Landing() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-2xl p-8"
-              >
-                <div className="flex items-center gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                  ))}
-                </div>
-                <p className="text-gray-300 mb-6 italic">"{testimonial.content}"</p>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                    {testimonial.avatar}
+              <Card key={index} className="bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700">
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-1 mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                    ))}
                   </div>
-                  <div>
-                    <div className="font-semibold text-white">{testimonial.name}</div>
-                    <div className="text-sm text-gray-400">{testimonial.role}</div>
+                  <p className="text-gray-300 mb-6 italic">"{testimonial.content}"</p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                      {testimonial.avatar}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-white">{testimonial.name}</div>
+                      <div className="text-sm text-gray-400">{testimonial.role}</div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -318,12 +327,16 @@ export default function Landing() {
             Join thousands of developers who are already accelerating their career growth
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register" className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-8 py-4 rounded-lg font-semibold text-lg transition-all transform hover:scale-105">
-              Get Started Free
-              <ArrowRight className="w-5 h-5" />
+            <Link to="/register">
+              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg">
+                Get Started Free
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
             </Link>
-            <a href="#features" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-8 py-4 rounded-lg font-semibold text-lg transition-all">
-              Learn More
+            <a href="#features">
+              <Button size="lg" variant="outline" className="bg-white/10 hover:bg-white/20 border-white/20 text-lg">
+                Learn More
+              </Button>
             </a>
           </div>
 

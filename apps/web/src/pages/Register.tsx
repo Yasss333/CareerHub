@@ -13,6 +13,7 @@ interface User {
 interface AuthResponse {
   user: User
   token: string
+  error?: string
 }
 
 export default function Register() {

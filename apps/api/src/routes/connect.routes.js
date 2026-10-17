@@ -23,11 +23,44 @@ const authenticate = (req, res, next) => {
   }
 };
 
-const requireAlumniMentor = (req, res, next) => {
-  if (!req.user || !req.user.isAlumniMentor) {
-    return res.status(403).json({ error: 'Alumni mentor status required' });
+const requireAlumniMentor = async (req, res, next) => {
+  try {
+    const user = req.user
+      ? await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { isAlumniMentor: true, mentorApprovalStatus: true }
+        })
+      : null;
+
+    if (!user?.isAlumniMentor || user.mentorApprovalStatus !== 'APPROVED') {
+      return res.status(403).json({ error: 'An approved alumni mentor profile is required' });
+    }
+
+    return next();
+  } catch (error) {
+    console.error('Mentor authorization error:', error);
+    return res.status(500).json({ error: 'Failed to verify mentor permissions' });
   }
-  next();
+};
+
+const requireAdmin = async (req, res, next) => {
+  try {
+    const user = req.user
+      ? await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { role: true }
+        })
+      : null;
+
+    if (user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Administrator access required' });
+    }
+
+    return next();
+  } catch (error) {
+    console.error('Administrator authorization error:', error);
+    return res.status(500).json({ error: 'Failed to verify administrator permissions' });
+  }
 };
 
 const isISOString = (value) => {
@@ -37,7 +70,7 @@ const isISOString = (value) => {
 // Resolve a senior identifier that may be either a User id or a SeniorProfile id
 const resolveSeniorUserId = async (seniorId) => {
   const user = await prisma.user.findFirst({
-    where: { id: seniorId, isAlumniMentor: true },
+    where: { id: seniorId, isAlumniMentor: true, mentorApprovalStatus: 'APPROVED' },
     select: { id: true }
   });
   if (user) return user.id;
@@ -49,9 +82,9 @@ const resolveSeniorUserId = async (seniorId) => {
   if (profile) {
     const owner = await prisma.user.findUnique({
       where: { id: profile.userId },
-      select: { id: true, isAlumniMentor: true }
+      select: { id: true, isAlumniMentor: true, mentorApprovalStatus: true }
     });
-    if (owner && owner.isAlumniMentor) return owner.id;
+    if (owner && owner.isAlumniMentor && owner.mentorApprovalStatus === 'APPROVED') return owner.id;
   }
   return null;
 };
@@ -108,7 +141,8 @@ router.get('/seniors', async (req, res) => {
     
     const where = {
       user: {
-        isAlumniMentor: true
+        isAlumniMentor: true,
+        mentorApprovalStatus: 'APPROVED'
       }
     };
     
@@ -235,6 +269,7 @@ router.get('/profile', authenticate, async (req, res) => {
             email: true,
             avatar: true,
             isAlumniMentor: true,
+            mentorApprovalStatus: true,
             title: true,
             company: true,
             location: true
@@ -270,11 +305,6 @@ const upsertProfile = async (req, res) => {
     if (location !== undefined) userData.location = location;
     if (timezone !== undefined) userData.timezone = timezone;
 
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data: { ...userData, isAlumniMentor: true }
-    });
-    
     const profileData = {
       title: title !== undefined ? String(title).trim() : '',
       company: company !== undefined ? String(company).trim() : '',
@@ -293,19 +323,36 @@ const upsertProfile = async (req, res) => {
       profileData.availability = availability;
     }
     
-    const profile = await prisma.seniorProfile.upsert({
-      where: { userId: req.user.id },
-      update: profileData,
-      create: {
-        userId: req.user.id,
-        ...profileData,
-        title: profileData.title || 'Mentor',
-        experience: profileData.experience || 0,
-        location: profileData.location || ''
-      }
+    const result = await prisma.$transaction(async (transaction) => {
+      const currentUser = await transaction.user.findUnique({
+        where: { id: req.user.id },
+        select: { isAlumniMentor: true, mentorApprovalStatus: true }
+      });
+      if (!currentUser) throw new Error('User account not found');
+
+      const approved = currentUser.isAlumniMentor && currentUser.mentorApprovalStatus === 'APPROVED';
+      const mentorApprovalStatus = approved ? 'APPROVED' : 'PENDING';
+      await transaction.user.update({
+        where: { id: req.user.id },
+        data: { ...userData, isAlumniMentor: approved, mentorApprovalStatus }
+      });
+
+      const profile = await transaction.seniorProfile.upsert({
+        where: { userId: req.user.id },
+        update: profileData,
+        create: {
+          userId: req.user.id,
+          ...profileData,
+          title: profileData.title || 'Mentor',
+          experience: profileData.experience || 0,
+          location: profileData.location || ''
+        }
+      });
+
+      return { profile, mentorApprovalStatus };
     });
     
-    res.json(profile);
+    res.json(result);
   } catch (error) {
     console.error('Save profile error:', error);
     res.status(500).json({ error: 'Failed to save profile' });
@@ -315,14 +362,98 @@ const upsertProfile = async (req, res) => {
 router.post('/profile', authenticate, upsertProfile);
 router.put('/profile', authenticate, upsertProfile);
 
+router.get('/admin/mentor-applications', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const applications = await prisma.user.findMany({
+      where: { mentorApprovalStatus: 'PENDING' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        title: true,
+        company: true,
+        location: true,
+        mentorApprovalStatus: true,
+        seniorProfile: {
+          select: {
+            title: true,
+            company: true,
+            domain: true,
+            role: true,
+            bio: true,
+            experience: true,
+            location: true,
+            expertise: true,
+            achievements: true,
+            createdAt: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+    res.json(applications);
+  } catch (error) {
+    console.error('Fetch mentor applications error:', error);
+    res.status(500).json({ error: 'Failed to fetch mentor applications' });
+  }
+});
+
+router.patch('/admin/mentor-applications/:userId', authenticate, requireAdmin, async (req, res) => {
+  const { decision } = req.body || {};
+  if (!['approve', 'reject'].includes(decision)) {
+    return res.status(400).json({ error: "Decision must be 'approve' or 'reject'" });
+  }
+
+  try {
+    const status = decision === 'approve' ? 'APPROVED' : 'REJECTED';
+    const reviewed = await prisma.$transaction(async (transaction) => {
+      const applicant = await transaction.user.findUnique({
+        where: { id: req.params.userId },
+        select: { role: true, mentorApprovalStatus: true }
+      });
+
+      if (!applicant || applicant.mentorApprovalStatus !== 'PENDING') return false;
+
+      const updated = await transaction.user.updateMany({
+        where: { id: req.params.userId, mentorApprovalStatus: 'PENDING' },
+        data: {
+          mentorApprovalStatus: status,
+          isAlumniMentor: decision === 'approve',
+          role: applicant.role === 'ADMIN' ? 'ADMIN' : decision === 'approve' ? 'MENTOR' : 'USER'
+        }
+      });
+
+      return updated.count > 0;
+    });
+
+    if (!reviewed) {
+      return res.status(404).json({ error: 'Pending mentor application not found' });
+    }
+
+    res.json({ userId: req.params.userId, mentorApprovalStatus: status });
+  } catch (error) {
+    console.error('Review mentor application error:', error);
+    res.status(500).json({ error: 'Failed to review mentor application' });
+  }
+});
+
 // Remove senior profile / revoke mentor status
 router.delete('/profile', authenticate, async (req, res) => {
   try {
+    const account = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { role: true }
+    });
+
     await prisma.seniorProfile.deleteMany({ where: { userId: req.user.id } });
     await prisma.availabilitySlot.deleteMany({ where: { seniorId: req.user.id } });
     await prisma.user.update({
       where: { id: req.user.id },
-      data: { isAlumniMentor: false }
+      data: {
+        isAlumniMentor: false,
+        mentorApprovalStatus: 'NONE',
+        role: account?.role === 'MENTOR' ? 'USER' : account?.role
+      }
     });
     res.json({ message: 'Senior profile removed' });
   } catch (error) {

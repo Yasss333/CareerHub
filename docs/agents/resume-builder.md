@@ -16,6 +16,8 @@ The Resume Builder allows users to create, edit, and manage professional resumes
 - **State Management**: Component state
 - **Styling**: Tailwind CSS
 - **Routing**: React Router v7
+- **Editor flow**: Six guided sections (Profile, Experience, Education, Projects, Skills, Review); continuing saves the current resume
+- **Preview behavior**: Live side-by-side preview on desktop and an editor/preview switch on mobile
 - **Advanced Components**: ExperienceForm, EducationForm, ProjectForm, SkillsForm, ProfessionalSummaryForm
 - **AI Modals**: ATSModal, CoverLetterModal, InterviewModal
 
@@ -51,6 +53,7 @@ The Resume Builder allows users to create, edit, and manage professional resumes
 - `apps/web/src/components/ProjectForm.tsx` - Projects form with AI enhancement
 - `apps/web/src/components/SkillsForm.tsx` - Skills management form
 - `apps/web/src/components/ProfessionalSummaryForm.tsx` - Professional summary with AI enhancement
+- `apps/api/src/routes/ai.routes.js` - Authenticated AI enhancement endpoints with model fallback and configuration errors
 - `apps/web/src/components/ATSModal.tsx` - ATS analysis modal
 - `apps/web/src/components/CoverLetterModal.tsx` - Cover letter generation modal
 - `apps/web/src/components/InterviewModal.tsx` - Mock interview practice modal
@@ -196,6 +199,7 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 ### Frontend UI
 - Forms are fully functional with proper validation
 - AI features require valid API keys to work
+- AI Enhance reports provider configuration failures in the form; AI requests use the same-origin `/api` proxy
 - Loading states and error handling are implemented
 - Responsive design works across different screen sizes
 

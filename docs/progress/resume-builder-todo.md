@@ -43,7 +43,11 @@ Resume Builder module has been fully migrated from the legacy codebase with all 
 - [x] Add resume analytics (views, downloads)
 
 ## Phase 5: UI/UX Enhancements
+- [x] Guide resume creation through focused steps with save-and-continue navigation
+- [x] Keep a live desktop preview and add an editor/preview switch on mobile
+- [x] Show clear AI enhancement errors and verify both AI endpoints
 - [x] Implement responsive design for mobile devices
+- [x] Keep the resume editor and live preview side by side on desktop and stack them on mobile
 - [x] Add loading states and error handling
 - [x] Implement form validation with clear error messages
 - [x] Add auto-save functionality
@@ -92,6 +96,9 @@ Resume Builder module has been fully migrated from the legacy codebase with all 
 - ✅ Duplicate and delete functionality
 - ✅ Public/private resume visibility
 - ✅ Responsive design and error handling
+- ✅ Six-step resume editor with save-and-continue navigation
+- ✅ Persistent side-by-side desktop preview and mobile editor/preview switch
+- ✅ AI enhancement errors identify missing provider setup without exposing credentials
 - ✅ Form validation and loading states
 
 ### Testing Status
@@ -99,6 +106,7 @@ Resume Builder module has been fully migrated from the legacy codebase with all 
 - ✅ Frontend dev server running successfully on port 5173
 - ✅ All components integrated and functional
 - ✅ Server startup and basic connectivity verified
+- [x] Run authenticated end-to-end regression checks across core user flows
 
 ### Configuration Required
 - ⚠️ ImageKit API keys need to be configured in `apps/api/.env` for image upload functionality

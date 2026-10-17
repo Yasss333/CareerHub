@@ -80,6 +80,8 @@ const ResumeBuilder = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
+  const [currentStep, setCurrentStep] = useState(0);
   const [showATSModal, setShowATSModal] = useState(false);
   const [showCoverLetterModal, setShowCoverLetterModal] = useState(false);
   const [showInterviewModal, setShowInterviewModal] = useState(false);
@@ -109,7 +111,7 @@ const ResumeBuilder = () => {
     }
   };
 
-  const saveResume = async () => {
+  const saveResume = async (showNotice = true): Promise<boolean> => {
     try {
       setIsSaving(true);
       const url = resumeId 
@@ -133,16 +135,35 @@ const ResumeBuilder = () => {
         if (!resumeId && data.id) {
           navigate(`/resume-builder/${data.id}`);
         }
-        alert('Resume saved successfully!');
+        if (showNotice) alert('Resume saved successfully!');
+        return true;
       } else {
-        alert('Failed to save resume');
+        const message = data?.error || data?.message || 'Failed to save resume';
+        alert(message);
+        return false;
       }
     } catch (error) {
       console.error('Error saving resume:', error);
       alert('Error saving resume');
+      return false;
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const steps = [
+    { title: 'Profile', description: 'Resume style and contact information' },
+    { title: 'Experience', description: 'Your work history' },
+    { title: 'Education', description: 'Degrees and education' },
+    { title: 'Projects', description: 'Selected work and projects' },
+    { title: 'Skills', description: 'Summary and key skills' },
+    { title: 'Review', description: 'Preview, save, and export' },
+  ];
+
+  const advanceStep = async () => {
+    if (currentStep >= steps.length - 1) return;
+    const saved = await saveResume(false);
+    if (saved) setCurrentStep((step) => Math.min(step + 1, steps.length - 1));
   };
 
   const downloadPDF = async () => {
@@ -252,7 +273,7 @@ const ResumeBuilder = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setShowPreview(!showPreview)}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center gap-2"
+              className="hidden md:flex px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 items-center gap-2"
             >
               {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               {showPreview ? 'Hide Preview' : 'Show Preview'}
@@ -260,10 +281,58 @@ const ResumeBuilder = () => {
           </div>
         </div>
 
-        <div className={`grid ${showPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'} gap-8`}>
+        <nav aria-label="Resume sections" className="mb-6 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+          <ol className="grid grid-cols-3 gap-2 md:grid-cols-6">
+            {steps.map((step, index) => (
+              <li key={step.title}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(index)}
+                  aria-current={currentStep === index ? 'step' : undefined}
+                  className={`w-full rounded-lg px-2 py-2 text-left transition-colors ${
+                    currentStep === index
+                      ? 'bg-blue-600 text-white'
+                      : index < currentStep
+                        ? 'bg-blue-50 text-blue-800 hover:bg-blue-100'
+                        : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="block text-xs font-medium">Step {index + 1}</span>
+                  <span className="block truncate text-sm font-semibold">{step.title}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+            <p className="text-sm text-gray-600">{steps[currentStep].description}</p>
+            <p className="shrink-0 text-xs text-gray-500">{currentStep + 1} of {steps.length}</p>
+          </div>
+          <div className="mt-3 flex gap-2 md:hidden" role="tablist" aria-label="Editor and preview">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobileView === 'editor'}
+              onClick={() => setMobileView('editor')}
+              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${mobileView === 'editor' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+            >
+              Edit section
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobileView === 'preview'}
+              onClick={() => { setShowPreview(true); setMobileView('preview'); }}
+              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${mobileView === 'preview' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+            >
+              Preview
+            </button>
+          </div>
+        </nav>
+
+        <div className={`grid ${showPreview ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
           {/* Form Section */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
+          <div className={`min-w-0 space-y-6 ${mobileView === 'preview' ? 'hidden md:block' : ''}`}>
+            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 0 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5" />
                 Basic Information
@@ -306,7 +375,7 @@ const ResumeBuilder = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 0 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <User className="w-5 h-5" />
                 Personal Information
@@ -412,7 +481,7 @@ const ResumeBuilder = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 4 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5" />
                 Professional Summary
@@ -423,7 +492,7 @@ const ResumeBuilder = () => {
               />
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 4 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Briefcase className="w-5 h-5" />
                 Skills
@@ -431,7 +500,7 @@ const ResumeBuilder = () => {
               <SkillsForm data={resumeData.skills} onChange={(skills) => setResumeData({ ...resumeData, skills })} />
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 1 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Briefcase className="w-5 h-5" />
                 Work Experience
@@ -439,7 +508,7 @@ const ResumeBuilder = () => {
               <ExperienceForm data={resumeData.experience} onChange={(experience) => setResumeData({ ...resumeData, experience })} />
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 2 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <GraduationCap className="w-5 h-5" />
                 Education
@@ -447,7 +516,7 @@ const ResumeBuilder = () => {
               <EducationForm data={resumeData.education} onChange={(education) => setResumeData({ ...resumeData, education })} />
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 3 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5" />
                 Projects
@@ -455,9 +524,57 @@ const ResumeBuilder = () => {
               <ProjectForm data={resumeData.projects} onChange={(projects) => setResumeData({ ...resumeData, projects })} />
             </div>
 
+            {currentStep === steps.length - 1 && (
+              <div className="rounded-lg border border-blue-100 bg-blue-50 p-5">
+                <h2 className="text-lg font-semibold text-gray-900">Review your resume</h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  Check the live preview, then save or export your resume. You can return to any section above.
+                </p>
+                <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                  {[
+                    ['Contact information', Boolean(resumeData.personalInfo.fullName)],
+                    ['Professional summary', Boolean(resumeData.professionSummary.trim())],
+                    ['Work experience', resumeData.experience.length > 0],
+                    ['Education', resumeData.education.length > 0],
+                    ['Projects', resumeData.projects.length > 0],
+                    ['Skills', resumeData.skills.length > 0],
+                  ].map(([label, complete]) => (
+                    <p key={String(label)}>
+                      <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-medium ${complete ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                        {complete ? 'Added' : 'Not added'}
+                      </span>
+                      {label}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3">
+              {currentStep > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                >
+                  Previous
+                </button>
+              )}
+              {currentStep < steps.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => void advanceStep()}
+                  disabled={isSaving}
+                  className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isSaving ? 'Saving...' : 'Save and continue'}
+                </button>
+              )}
+            </div>
+
             <div className="flex gap-4">
               <button
-                onClick={saveResume}
+                onClick={() => void saveResume()}
                 disabled={isSaving}
                 className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 flex items-center justify-center gap-2"
               >
@@ -503,9 +620,9 @@ const ResumeBuilder = () => {
 
           {/* Preview Section */}
           {showPreview && (
-            <div className="space-y-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-semibold mb-4">Preview</h2>
+            <div className={`min-w-0 space-y-6 md:sticky md:top-4 md:self-start ${mobileView === 'editor' ? 'hidden md:block' : ''}`}>
+              <div className="bg-white rounded-lg shadow p-4 md:p-6">
+                <h2 className="text-xl font-semibold mb-4">Live preview</h2>
                 <div className="border rounded-lg p-4 min-h-[500px] overflow-auto">
                   {getTemplateComponent()}
                 </div>

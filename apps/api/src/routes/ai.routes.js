@@ -25,15 +25,26 @@ const authenticate = (req, res, next) => {
 };
 
 const createChatCompletion = (request) => openai.chat.completions.create(request);
+const modelName = () => process.env.MODEL_NAME || "openai/gpt-4o-mini";
+const isAIConfigured = () => {
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
+  return Boolean(apiKey && !/^(your|replace|placeholder|example|change.?me)/i.test(apiKey));
+};
+
+const validateEnhancementInput = (userContent) => {
+  return typeof userContent === 'string' && userContent.trim().length > 0 && userContent.length <= 12000;
+};
 
 // Enhance professional summary
 router.post('/enhance-pro-sum', authenticate, async (req, res) => {
   try {
-    const { userContent } = req.body;
-    const model = process.env.MODEL_NAME || "gpt-4o-mini";
+    const { userContent } = req.body || {};
     
-    if (!userContent) {
-      return res.status(400).json({ message: "User content not provided, missing required fields" });
+    if (!validateEnhancementInput(userContent)) {
+      return res.status(400).json({ error: "Provide text to enhance (up to 12,000 characters)." });
+    }
+    if (!isAIConfigured()) {
+      return res.status(503).json({ error: "AI enhancement is not configured. Set a valid OPENROUTER_API_KEY in apps/api/.env and restart the API." });
     }
     
     const systemPrompt = `
@@ -41,31 +52,35 @@ You are a professional resume writer and ATS optimization expert. Your task is t
     `;
 
     const response = await createChatCompletion({
-      model,
+      model: modelName(),
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userContent }
       ]
     });
 
-    const enhancedSolution = response.choices[0].message.content;
+    const enhancedSolution = response.choices[0]?.message?.content;
+    if (!enhancedSolution?.trim()) throw new Error('AI provider returned an empty response');
     return res.status(200).json({ enhancedSolution });
   } catch (error) {
     console.error("AI enhance error:", error);
-    return res.status(400).json({ message: error.message, stack: error.stack });
+    return res.status(503).json({ error: "AI enhancement is temporarily unavailable. Check the server's AI model configuration and try again." });
   }
 });
 
 // Enhance job description
 router.post('/enhance-job-desc', authenticate, async (req, res) => {
   try {
-    const { userContent } = req.body;
-    if (!userContent) {
-      return res.status(400).json({ message: "User content not provided, missing required fields" });
+    const { userContent } = req.body || {};
+    if (!validateEnhancementInput(userContent)) {
+      return res.status(400).json({ error: "Provide text to enhance (up to 12,000 characters)." });
+    }
+    if (!isAIConfigured()) {
+      return res.status(503).json({ error: "AI enhancement is not configured. Set a valid OPENROUTER_API_KEY in apps/api/.env and restart the API." });
     }
     
     const response = await createChatCompletion({
-      model: process.env.MODEL_NAME,
+      model: modelName(),
       messages: [
         {
           role: "system",
@@ -78,10 +93,12 @@ router.post('/enhance-job-desc', authenticate, async (req, res) => {
       ],
     });
     
-    const enhancedSolution = response.choices[0].message.content;
+    const enhancedSolution = response.choices[0]?.message?.content;
+    if (!enhancedSolution?.trim()) throw new Error('AI provider returned an empty response');
     return res.status(200).json({ enhancedSolution });
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    console.error("AI job description enhancement error:", error);
+    return res.status(503).json({ error: "AI enhancement is temporarily unavailable. Check the server's AI model configuration and try again." });
   }
 });
 
