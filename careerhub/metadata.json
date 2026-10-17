@@ -1,0 +1,6 @@
+{
+  "name": "CareerHub",
+  "description": "Career Hub — An End-to-End Placement Preparation Platform Powered by Multimodal AI, Automated Proctoring, and Unified Performance Analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
