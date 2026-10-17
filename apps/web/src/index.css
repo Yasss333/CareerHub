@@ -47,6 +47,50 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-blue-50: color-mix(in oklab, var(--primary) 5%, var(--background));
+  --color-blue-100: color-mix(in oklab, var(--primary) 10%, var(--background));
+  --color-blue-200: color-mix(in oklab, var(--primary) 20%, var(--background));
+  --color-blue-300: color-mix(in oklab, var(--primary) 35%, var(--background));
+  --color-blue-400: color-mix(in oklab, var(--primary) 55%, var(--background));
+  --color-blue-500: color-mix(in oklab, var(--primary) 75%, var(--background));
+  --color-blue-600: var(--primary);
+  --color-blue-700: color-mix(in oklab, var(--primary) 88%, var(--foreground));
+  --color-blue-800: color-mix(in oklab, var(--primary) 72%, var(--foreground));
+  --color-blue-900: color-mix(in oklab, var(--primary) 56%, var(--foreground));
+  --color-blue-950: color-mix(in oklab, var(--primary) 40%, var(--foreground));
+  --color-indigo-50: color-mix(in oklab, var(--primary) 5%, var(--background));
+  --color-indigo-100: color-mix(in oklab, var(--primary) 10%, var(--background));
+  --color-indigo-200: color-mix(in oklab, var(--primary) 20%, var(--background));
+  --color-indigo-300: color-mix(in oklab, var(--primary) 35%, var(--background));
+  --color-indigo-400: color-mix(in oklab, var(--primary) 55%, var(--background));
+  --color-indigo-500: color-mix(in oklab, var(--primary) 75%, var(--background));
+  --color-indigo-600: var(--primary);
+  --color-indigo-700: color-mix(in oklab, var(--primary) 88%, var(--foreground));
+  --color-indigo-800: color-mix(in oklab, var(--primary) 72%, var(--foreground));
+  --color-indigo-900: color-mix(in oklab, var(--primary) 56%, var(--foreground));
+  --color-indigo-950: color-mix(in oklab, var(--primary) 40%, var(--foreground));
+  --color-violet-50: color-mix(in oklab, var(--primary) 5%, var(--background));
+  --color-violet-100: color-mix(in oklab, var(--primary) 10%, var(--background));
+  --color-violet-200: color-mix(in oklab, var(--primary) 20%, var(--background));
+  --color-violet-300: color-mix(in oklab, var(--primary) 35%, var(--background));
+  --color-violet-400: color-mix(in oklab, var(--primary) 55%, var(--background));
+  --color-violet-500: color-mix(in oklab, var(--primary) 75%, var(--background));
+  --color-violet-600: var(--primary);
+  --color-violet-700: color-mix(in oklab, var(--primary) 88%, var(--foreground));
+  --color-violet-800: color-mix(in oklab, var(--primary) 72%, var(--foreground));
+  --color-violet-900: color-mix(in oklab, var(--primary) 56%, var(--foreground));
+  --color-violet-950: color-mix(in oklab, var(--primary) 40%, var(--foreground));
+  --color-purple-50: color-mix(in oklab, var(--primary) 5%, var(--background));
+  --color-purple-100: color-mix(in oklab, var(--primary) 10%, var(--background));
+  --color-purple-200: color-mix(in oklab, var(--primary) 20%, var(--background));
+  --color-purple-300: color-mix(in oklab, var(--primary) 35%, var(--background));
+  --color-purple-400: color-mix(in oklab, var(--primary) 55%, var(--background));
+  --color-purple-500: color-mix(in oklab, var(--primary) 75%, var(--background));
+  --color-purple-600: var(--primary);
+  --color-purple-700: color-mix(in oklab, var(--primary) 88%, var(--foreground));
+  --color-purple-800: color-mix(in oklab, var(--primary) 72%, var(--foreground));
+  --color-purple-900: color-mix(in oklab, var(--primary) 56%, var(--foreground));
+  --color-purple-950: color-mix(in oklab, var(--primary) 40%, var(--foreground));
 }
 
 :root {
@@ -143,6 +187,30 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+}
+
+/* Bridge older fixed gray utilities into the shared semantic palette in dark mode. */
+@layer utilities {
+  .dark .bg-white { background-color: var(--card); }
+  .dark .bg-gray-50,
+  .dark .bg-gray-100 { background-color: var(--muted); }
+  .dark .bg-gray-200,
+  .dark .bg-gray-300 { background-color: var(--accent); }
+  .dark .bg-gray-800 { background-color: var(--card); }
+  .dark .bg-gray-900 { background-color: var(--background); }
+  .dark .text-gray-900,
+  .dark .text-gray-800,
+  .dark .text-gray-700 { color: var(--foreground); }
+  .dark .text-gray-600,
+  .dark .text-gray-500,
+  .dark .text-gray-400,
+  .dark .text-gray-300 { color: var(--muted-foreground); }
+  .dark .border-gray-100,
+  .dark .border-gray-200,
+  .dark .border-gray-300 { border-color: var(--border); }
+  .dark .hover\:bg-gray-50:hover,
+  .dark .hover\:bg-gray-100:hover,
+  .dark .hover\:bg-gray-200:hover { background-color: var(--muted); }
 }
 
 @media (-webkit-min-device-pixel-ratio: 1.5), (min-resolution: 144dpi) {

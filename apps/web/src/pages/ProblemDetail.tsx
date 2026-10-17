@@ -171,22 +171,22 @@ export default function ProblemDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading problem...</div>
+      <div role="status" aria-live="polite" className="flex h-64 items-center justify-center text-muted-foreground">
+        Loading problem…
       </div>
     )
   }
 
   if (error || !problem) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-        {error || 'Problem not found'}
+      <div role="alert" aria-live="assertive" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-destructive">
+        {error || 'Problem not found'}{error && <button type="button" onClick={() => { setLoading(true); loadProblem(); }} className="ml-3 font-semibold underline underline-offset-2">Try again</button>}
       </div>
     )
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl space-y-4 pb-10">
       <Link to="/algorank" className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
         <ChevronLeft className="w-4 h-4" />
         Back to problems
@@ -210,7 +210,7 @@ export default function ProblemDetail() {
           </div>
           <button
             onClick={() => navigate(`/algorank/problems/${id}/solve`)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
           >
             <Code2 className="w-4 h-4" />
             Solve
@@ -222,10 +222,10 @@ export default function ProblemDetail() {
           <button
             onClick={toggleLike}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-colors ${
-              liked ? 'bg-blue-50 text-blue-600 border-blue-200' : 'text-gray-600 border-gray-300 hover:bg-gray-50'
+              liked ? 'bg-primary/5 text-primary border-primary/15' : 'text-gray-600 border-gray-300 hover:bg-gray-50'
             }`}
           >
-            <ThumbsUp className={`w-4 h-4 ${liked ? 'fill-blue-600' : ''}`} />
+            <ThumbsUp className={`w-4 h-4 ${liked ? 'fill-primary' : ''}`} />
             {likesCount} {likesCount === 1 ? 'Like' : 'Likes'}
           </button>
           <button
@@ -310,14 +310,15 @@ export default function ProblemDetail() {
           <form onSubmit={addComment} className="flex gap-2 mb-6">
             <input
               type="text"
+              aria-label="Write a comment"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Share your approach..."
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <button
               type="submit"
-              className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
             >
               <Send className="w-4 h-4" />
               Post
@@ -331,7 +332,7 @@ export default function ProblemDetail() {
               {comments.map((comment) => (
                 <div key={comment.id} className="border border-gray-100 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-semibold">
+                    <div className="w-7 h-7 bg-primary/10 rounded-full flex items-center justify-center text-primary text-xs font-semibold">
                       {(comment.user.name || 'U').charAt(0).toUpperCase()}
                     </div>
                     <span className="text-sm font-medium text-gray-900">{comment.user.name || 'User'}</span>
@@ -359,7 +360,7 @@ export default function ProblemDetail() {
                       value={replyTexts[comment.id] || ''}
                       onChange={(e) => setReplyTexts((prev) => ({ ...prev, [comment.id]: e.target.value }))}
                       placeholder="Reply..."
-                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <button
                       onClick={() => addReply(comment.id)}
@@ -385,7 +386,7 @@ export default function ProblemDetail() {
             </div>
 
             {playlistMsg && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-2 rounded-lg text-sm mb-3">
+              <div className="bg-primary/5 border border-primary/15 text-primary px-3 py-2 rounded-lg text-sm mb-3">
                 {playlistMsg}
               </div>
             )}
@@ -397,7 +398,7 @@ export default function ProblemDetail() {
                   <span className="text-sm font-medium text-gray-800">{playlist.title}</span>
                   <button
                     onClick={() => addToPlaylist(playlist.id)}
-                    className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors"
+                    className="text-xs px-2.5 py-1 bg-primary/5 text-primary rounded hover:bg-primary/10 transition-colors"
                   >
                     Add
                   </button>
@@ -411,11 +412,11 @@ export default function ProblemDetail() {
                 value={newPlaylistTitle}
                 onChange={(e) => setNewPlaylistTitle(e.target.value)}
                 placeholder="New playlist name"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <button
                 onClick={createPlaylist}
-                className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Create
               </button>

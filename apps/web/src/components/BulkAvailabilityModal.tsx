@@ -119,7 +119,7 @@ const BulkAvailabilityModal = ({ isOpen, onClose, onAdd }: BulkAvailabilityModal
                   const newSlots = slots.map(s => ({ ...s, timezone: e.target.value }));
                   setSlots(newSlots);
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {commonTimezones.map(tz => (
                   <option key={tz} value={tz}>{tz}</option>
@@ -136,7 +136,7 @@ const BulkAvailabilityModal = ({ isOpen, onClose, onAdd }: BulkAvailabilityModal
                       type="date"
                       value={slot.date}
                       onChange={(e) => updateSlot(index, 'date', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                   <div className="w-32">
@@ -145,7 +145,7 @@ const BulkAvailabilityModal = ({ isOpen, onClose, onAdd }: BulkAvailabilityModal
                       type="time"
                       value={slot.startTime}
                       onChange={(e) => updateSlot(index, 'startTime', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                   <div className="w-32">
@@ -154,7 +154,7 @@ const BulkAvailabilityModal = ({ isOpen, onClose, onAdd }: BulkAvailabilityModal
                       type="time"
                       value={slot.endTime}
                       onChange={(e) => updateSlot(index, 'endTime', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                   {slots.length > 1 && (
@@ -182,7 +182,7 @@ const BulkAvailabilityModal = ({ isOpen, onClose, onAdd }: BulkAvailabilityModal
               <button
                 type="button"
                 onClick={generateRecurring}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-colors"
               >
                 <Calendar className="w-4 h-4" />
                 Generate Weekly (4 weeks)
@@ -200,7 +200,7 @@ const BulkAvailabilityModal = ({ isOpen, onClose, onAdd }: BulkAvailabilityModal
               <button
                 type="submit"
                 disabled={adding}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {adding ? 'Adding...' : `Add ${slots.length} Slot${slots.length > 1 ? 's' : ''}`}

@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell, Moon, Sun, Map, ShieldCheck } from 'lucide-react'
+import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell, Moon, Sun, Map, ShieldCheck, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useState } from 'react'
 import NotificationsPanel from './NotificationsPanel'
 import { DarkModeProvider, useDarkMode } from '../contexts/DarkModeContext'
@@ -8,6 +8,7 @@ function LayoutContent() {
   const location = useLocation()
   const navigate = useNavigate()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('careerhub-sidebar-collapsed') === 'true')
   const { darkMode, toggleDarkMode } = useDarkMode()
 
   const handleLogout = () => {
@@ -17,6 +18,14 @@ function LayoutContent() {
   }
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const settingsPath = user.role === 'MENTOR' ? '/mentor/settings' : '/settings'
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      localStorage.setItem('careerhub-sidebar-collapsed', String(!collapsed))
+      return !collapsed
+    })
+  }
 
   const navItems = user.role === 'MENTOR'
     ? [
@@ -36,35 +45,46 @@ function LayoutContent() {
     ]
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className="min-h-screen bg-background text-foreground">
       {/* Navbar */}
-      <nav className={`border-b px-4 py-3 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <nav className="border-b border-border bg-card px-4 py-3 text-card-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">CH</span>
-            </div>
-            <span className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>CareerHub</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSidebar}
+              className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary md:inline-flex"
+              title={sidebarCollapsed ? 'Expand dashboard sidebar' : 'Collapse dashboard sidebar'}
+              aria-label={sidebarCollapsed ? 'Expand dashboard sidebar' : 'Collapse dashboard sidebar'}
+              aria-expanded={!sidebarCollapsed}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </button>
+            <Link to={user.role === 'MENTOR' ? '/mentor' : '/'} className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold">CH</span>
+              </div>
+              <span className="text-xl font-bold text-foreground">CareerHub</span>
+            </Link>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-4">
             <button
               onClick={toggleDarkMode}
-              className="text-gray-600 hover:text-gray-900"
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
               title="Toggle dark mode"
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <button
               onClick={() => setNotificationsOpen(true)}
-              className="relative text-gray-600 hover:text-gray-900"
+              className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
               title="Notifications"
             >
               <Bell className="w-5 h-5" />
             </button>
-            <span className={`hidden text-sm sm:inline ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Welcome, {user.name || 'User'}</span>
+            <span className="hidden text-sm text-muted-foreground sm:inline">Welcome, {user.name || 'User'}</span>
             <button
               onClick={handleLogout}
-              className={darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
               title="Logout"
             >
               <LogOut className="w-5 h-5" />
@@ -75,7 +95,7 @@ function LayoutContent() {
 
       <div className="flex min-w-0 flex-col md:flex-row">
         {/* Sidebar */}
-        <aside className={`hidden w-64 shrink-0 border-r min-h-screen p-4 md:block ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <aside className={`hidden min-h-screen shrink-0 border-r border-border bg-card p-3 text-card-foreground transition-[width] duration-200 md:flex md:flex-col ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
           <nav className="space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon
@@ -85,27 +105,45 @@ function LayoutContent() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                  title={sidebarCollapsed ? item.label : undefined}
+                  className={`flex items-center rounded-lg py-3 transition-colors ${sidebarCollapsed ? 'justify-center px-2' : 'space-x-3 px-4'} ${
                     isActive
-                      ? 'bg-blue-50 text-blue-600'
-                      : darkMode
-                      ? 'text-gray-300 hover:bg-gray-700'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary/5 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  {!sidebarCollapsed && <span>{item.label}</span>}
                 </Link>
               )
             })}
           </nav>
+          <div className="mt-auto space-y-2 border-t border-border pt-3">
+            <button
+              onClick={toggleSidebar}
+              className={`flex w-full items-center rounded-lg py-3 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary ${sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-4'}`}
+              title={sidebarCollapsed ? 'Expand dashboard sidebar' : 'Collapse dashboard sidebar'}
+              aria-label={sidebarCollapsed ? 'Expand dashboard sidebar' : 'Collapse dashboard sidebar'}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+              {!sidebarCollapsed && <span>Collapse sidebar</span>}
+            </button>
+            <Link
+              to={settingsPath}
+              title={sidebarCollapsed ? 'Settings' : undefined}
+              className={`flex items-center rounded-lg py-3 transition-colors ${sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} ${location.pathname === settingsPath ? 'bg-primary/5 text-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
+            >
+              <Settings className="h-5 w-5" />
+              {!sidebarCollapsed && <span>Settings</span>}
+            </Link>
+          </div>
         </aside>
 
         <nav
           aria-label="Primary navigation"
-          className={`flex min-w-0 gap-1 overflow-x-auto border-b p-2 md:hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+          className="flex min-w-0 gap-1 overflow-x-auto border-b border-border bg-card p-2 text-card-foreground md:hidden"
         >
-          {navItems.map((item) => {
+          {[...navItems, { path: settingsPath, label: 'Settings', icon: Settings }].map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.path
 
@@ -115,10 +153,8 @@ function LayoutContent() {
                 to={item.path}
                 className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
                   isActive
-                    ? 'bg-blue-50 text-blue-600'
-                    : darkMode
-                    ? 'text-gray-300 hover:bg-gray-700'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-primary/5 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 <Icon className="size-4" />

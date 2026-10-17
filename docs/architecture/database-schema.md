@@ -8,7 +8,10 @@ This document describes the PostgreSQL database schema for the CareerHub platfor
 ### Technology Stack
 - **Database**: PostgreSQL
 - **ORM**: Prisma
-- **Connection**: Local development via Docker container
+- **Connection**: Local development via Docker; production on Neon Postgres
+- **Application connection variable**: `DATABASE_URL` (Neon pooled hostname with `-pooler`)
+- **Migration connection variable**: `DIRECT_URL` (Neon unpooled hostname)
+- **TLS**: Require SSL in both Neon connection URLs
 - **Default Port**: 5432
 - **Database Name**: careerhub (development)
 
@@ -75,6 +78,25 @@ Account roles are `USER`, `ADMIN`, and `MENTOR`. Mentor accounts are assigned on
 - One-to-many with InterviewSession
 
 ## Resume Builder Models
+
+### PRI Snapshot Model
+Daily Placement Readiness Index score history for each user.
+
+```prisma
+model PriSnapshot {
+  id             String   @id @default(uuid())
+  userId         String
+  score          Float
+  interviewScore Float
+  algoRankScore  Float
+  resumeScore    Float
+  snapshotDate   DateTime @db.Date @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+```
+
+The API calculates the weighted PRI from the three 0–100 component inputs and stores one snapshot per user per UTC day. Re-saving that day updates its snapshot. The dashboard's sample trend is display-only; user history is based on explicitly entered scores until the interview and ATS modules provide saved scores.
 
 ### Resume Model
 User resume data with template and content information.

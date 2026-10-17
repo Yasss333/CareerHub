@@ -41,6 +41,7 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
 
   // Practice state
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
@@ -65,16 +66,18 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
     setShowModelAnswer(false);
     setSummary(null);
     setLoading(false);
+    setError('');
     onClose();
   };
 
   // Generate questions
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/ai/interview/generate', {
+      const response = await fetch('/api/ai/interview/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,18 +86,18 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
         body: JSON.stringify({ resumeId, count, types, focus, jobDescription })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setQuestions(data.questions || []);
-        setCurrentIndex(0);
-        setAnswers([]);
-        setUserAnswer("");
-      } else {
-        alert('Failed to generate questions');
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message || data?.error || 'Could not generate questions. Please try again.');
+      if (!Array.isArray(data?.questions) || data.questions.length === 0) {
+        throw new Error('No interview questions were returned. Please try again.');
       }
+      setQuestions(data.questions);
+      setCurrentIndex(0);
+      setAnswers([]);
+      setUserAnswer("");
     } catch (err) {
       console.error('Question generation error:', err);
-      alert('Error generating questions');
+      setError(err instanceof Error ? err.message : 'Could not generate questions. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -107,10 +110,11 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
       return;
     }
     const currentQ = questions[currentIndex];
+    setError('');
     setEvaluating(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/ai/interview/evaluate', {
+      const response = await fetch('/api/ai/interview/evaluate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,28 +123,25 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
         body: JSON.stringify({ resumeId, question: currentQ.question, answer: userAnswer })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Save evaluation
-        const newAnswers = [...answers, { question: currentQ.question, userAnswer, evaluation: data }];
-        setAnswers(newAnswers);
-        setUserAnswer("");
-        setEvaluating(false);
-        // If it's the last question, go to summary
-        if (currentIndex === questions.length - 1) {
-          generateSummary(newAnswers);
-        } else {
-          setCurrentIndex(currentIndex + 1);
-        }
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message || data?.error || 'Could not evaluate your answer. Please try again.');
+      if (!data?.rating || !data?.feedback || !data?.modelAnswer) {
+        throw new Error('The evaluation response was incomplete. Please try again.');
+      }
+      const newAnswers = [...answers, { question: currentQ.question, userAnswer, evaluation: data }];
+      setAnswers(newAnswers);
+      setUserAnswer("");
+      // If it's the last question, go to summary
+      if (currentIndex === questions.length - 1) {
+        generateSummary(newAnswers);
       } else {
-        alert('Failed to evaluate answer');
-        setEvaluating(false);
+        setCurrentIndex(currentIndex + 1);
       }
     } catch (err) {
       console.error('Answer evaluation error:', err);
-      alert('Error evaluating answer');
-      setEvaluating(false);
+      setError(err instanceof Error ? err.message : 'Could not evaluate your answer. Please try again.');
     }
+    setEvaluating(false);
   };
 
   // Generate summary
@@ -182,6 +183,7 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
     setUserAnswer("");
     setSummary(null);
     setLoading(false);
+    setError('');
   };
 
   if (!isOpen) return null;
@@ -201,10 +203,11 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
           </div>
           <form onSubmit={handleStart}>
             <div className="space-y-4">
+              {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Number of Questions</label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary"
                   value={count}
                   onChange={(e) => setCount(Number(e.target.value))}
                 >
@@ -251,7 +254,8 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
               </div>
               <button
                 type="submit"
-                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                disabled={types.length === 0}
+                className="w-full py-3 bg-primary text-white rounded-lg hover:opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 🚀 Start Interview
               </button>
@@ -267,7 +271,7 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div className="bg-white rounded-2xl shadow-2xl p-12">
-          <LoaderCircle className="w-12 h-12 text-blue-500 animate-spin mx-auto" />
+          <LoaderCircle className="w-12 h-12 text-primary animate-spin mx-auto" />
           <p className="mt-4 text-gray-600 font-medium">Generating interview questions...</p>
         </div>
       </div>
@@ -292,9 +296,9 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
               <p className="text-sm text-gray-600">Average Rating</p>
               <p className="text-3xl font-bold text-green-700">{summary.average}/5</p>
             </div>
-            <div className="bg-blue-50 p-4 rounded-xl text-center">
+            <div className="bg-primary/5 p-4 rounded-xl text-center">
               <p className="text-sm text-gray-600">Strong Answers</p>
-              <p className="text-3xl font-bold text-blue-700">{summary.strengths}</p>
+              <p className="text-3xl font-bold text-primary">{summary.strengths}</p>
             </div>
             <div className="bg-orange-50 p-4 rounded-xl text-center">
               <p className="text-sm text-gray-600">Need Improvement</p>
@@ -307,23 +311,23 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
                 <p className="font-semibold">Q{i+1}: {item.question}</p>
                 <p className="text-sm text-gray-700 mt-1"><strong>Your Answer:</strong> {item.userAnswer}</p>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${item.evaluation.rating === 'Excellent' ? 'bg-green-100 text-green-800' : item.evaluation.rating === 'Good' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${item.evaluation.rating === 'Excellent' ? 'bg-green-100 text-green-800' : item.evaluation.rating === 'Good' ? 'bg-primary/10 text-primary' : 'bg-orange-100 text-orange-800'}`}>
                     {item.evaluation.rating}
                   </span>
                   <span className="text-sm text-gray-600">{item.evaluation.feedback}</span>
                 </div>
                 <details className="mt-2">
-                  <summary className="text-sm text-blue-600 cursor-pointer">💡 Model Answer</summary>
+                  <summary className="text-sm text-primary cursor-pointer">💡 Model Answer</summary>
                   <p className="text-sm text-gray-700 mt-1">{item.evaluation.modelAnswer}</p>
                 </details>
               </div>
             ))}
           </div>
           <div className="flex flex-wrap gap-3 mt-6 justify-end">
-            <button onClick={copyReport} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+            <button onClick={copyReport} className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition flex items-center gap-2">
               <Copy className="w-4 h-4" /> Copy Report
             </button>
-            <button onClick={retry} className="px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition">
+            <button onClick={retry} className="px-4 py-2 border border-primary/30 text-primary rounded-lg hover:bg-primary/5 transition">
               🔄 Retry
             </button>
             <button onClick={resetModal} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition">
@@ -361,17 +365,19 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
             <div>
               <p className="font-semibold text-gray-700">Interviewer:</p>
               <p className="text-gray-800 text-lg">{currentQ.question}</p>
-              <span className="inline-block mt-2 px-2 py-0.5 bg-purple-100 text-purple-800 text-xs rounded-full capitalize">{currentQ.category}</span>
+              <span className="inline-block mt-2 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full capitalize">{currentQ.category}</span>
             </div>
           </div>
         </div>
+
+        {error && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         {/* Answer input */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">💬 Your Answer:</label>
           <textarea
             rows={6}
-            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary outline-none resize-none"
             placeholder="Type your answer here..."
             value={userAnswer}
             onChange={(e) => setUserAnswer(e.target.value)}
@@ -384,7 +390,7 @@ const InterviewModal = ({ isOpen, onClose, resumeId }: InterviewModalProps) => {
           <button
             onClick={handleSubmitAnswer}
             disabled={evaluating || !userAnswer.trim()}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-primary text-white rounded-lg hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2"
           >
             {evaluating ? <LoaderCircle className="w-4 h-4 animate-spin" /> : "📤 Submit Answer"}
           </button>

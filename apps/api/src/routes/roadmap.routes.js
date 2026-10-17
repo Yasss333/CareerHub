@@ -3,11 +3,28 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import roadmapTemplates from '../templates/roadmap-templates.js';
 import { generatePersonalizedRoadmap, generateResources, customizeRoadmap } from '../libs/roadmap-ai.js';
+import { getFreeResourcesForTopics } from '../libs/roadmap-resources.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'careerhub-super-secret-jwt-key-2024';
+
+const hasResourceEntries = (resources) => {
+  if (Array.isArray(resources)) return resources.length > 0;
+  if (!resources || typeof resources !== 'object') return false;
+  return Object.values(resources).some((items) => Array.isArray(items) && items.length > 0);
+};
+
+const withMilestoneResources = (roadmap) => ({
+  ...roadmap,
+  milestones: roadmap.milestones.map((milestone) => ({
+    ...milestone,
+    resources: hasResourceEntries(milestone.resources)
+      ? milestone.resources
+      : getFreeResourcesForTopics(milestone.topics?.length ? milestone.topics : [milestone.title])
+  }))
+});
 
 const authenticate = (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -79,7 +96,7 @@ router.get('/', authenticate, async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json({ success: true, roadmaps });
+    res.json({ success: true, roadmaps: roadmaps.map(withMilestoneResources) });
   } catch (error) {
     console.error('Error fetching roadmaps:', error);
     res.status(500).json({ error: 'Failed to fetch roadmaps' });
@@ -106,7 +123,7 @@ router.get('/:id', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    res.json({ success: true, roadmap });
+    res.json({ success: true, roadmap: withMilestoneResources(roadmap) });
   } catch (error) {
     console.error('Error fetching roadmap:', error);
     res.status(500).json({ error: 'Failed to fetch roadmap' });
@@ -405,7 +422,9 @@ router.post('/generate', authenticate, async (req, res) => {
           description: milestone.description || '',
           order: milestone.order,
           topics: milestone.topics || [],
-          resources: milestone.resources || []
+          resources: hasResourceEntries(milestone.resources)
+            ? milestone.resources
+            : getFreeResourcesForTopics(milestone.topics?.length ? milestone.topics : [milestone.title])
         }
       });
     }
@@ -430,7 +449,7 @@ router.post('/generate', authenticate, async (req, res) => {
 // Generate AI resources for a topic
 router.post('/:id/resources', authenticate, async (req, res) => {
   try {
-    const { topic } = req.body;
+    const { topic, milestoneId } = req.body;
 
     if (!topic) {
       return res.status(400).json({ error: 'Topic is required' });
@@ -448,15 +467,33 @@ router.post('/:id/resources', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const resources = await generateResources(topic, roadmap.skillLevel);
+    if (milestoneId) {
+      const milestone = await prisma.roadmapMilestone.findFirst({
+        where: { id: milestoneId, roadmapId: roadmap.id }
+      });
 
-    // Update roadmap with resources
-    const updated = await prisma.roadmap.update({
-      where: { id: req.params.id },
-      data: { resources }
-    });
+      if (!milestone) {
+        return res.status(404).json({ error: 'Roadmap milestone not found' });
+      }
 
-    res.json({ success: true, resources });
+      const resourceTopics = [milestone.title, ...(Array.isArray(milestone.topics) ? milestone.topics : [])];
+      const resources = await generateResources(resourceTopics.join(', ') || topic, roadmap.skillLevel);
+
+      await prisma.roadmapMilestone.update({
+        where: { id: milestoneId },
+        data: { resources }
+      });
+
+      return res.json({ success: true, resources });
+    } else {
+      const resources = await generateResources(topic, roadmap.skillLevel);
+      await prisma.roadmap.update({
+        where: { id: req.params.id },
+        data: { resources }
+      });
+
+      return res.json({ success: true, resources });
+    }
   } catch (error) {
     console.error('Error generating resources:', error);
     res.status(500).json({ error: 'Failed to generate resources' });

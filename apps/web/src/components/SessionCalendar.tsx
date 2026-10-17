@@ -56,7 +56,7 @@ const SessionCalendar = ({ sessions, onSessionClick }: SessionCalendarProps) => 
       <div className="relative w-full h-full">
         <div className={`absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1`}>
           {hasUpcoming && (
-            <div className="w-2 h-2 rounded-full bg-blue-500" title="Upcoming session" />
+            <div className="w-2 h-2 rounded-full bg-primary/50" title="Upcoming session" />
           )}
           {hasCompleted && (
             <div className="w-2 h-2 rounded-full bg-green-500" title="Completed session" />
@@ -76,7 +76,7 @@ const SessionCalendar = ({ sessions, onSessionClick }: SessionCalendarProps) => 
       case 'rejected': return 'bg-red-50 text-red-700 border-red-200';
       case 'completed': return 'bg-green-50 text-green-700 border-green-200';
       case 'cancelled': return 'bg-gray-50 text-gray-700 border-gray-200';
-      case 'started': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'started': return 'bg-primary/5 text-primary border-primary/15';
       default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
@@ -98,7 +98,7 @@ const SessionCalendar = ({ sessions, onSessionClick }: SessionCalendarProps) => 
         </h2>
         <div className="flex items-center gap-2 text-sm">
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
+            <div className="w-2 h-2 rounded-full bg-primary/50" />
             <span className="text-gray-600">Upcoming</span>
           </div>
           <div className="flex items-center gap-1">
@@ -195,7 +195,7 @@ const SessionCalendar = ({ sessions, onSessionClick }: SessionCalendarProps) => 
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          className="p-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                         >
                           <Video className="w-4 h-4" />
                         </a>

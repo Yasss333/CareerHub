@@ -1,9 +1,10 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  ChartNoAxesCombined,
   CalendarClock,
   CheckCircle2,
   Code2,
@@ -26,6 +27,17 @@ import {
 } from '../components/ui/card'
 
 const DashboardDonutChart = lazy(() => import('../components/dashboard/DashboardDonutChart'))
+const PRITrendChart = lazy(() => import('../components/dashboard/PRITrendChart'))
+const samplePriComponents = { interviewScore: 70, algoRankScore: 80, resumeScore: 60, score: 72.5 }
+
+interface PriSnapshot {
+  id: string
+  score: number
+  interviewScore: number
+  algoRankScore: number
+  resumeScore: number
+  snapshotDate: string
+}
 
 interface ResumeRecord {
   id: string
@@ -60,6 +72,7 @@ interface Submission {
 }
 
 interface RankingStats {
+  name?: string | null
   totalProblemsSolved: number
   acceptanceRate: number
   currentStreak: number
@@ -68,6 +81,7 @@ interface RankingStats {
 }
 
 interface DashboardStats {
+  name: string
   resumesCount: number
   resumesCompleted: number
   problemsSolved: number
@@ -94,6 +108,7 @@ interface SessionChartEntry {
 }
 
 const initialStats: DashboardStats = {
+  name: '',
   resumesCount: 0,
   resumesCompleted: 0,
   problemsSolved: 0,
@@ -117,6 +132,8 @@ const chartColors = [
 
 const widgetOptions = [
   { key: 'metrics', label: 'Career statistics' },
+  { key: 'readiness', label: 'Placement Readiness Index' },
+  { key: 'priTrend', label: 'PRI history chart' },
   { key: 'problemProgress', label: 'AlgoRank progress' },
   { key: 'mentorship', label: 'Mentorship activity' },
   { key: 'performance', label: 'AlgoRank performance' },
@@ -131,6 +148,8 @@ type WidgetVisibility = Record<WidgetKey, boolean>
 
 const defaultWidgetVisibility: WidgetVisibility = {
   metrics: true,
+  readiness: true,
+  priTrend: true,
   problemProgress: true,
   mentorship: true,
   performance: true,
@@ -219,6 +238,10 @@ export default function Dashboard() {
   const [recentSessions, setRecentSessions] = useState<MentorshipSession[]>([])
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([])
   const [recentResumes, setRecentResumes] = useState<ResumeRecord[]>([])
+  const [priSnapshots, setPriSnapshots] = useState<PriSnapshot[]>([])
+  const [priInput, setPriInput] = useState({ interviewScore: '', algoRankScore: '', resumeScore: '' })
+  const [savingPri, setSavingPri] = useState(false)
+  const [priSaveError, setPriSaveError] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [widgetVisibility, setWidgetVisibility] = useState(defaultWidgetVisibility)
@@ -234,13 +257,14 @@ export default function Dashboard() {
         throw new Error('Your session has expired. Please sign in again.')
       }
 
-      const [resumes, sessions, rankingResponse, problemsResponse, submissionsResponse] =
+      const [resumes, sessions, rankingResponse, problemsResponse, submissionsResponse, priHistory] =
         await Promise.all([
           fetchJson<ResumeRecord[]>('/api/resume', token),
           fetchJson<MentorshipSession[]>('/api/connect/sessions', token),
           fetchJson<{ user: RankingStats }>('/api/algorank/ranking/me', token),
           fetchJson<{ pagination?: { totalProblems?: number } }>('/api/algorank/problems?limit=1', token),
           fetchJson<{ submissions?: Submission[] }>('/api/algorank/submissions?limit=5', token),
+          fetchJson<{ snapshots: PriSnapshot[] }>('/api/dashboard/pri/history?days=30', token),
         ])
 
       const userStats = rankingResponse.user
@@ -255,6 +279,7 @@ export default function Dashboard() {
       ).length
 
       setStats({
+        name: userStats.name || '',
         resumesCount: resumes.length,
         resumesCompleted: resumes.filter(isResumeComplete).length,
         problemsSolved: userStats.totalProblemsSolved,
@@ -271,6 +296,7 @@ export default function Dashboard() {
       setRecentSessions(sessions.slice(0, 5))
       setRecentSubmissions(submissionsResponse.submissions ?? [])
       setRecentResumes(resumes.slice(0, 5))
+      setPriSnapshots(priHistory.snapshots ?? [])
     } catch (fetchError) {
       console.error('Failed to fetch dashboard data:', fetchError)
       setError(fetchError instanceof Error ? fetchError.message : 'Unable to load dashboard data.')
@@ -340,44 +366,102 @@ export default function Dashboard() {
 
   const metricCards = [
     {
+      title: 'Problems solved',
+      value: stats.problemsSolved,
+      detail: `${stats.totalProblems > 0 ? Math.round((stats.problemsSolved / stats.totalProblems) * 100) : 0}% of problem library`,
+      icon: Code2,
+      iconClass: 'bg-primary/10 text-primary',
+      href: '/algorank',
+    },
+    {
       title: 'Resumes created',
       value: stats.resumesCount,
       detail: `${stats.resumesCompleted} with profile details`,
       icon: FileText,
-      iconClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+      iconClass: 'bg-primary/10 text-primary dark:text-primary',
       href: '/resume',
-    },
-    {
-      title: 'Problems solved',
-      value: stats.problemsSolved,
-      detail: `Rank ${stats.userRank > 0 ? `#${stats.userRank}` : 'not ranked yet'}`,
-      icon: Code2,
-      iconClass: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
-      href: '/algorank',
     },
     {
       title: 'Mentorship sessions',
       value: stats.connectSessions,
       detail: `${stats.completedSessions} completed`,
       icon: UsersRound,
-      iconClass: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+      iconClass: 'bg-primary/10 text-primary',
       href: '/connect/sessions',
     },
     {
-      title: 'Upcoming sessions',
-      value: stats.upcomingSessions,
-      detail: 'Pending or accepted',
-      icon: CalendarClock,
+      title: 'Current streak',
+      value: `${stats.currentStreak} days`,
+      detail: 'Keep your practice consistent',
+      icon: Flame,
       iconClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-      href: '/connect/sessions',
+      href: '/algorank',
     },
   ]
 
   const performanceMetrics = [
     { title: 'Acceptance rate', value: `${stats.acceptanceRate.toFixed(1)}%`, icon: Target },
-    { title: 'Current streak', value: `${stats.currentStreak} days`, icon: Flame },
     { title: 'Ranking score', value: stats.rankingScore.toFixed(0), icon: Trophy },
   ]
+
+  const isPriSample = priSnapshots.length === 0
+  const priTrendData = useMemo(() => {
+    if (priSnapshots.length > 0) {
+      return priSnapshots.map((snapshot) => ({
+        date: new Date(snapshot.snapshotDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        score: snapshot.score,
+      }))
+    }
+
+    const sampleScores = [62, 64, 63, 66, 67, 69, samplePriComponents.score]
+    return sampleScores.map((score, index) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (sampleScores.length - 1 - index))
+      return {
+        date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        score,
+      }
+    })
+  }, [priSnapshots])
+
+  const currentPri = priSnapshots.at(-1) ?? samplePriComponents
+
+  const savePriSnapshot = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setSavingPri(true)
+    setPriSaveError('')
+
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/dashboard/pri/today', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          interviewScore: Number(priInput.interviewScore),
+          algoRankScore: Number(priInput.algoRankScore),
+          resumeScore: Number(priInput.resumeScore),
+        }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as { error?: string }
+        throw new Error(payload.error || 'Could not save today’s PRI inputs.')
+      }
+
+      const payload = await response.json() as { snapshot: PriSnapshot }
+      setPriSnapshots((current) => [
+        ...current.filter((item) => item.snapshotDate.slice(0, 10) !== payload.snapshot.snapshotDate.slice(0, 10)),
+        payload.snapshot,
+      ].sort((left, right) => left.snapshotDate.localeCompare(right.snapshotDate)))
+      setPriInput({ interviewScore: '', algoRankScore: '', resumeScore: '' })
+    } catch (saveError) {
+      setPriSaveError(saveError instanceof Error ? saveError.message : 'Could not save today’s PRI inputs.')
+    } finally {
+      setSavingPri(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -409,10 +493,10 @@ export default function Dashboard() {
     <div className="mx-auto w-full max-w-screen-2xl space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="mb-2 text-sm font-medium text-primary">Career overview</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="mt-2 text-muted-foreground">
-            Your progress across resumes, problem solving, and mentorship.
+          <p className="mb-2 text-sm font-medium text-primary">CareerHub · Student overview</p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Welcome back{stats.name ? `, ${stats.name}` : ''}!</h1>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            Your placement preparation, all in one place.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -450,18 +534,11 @@ export default function Dashboard() {
             </div>
           </details>
           <Link
-            to="/resume"
+            to="/roadmaps/builder"
             className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
             <Plus className="size-4" aria-hidden="true" />
-            Create resume
-          </Link>
-          <Link
-            to="/algorank"
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-muted"
-          >
-            Explore AlgoRank
-            <ArrowUpRight className="size-4" aria-hidden="true" />
+            Build a roadmap
           </Link>
         </div>
       </header>
@@ -471,7 +548,7 @@ export default function Dashboard() {
           const Icon = metric.icon
           return (
             <Link key={metric.title} to={metric.href} className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:shadow-md">
+              <Card className="h-full border-primary/10 bg-gradient-to-br from-card to-primary/5 shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-md">
                 <CardContent className="flex items-start justify-between gap-4 p-5">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
@@ -487,6 +564,113 @@ export default function Dashboard() {
           )
         })}
       </section>}
+
+      <section aria-label="Placement Readiness Index" className="grid gap-4 xl:grid-cols-5">
+        {widgetVisibility.priTrend && <Card className="xl:col-span-3">
+          <CardHeader className="flex-row items-start justify-between space-y-0">
+            <div>
+              <CardTitle>PRI trend</CardTitle>
+              <CardDescription className="mt-1">Placement Readiness Index across days.</CardDescription>
+            </div>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${isPriSample ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>
+              {isPriSample ? 'Sample preview' : 'Your history'}
+            </span>
+          </CardHeader>
+          <CardContent>
+            <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/50" />}>
+              <PRITrendChart data={priTrendData} />
+            </Suspense>
+          </CardContent>
+        </Card>}
+
+        {widgetVisibility.readiness && <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-card via-card to-primary/10 xl:col-span-2">
+          <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-12 size-48 rounded-full bg-primary/10 blur-3xl" />
+          <CardHeader className="relative">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle>Placement readiness</CardTitle>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${isPriSample ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>
+                {isPriSample ? 'Demo data' : 'Updated today'}
+              </span>
+            </div>
+            <CardDescription>One score across interview, coding, and resume preparation.</CardDescription>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="flex items-center gap-5">
+              <div
+                className="grid size-32 shrink-0 place-items-center rounded-full p-2"
+                style={{ background: `conic-gradient(var(--primary) 0 ${currentPri.score}%, var(--muted) ${currentPri.score}% 100%)` }}
+                role="img"
+                aria-label={`${isPriSample ? 'Sample' : 'Your'} Placement Readiness Index ${currentPri.score} out of 100`}
+              >
+                <div className="grid size-full place-items-center rounded-full bg-card">
+                  <div className="text-center">
+                    <p className="text-3xl font-semibold tabular-nums">{currentPri.score.toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">out of 100</p>
+                  </div>
+                </div>
+              </div>
+              <div className="min-w-0 flex-1 space-y-3">
+                {[
+                  { label: 'Interview', value: currentPri.interviewScore, weight: '45%' },
+                  { label: 'AlgoRank', value: currentPri.algoRankScore, weight: '40%' },
+                  { label: 'Resume', value: currentPri.resumeScore, weight: '15%' },
+                ].map((component) => (
+                  <div key={component.label}>
+                    <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                      <span className="text-muted-foreground">{component.label} <span className="text-primary">{component.weight}</span></span>
+                      <span className="font-semibold tabular-nums">{component.value}</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${component.value}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="mt-5 rounded-lg bg-muted/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+              {isPriSample ? 'Preview only. These sample values are not your assessment.' : 'Manually entered component scores · PRI = 0.45 × interview + 0.40 × AlgoRank + 0.15 × resume.'}
+            </p>
+            <details className="group mt-4 rounded-lg border border-border bg-background/70 p-3">
+              <summary className="cursor-pointer list-none text-sm font-medium text-primary">
+                Enter today’s assessment scores
+              </summary>
+              <form onSubmit={savePriSnapshot} className="mt-4 space-y-3">
+                {[
+                  { key: 'interviewScore', label: 'Interview score (45%)' },
+                  { key: 'algoRankScore', label: 'AlgoRank percentile (40%)' },
+                  { key: 'resumeScore', label: 'Resume ATS score (15%)' },
+                ].map((field) => (
+                  <label key={field.key} className="block text-xs font-medium text-muted-foreground">
+                    {field.label}
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      required
+                      value={priInput[field.key as keyof typeof priInput]}
+                      onChange={(event) => setPriInput((current) => ({ ...current, [field.key]: event.target.value }))}
+                      className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      placeholder="0–100"
+                    />
+                  </label>
+                ))}
+                {priSaveError && <p role="alert" className="text-xs text-destructive">{priSaveError}</p>}
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Scores are entered by you and are not verified. Saving records today’s PRI and replaces the sample preview.
+                </p>
+                <button
+                  type="submit"
+                  disabled={savingPri}
+                  className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {savingPri ? 'Saving…' : 'Save today’s PRI'}
+                </button>
+              </form>
+            </details>
+          </CardContent>
+        </Card>}
+      </section>
 
       {(widgetVisibility.problemProgress || widgetVisibility.mentorship) && <section aria-label="Progress and activity" className="grid gap-4 xl:grid-cols-3">
         {widgetVisibility.problemProgress && <Card className="xl:col-span-2">
@@ -720,10 +904,11 @@ export default function Dashboard() {
           <CardTitle>Quick actions</CardTitle>
           <CardDescription>Pick up where you want to make progress.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {[
             { icon: FileText, label: 'Create a resume', description: 'Build or update your profile', href: '/resume' },
             { icon: BookOpen, label: 'Practice problems', description: 'Continue with AlgoRank', href: '/algorank' },
+            { icon: ChartNoAxesCombined, label: 'View roadmaps', description: 'Plan your next learning steps', href: '/roadmaps' },
             { icon: UsersRound, label: 'Find a mentor', description: 'Get guidance from alumni', href: '/connect' },
             { icon: CalendarClock, label: 'View sessions', description: 'Manage your mentorships', href: '/connect/sessions' },
           ].map((action) => {

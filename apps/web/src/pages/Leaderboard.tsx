@@ -77,7 +77,7 @@ export default function Leaderboard() {
         <button
           onClick={() => setTimeFilter('all')}
           className={`px-4 py-2 rounded-lg transition-colors ${
-            timeFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            timeFilter === 'all' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
           All Time
@@ -85,7 +85,7 @@ export default function Leaderboard() {
         <button
           onClick={() => setTimeFilter('weekly')}
           className={`px-4 py-2 rounded-lg transition-colors ${
-            timeFilter === 'weekly' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            timeFilter === 'weekly' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
           This Week
@@ -93,7 +93,7 @@ export default function Leaderboard() {
         <button
           onClick={() => setTimeFilter('monthly')}
           className={`px-4 py-2 rounded-lg transition-colors ${
-            timeFilter === 'monthly' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            timeFilter === 'monthly' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
           This Month
@@ -102,10 +102,10 @@ export default function Leaderboard() {
 
       {/* User's Rank */}
       {userRank && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="bg-primary/5 border border-primary/15 rounded-lg p-4 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+              <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-bold text-lg">
                 {userRank.rank}
               </div>
               <div>
@@ -224,7 +224,7 @@ export default function Leaderboard() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
                   <div className="flex items-center justify-center gap-1">
-                    <Award className="w-4 h-4 text-purple-500" />
+                    <Award className="w-4 h-4 text-primary" />
                     <span className="font-semibold">{entry.rankingScore.toFixed(0)}</span>
                   </div>
                 </td>

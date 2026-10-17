@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Briefcase, GraduationCap, FileText, User, Download, Eye, EyeOff, Sparkles, ArrowLeft, Share2, MessageSquare, FileQuestion } from 'lucide-react';
+import { Briefcase, GraduationCap, FileText, User, Download, Eye, EyeOff, Sparkles, ArrowLeft, MessageSquare, FileQuestion } from 'lucide-react';
 import ModernTemplate from '../components/templates/ModernTemplate';
 import ClassicTemplate from '../components/templates/ClassicTemplate';
 import MinimalTemplate from '../components/templates/MinimalTemplate';
@@ -13,6 +13,7 @@ import ProfessionalSummaryForm from '../components/ProfessionalSummaryForm';
 import ATSModal from '../components/ATSModal';
 import CoverLetterModal from '../components/CoverLetterModal';
 import InterviewModal from '../components/InterviewModal';
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 
 interface PersonalInfo {
   fullName?: string;
@@ -74,11 +75,13 @@ const ResumeBuilder = () => {
     projects: [],
     skills: [],
     template: 'modern',
-    accentColor: '#3B82F6',
+    accentColor: '#9333EA',
     public: false,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [saveFeedback, setSaveFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
   const [currentStep, setCurrentStep] = useState(0);
@@ -87,6 +90,17 @@ const ResumeBuilder = () => {
   const [showInterviewModal, setShowInterviewModal] = useState(false);
 
   const token = localStorage.getItem('token');
+  const hasResumeContent = Boolean(
+    resumeData.title.trim()
+    || Object.values(resumeData.personalInfo).some(Boolean)
+    || resumeData.professionSummary.trim()
+    || resumeData.experience.length
+    || resumeData.education.length
+    || resumeData.projects.length
+    || resumeData.skills.length
+  );
+  const isDirty = savedSnapshot === null ? hasResumeContent : savedSnapshot !== JSON.stringify(resumeData);
+  useUnsavedChangesWarning(isDirty && !isSaving);
 
   useEffect(() => {
     if (resumeId && token) {
@@ -97,26 +111,30 @@ const ResumeBuilder = () => {
   const loadExistingResume = async (id: string) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:5000/api/resume/${id}`, {
+      const response = await fetch(`/api/resume/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
       if (data) {
         setResumeData(data);
+        setSavedSnapshot(JSON.stringify(data));
+        setSaveFeedback(null);
       }
     } catch (error) {
       console.error('Error loading resume:', error);
+      setSaveFeedback({ type: 'error', message: 'Could not load this resume. Check your connection and try again.' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const saveResume = async (showNotice = true): Promise<boolean> => {
+  const saveResume = async (): Promise<boolean> => {
     try {
       setIsSaving(true);
+      setSaveFeedback(null);
       const url = resumeId 
-        ? `http://localhost:5000/api/resume/${resumeId}`
-        : 'http://localhost:5000/api/resume';
+        ? `/api/resume/${resumeId}`
+        : '/api/resume';
       
       const method = resumeId ? 'PUT' : 'POST';
       
@@ -129,22 +147,23 @@ const ResumeBuilder = () => {
         body: JSON.stringify(resumeData),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       
       if (response.ok) {
+        setSavedSnapshot(JSON.stringify(resumeData));
+        setSaveFeedback({ type: 'success', message: 'All changes saved.' });
         if (!resumeId && data.id) {
           navigate(`/resume-builder/${data.id}`);
         }
-        if (showNotice) alert('Resume saved successfully!');
         return true;
       } else {
         const message = data?.error || data?.message || 'Failed to save resume';
-        alert(message);
+        setSaveFeedback({ type: 'error', message });
         return false;
       }
     } catch (error) {
       console.error('Error saving resume:', error);
-      alert('Error saving resume');
+      setSaveFeedback({ type: 'error', message: 'Could not save your resume. Check your connection and try again.' });
       return false;
     } finally {
       setIsSaving(false);
@@ -162,14 +181,14 @@ const ResumeBuilder = () => {
 
   const advanceStep = async () => {
     if (currentStep >= steps.length - 1) return;
-    const saved = await saveResume(false);
+    const saved = await saveResume();
     if (saved) setCurrentStep((step) => Math.min(step + 1, steps.length - 1));
   };
 
   const downloadPDF = async () => {
     try {
       const url = resumeId 
-        ? `http://localhost:5000/api/pdf/${resumeId}/pdf`
+        ? `/api/pdf/${resumeId}/pdf`
         : null;
       
       if (!url) {
@@ -206,7 +225,7 @@ const ResumeBuilder = () => {
   };
 
   const getTemplateComponent = () => {
-    const templates: Record<string, any> = {
+    const templates: Record<string, typeof ModernTemplate> = {
       modern: ModernTemplate,
       classic: ClassicTemplate,
       minimal: MinimalTemplate,
@@ -251,29 +270,31 @@ const ResumeBuilder = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-xl text-muted-foreground">Loading your resume…</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-200 rounded-full">
+            <button onClick={() => {
+              if (!isDirty || window.confirm('Leave this resume? Your unsaved changes will be lost.')) navigate('/');
+            }} aria-label="Back to dashboard" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
               <ArrowLeft className="w-6 h-6" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Resume Builder</h1>
-              <p className="text-gray-600">Create your professional resume</p>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Resume Builder</h1>
+              <p className="text-muted-foreground">Build a polished resume one focused step at a time.</p>
             </div>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setShowPreview(!showPreview)}
-              className="hidden md:flex px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 items-center gap-2"
+              className="hidden items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted md:flex"
             >
               {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               {showPreview ? 'Hide Preview' : 'Show Preview'}
@@ -281,7 +302,28 @@ const ResumeBuilder = () => {
           </div>
         </div>
 
-        <nav aria-label="Resume sections" className="mb-6 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+      {(isSaving || saveFeedback || isDirty) && (
+        <div
+          role={saveFeedback?.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+          className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm ${
+            saveFeedback?.type === 'error'
+              ? 'border-destructive/25 bg-destructive/5 text-destructive'
+              : 'border-border bg-card text-muted-foreground'
+          }`}
+        >
+          <span className={`size-2 shrink-0 rounded-full ${isSaving ? 'animate-pulse bg-primary' : saveFeedback?.type === 'error' ? 'bg-destructive' : isDirty ? 'bg-warning' : 'bg-success'}`} />
+          {isSaving
+            ? 'Saving your resume…'
+            : saveFeedback?.type === 'error'
+              ? saveFeedback.message
+              : isDirty
+                ? 'You have unsaved changes.'
+                : saveFeedback?.message || 'All changes saved.'}
+        </div>
+      )}
+
+        <nav aria-label="Resume sections" className="mb-6 rounded-2xl border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4">
           <ol className="grid grid-cols-3 gap-2 md:grid-cols-6">
             {steps.map((step, index) => (
               <li key={step.title}>
@@ -291,10 +333,10 @@ const ResumeBuilder = () => {
                   aria-current={currentStep === index ? 'step' : undefined}
                   className={`w-full rounded-lg px-2 py-2 text-left transition-colors ${
                     currentStep === index
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-primary text-white'
                       : index < currentStep
-                        ? 'bg-blue-50 text-blue-800 hover:bg-blue-100'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-primary/5 text-primary hover:bg-primary/10'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
                   <span className="block text-xs font-medium">Step {index + 1}</span>
@@ -303,9 +345,9 @@ const ResumeBuilder = () => {
               </li>
             ))}
           </ol>
-          <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
-            <p className="text-sm text-gray-600">{steps[currentStep].description}</p>
-            <p className="shrink-0 text-xs text-gray-500">{currentStep + 1} of {steps.length}</p>
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+            <p className="text-sm text-muted-foreground">{steps[currentStep].description}</p>
+            <p className="shrink-0 text-xs text-muted-foreground">{currentStep + 1} of {steps.length}</p>
           </div>
           <div className="mt-3 flex gap-2 md:hidden" role="tablist" aria-label="Editor and preview">
             <button
@@ -313,7 +355,7 @@ const ResumeBuilder = () => {
               role="tab"
               aria-selected={mobileView === 'editor'}
               onClick={() => setMobileView('editor')}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${mobileView === 'editor' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${mobileView === 'editor' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
             >
               Edit section
             </button>
@@ -322,7 +364,7 @@ const ResumeBuilder = () => {
               role="tab"
               aria-selected={mobileView === 'preview'}
               onClick={() => { setShowPreview(true); setMobileView('preview'); }}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium ${mobileView === 'preview' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+              className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${mobileView === 'preview' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
             >
               Preview
             </button>
@@ -332,29 +374,29 @@ const ResumeBuilder = () => {
         <div className={`grid ${showPreview ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
           {/* Form Section */}
           <div className={`min-w-0 space-y-6 ${mobileView === 'preview' ? 'hidden md:block' : ''}`}>
-            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 0 ? '' : 'hidden'}`}>
+            <div className={`rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm ${currentStep === 0 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5" />
                 Basic Information
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Resume Title</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Resume Title</label>
                   <input
                     type="text"
                     value={resumeData.title}
                     onChange={(e) => setResumeData({ ...resumeData, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="My Resume"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Template</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Template</label>
                     <select
                       value={resumeData.template}
                       onChange={(e) => setResumeData({ ...resumeData, template: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="modern">Modern</option>
                       <option value="classic">Classic</option>
@@ -363,27 +405,27 @@ const ResumeBuilder = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Accent Color</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Accent Color</label>
                     <input
                       type="color"
                       value={resumeData.accentColor}
                       onChange={(e) => setResumeData({ ...resumeData, accentColor: e.target.value })}
-                      className="w-full h-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full h-10 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 0 ? '' : 'hidden'}`}>
+            <div className={`rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm ${currentStep === 0 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <User className="w-5 h-5" />
                 Personal Information
               </h2>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Full Name</label>
                     <input
                       type="text"
                       value={resumeData.personalInfo.fullName || ''}
@@ -391,12 +433,12 @@ const ResumeBuilder = () => {
                         ...resumeData,
                         personalInfo: { ...resumeData.personalInfo, fullName: e.target.value }
                       })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="John Doe"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Profession</label>
                     <input
                       type="text"
                       value={resumeData.personalInfo.profession || ''}
@@ -404,14 +446,14 @@ const ResumeBuilder = () => {
                         ...resumeData,
                         personalInfo: { ...resumeData.personalInfo, profession: e.target.value }
                       })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="Software Engineer"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Email</label>
                     <input
                       type="email"
                       value={resumeData.personalInfo.email || ''}
@@ -419,12 +461,12 @@ const ResumeBuilder = () => {
                         ...resumeData,
                         personalInfo: { ...resumeData.personalInfo, email: e.target.value }
                       })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="john@example.com"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Phone</label>
                     <input
                       type="tel"
                       value={resumeData.personalInfo.phone || ''}
@@ -432,14 +474,14 @@ const ResumeBuilder = () => {
                         ...resumeData,
                         personalInfo: { ...resumeData.personalInfo, phone: e.target.value }
                       })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="+1 234 567 890"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Location</label>
                     <input
                       type="text"
                       value={resumeData.personalInfo.location || ''}
@@ -447,12 +489,12 @@ const ResumeBuilder = () => {
                         ...resumeData,
                         personalInfo: { ...resumeData.personalInfo, location: e.target.value }
                       })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="San Francisco, CA"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">LinkedIn</label>
                     <input
                       type="url"
                       value={resumeData.personalInfo.linkedin || ''}
@@ -460,13 +502,13 @@ const ResumeBuilder = () => {
                         ...resumeData,
                         personalInfo: { ...resumeData.personalInfo, linkedin: e.target.value }
                       })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="https://linkedin.com/in/johndoe"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Website</label>
                   <input
                     type="url"
                     value={resumeData.personalInfo.website || ''}
@@ -474,14 +516,14 @@ const ResumeBuilder = () => {
                       ...resumeData,
                       personalInfo: { ...resumeData.personalInfo, website: e.target.value }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="https://johndoe.com"
                   />
                 </div>
               </div>
             </div>
 
-            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 4 ? '' : 'hidden'}`}>
+            <div className={`rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm ${currentStep === 4 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5" />
                 Professional Summary
@@ -492,7 +534,7 @@ const ResumeBuilder = () => {
               />
             </div>
 
-            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 4 ? '' : 'hidden'}`}>
+            <div className={`rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm ${currentStep === 4 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Briefcase className="w-5 h-5" />
                 Skills
@@ -500,7 +542,7 @@ const ResumeBuilder = () => {
               <SkillsForm data={resumeData.skills} onChange={(skills) => setResumeData({ ...resumeData, skills })} />
             </div>
 
-            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 1 ? '' : 'hidden'}`}>
+            <div className={`rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm ${currentStep === 1 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Briefcase className="w-5 h-5" />
                 Work Experience
@@ -508,7 +550,7 @@ const ResumeBuilder = () => {
               <ExperienceForm data={resumeData.experience} onChange={(experience) => setResumeData({ ...resumeData, experience })} />
             </div>
 
-            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 2 ? '' : 'hidden'}`}>
+            <div className={`rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm ${currentStep === 2 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <GraduationCap className="w-5 h-5" />
                 Education
@@ -516,7 +558,7 @@ const ResumeBuilder = () => {
               <EducationForm data={resumeData.education} onChange={(education) => setResumeData({ ...resumeData, education })} />
             </div>
 
-            <div className={`bg-white rounded-lg shadow p-6 ${currentStep === 3 ? '' : 'hidden'}`}>
+            <div className={`rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm ${currentStep === 3 ? '' : 'hidden'}`}>
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5" />
                 Projects
@@ -525,9 +567,9 @@ const ResumeBuilder = () => {
             </div>
 
             {currentStep === steps.length - 1 && (
-              <div className="rounded-lg border border-blue-100 bg-blue-50 p-5">
-                <h2 className="text-lg font-semibold text-gray-900">Review your resume</h2>
-                <p className="mt-1 text-sm text-gray-600">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-5">
+                <h2 className="text-lg font-semibold text-foreground">Review your resume</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
                   Check the live preview, then save or export your resume. You can return to any section above.
                 </p>
                 <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
@@ -540,7 +582,7 @@ const ResumeBuilder = () => {
                     ['Skills', resumeData.skills.length > 0],
                   ].map(([label, complete]) => (
                     <p key={String(label)}>
-                      <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-medium ${complete ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-medium ${complete ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
                         {complete ? 'Added' : 'Not added'}
                       </span>
                       {label}
@@ -555,7 +597,7 @@ const ResumeBuilder = () => {
                 <button
                   type="button"
                   onClick={() => setCurrentStep((step) => Math.max(step - 1, 0))}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                  className="rounded-lg border border-border px-4 py-2 text-foreground transition-colors hover:bg-muted"
                 >
                   Previous
                 </button>
@@ -565,9 +607,9 @@ const ResumeBuilder = () => {
                   type="button"
                   onClick={() => void advanceStep()}
                   disabled={isSaving}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-md bg-primary px-4 py-2 text-white hover:opacity-90 disabled:opacity-50"
                 >
-                  {isSaving ? 'Saving...' : 'Save and continue'}
+                  {isSaving ? 'Saving…' : 'Save and continue'}
                 </button>
               )}
             </div>
@@ -576,14 +618,14 @@ const ResumeBuilder = () => {
               <button
                 onClick={() => void saveResume()}
                 disabled={isSaving}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
               >
-                {isSaving ? 'Saving...' : 'Save Resume'}
+                {isSaving ? 'Saving…' : isDirty ? 'Save changes' : 'Resume saved'}
               </button>
               <button
                 onClick={downloadPDF}
                 disabled={!resumeId}
-                className="flex-1 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-green-300 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-foreground transition-colors hover:bg-muted disabled:opacity-50"
               >
                 <Download className="w-4 h-4" />
                 Print/Download PDF
@@ -594,7 +636,7 @@ const ResumeBuilder = () => {
               <button
                 onClick={() => setShowATSModal(true)}
                 disabled={!resumeId}
-                className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 disabled:bg-purple-300 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
               >
                 <FileQuestion className="w-4 h-4" />
                 ATS Analysis
@@ -602,7 +644,7 @@ const ResumeBuilder = () => {
               <button
                 onClick={() => setShowCoverLetterModal(true)}
                 disabled={!resumeId}
-                className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 disabled:bg-pink-300 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
               >
                 <MessageSquare className="w-4 h-4" />
                 Cover Letter
@@ -610,7 +652,7 @@ const ResumeBuilder = () => {
               <button
                 onClick={() => setShowInterviewModal(true)}
                 disabled={!resumeId}
-                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 disabled:bg-orange-300 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
               >
                 <Sparkles className="w-4 h-4" />
                 Interview Prep
@@ -621,9 +663,9 @@ const ResumeBuilder = () => {
           {/* Preview Section */}
           {showPreview && (
             <div className={`min-w-0 space-y-6 md:sticky md:top-4 md:self-start ${mobileView === 'editor' ? 'hidden md:block' : ''}`}>
-              <div className="bg-white rounded-lg shadow p-4 md:p-6">
+              <div className="rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm md:p-6">
                 <h2 className="text-xl font-semibold mb-4">Live preview</h2>
-                <div className="border rounded-lg p-4 min-h-[500px] overflow-auto">
+                <div className="min-h-[500px] overflow-auto rounded-xl border border-border bg-background p-4">
                   {getTemplateComponent()}
                 </div>
               </div>

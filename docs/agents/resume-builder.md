@@ -18,6 +18,9 @@ The Resume Builder allows users to create, edit, and manage professional resumes
 - **Routing**: React Router v7
 - **Editor flow**: Six guided sections (Profile, Experience, Education, Projects, Skills, Review); continuing saves the current resume
 - **Preview behavior**: Live side-by-side preview on desktop and an editor/preview switch on mobile
+- **App accent color**: Use the shared purple `primary` design tokens for editor controls; the resume document accent remains user-selectable.
+- **Editor UX**: Keep the six-step flow visible, use a persistent desktop preview and an editor/preview switch on mobile, and build editor surfaces with shared semantic theme tokens.
+- **Save feedback**: Show saving, saved, unsaved, and error states inline; avoid interrupting normal saves with browser alerts.
 - **Advanced Components**: ExperienceForm, EducationForm, ProjectForm, SkillsForm, ProfessionalSummaryForm
 - **AI Modals**: ATSModal, CoverLetterModal, InterviewModal
 
@@ -53,7 +56,7 @@ The Resume Builder allows users to create, edit, and manage professional resumes
 - `apps/web/src/components/ProjectForm.tsx` - Projects form with AI enhancement
 - `apps/web/src/components/SkillsForm.tsx` - Skills management form
 - `apps/web/src/components/ProfessionalSummaryForm.tsx` - Professional summary with AI enhancement
-- `apps/api/src/routes/ai.routes.js` - Authenticated AI enhancement endpoints with model fallback and configuration errors
+- `apps/api/src/routes/ai.routes.js` - Authenticated resume AI endpoints with model fallback, concise context-specific rewrites, structured interview responses, and configuration errors
 - `apps/web/src/components/ATSModal.tsx` - ATS analysis modal
 - `apps/web/src/components/CoverLetterModal.tsx` - Cover letter generation modal
 - `apps/web/src/components/InterviewModal.tsx` - Mock interview practice modal

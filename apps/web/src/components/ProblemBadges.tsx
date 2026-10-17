@@ -18,7 +18,7 @@ const statusClass: Record<string, string> = {
   Accepted: 'bg-green-50 text-green-700 border-green-200',
   'Wrong Answer': 'bg-red-50 text-red-700 border-red-200',
   'Runtime Error': 'bg-orange-50 text-orange-700 border-orange-200',
-  'Piston Error': 'bg-purple-50 text-purple-700 border-purple-200',
+  'Piston Error': 'bg-primary/5 text-primary border-primary/15',
 }
 
 export function SubmissionStatusBadge({ status }: { status: string }) {

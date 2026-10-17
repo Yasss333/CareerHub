@@ -40,7 +40,6 @@ const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
     setGeneratingIndex(index);
     setAiError('');
     const project = data[index];
-    const prompt = `enhance this project description "${project.description}" for project "${project.name}" of type "${project.type}"`;
 
     try {
       const token = localStorage.getItem('token');
@@ -50,7 +49,12 @@ const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ userContent: prompt })
+        body: JSON.stringify({
+          entryType: 'project',
+          title: project.name || '',
+          projectType: project.type || '',
+          description: project.description || '',
+        })
       });
 
       const result = await response.json().catch(() => null);
@@ -113,7 +117,7 @@ const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
                   <input
                     type="text"
                     onChange={(e) => updateProject(index, "name", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={project.name || ""}
                     placeholder="Enter project name"
                   />
@@ -124,7 +128,7 @@ const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
                   <input
                     type="text"
                     onChange={(e) => updateProject(index, "type", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={project.type || ""}
                     placeholder="Enter Type (MERN, DevOps, AppDev, etc.)"
                   />
@@ -132,17 +136,20 @@ const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
 
                 <div className="space-y-2">
                   <div className="flex justify-between mt-3">
-                    <h3 className="text-sm font-medium text-gray-700">Project Description</h3>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700">Project Description</h3>
+                      <p className="text-xs text-gray-500">Keep it focused: up to 2 short bullets.</p>
+                    </div>
                     <button
                       onClick={() => generateDescription(index)}
-                      disabled={generatingIndex === index || !project.name}
-                      className="flex bg-gradient-to-br from-purple-50 to-purple-400 text-purple-700 hover:bg-purple-200 transition-colors disabled:opacity-50 text-sm rounded-lg px-3 py-1 border-transparent hover:border-purple-950"
+                      disabled={generatingIndex === index || !project.name || !project.description?.trim()}
+                      className="flex bg-gradient-to-br from-primary/10 to-primary/20 text-primary hover:bg-primary/15 transition-colors disabled:opacity-50 text-sm rounded-lg px-3 py-1 border-transparent hover:border-primary"
                     >
                       {generatingIndex === index ? (
                         <Loader2 className="w-3 h-3 animate-spin" />
                       ) : (
                         <>
-                          AI Enhance
+                          Shorten & improve
                           <Sparkles className="w-4 h-4 ml-2 mt-0.5" />
                         </>
                       )}
@@ -151,7 +158,7 @@ const ProjectForm = ({ data, onChange }: ProjectFormProps) => {
                   <textarea
                     rows={4}
                     onChange={(e) => updateProject(index, "description", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Enter a concise and clear description, also add live demo links if possible"
                     value={project.description || ""}
                   />

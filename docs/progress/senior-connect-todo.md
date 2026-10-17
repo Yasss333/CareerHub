@@ -165,3 +165,8 @@ This document tracks the implementation progress of the Senior Connect module mi
 - Role enum replaced with User model + isAlumniMentor capability
 - API routes refactored from legacy Express structure to shared CareerHub patterns
 - Frontend rebuilt with React 18 + TypeScript
+
+## Follow-up: core interaction feedback
+- [x] Add retryable mentor and session loading errors without hiding page context
+- [x] Announce loading and save feedback for mentor profile workflows
+- [x] Warn before leaving mentor profile edits that have not been saved

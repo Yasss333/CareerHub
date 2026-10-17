@@ -151,3 +151,29 @@ All legacy Resume Builder features have been successfully migrated and adapted t
 - [x] Responsive design
 - [x] Error handling and loading states
 - [x] Form validation
+## Follow-up: Shared CareerHub theme
+- [x] Align Resume Builder UI controls and primary actions with the shared purple design tokens
+- [x] Keep per-resume template accent selection available with a purple default
+- [x] Verify frontend typecheck and production build
+
+## Follow-up: Platform-wide UI consistency
+- [x] Align shared application shell surfaces, navigation, and controls with semantic theme tokens
+- [x] Improve Resume Builder editor hierarchy, responsive controls, and resume list feedback
+- [x] Replace legacy brand-only blue/indigo accents on active modules with shared primary tokens
+- [x] Show save progress and success/failure inline in the editor
+- [x] Use the valid OpenRouter model ID consistently for resume AI requests
+- [x] Avoid treating a brand-new, untouched resume as dirty
+- [x] Warn before leaving a resume with unsaved edits
+
+## Follow-up: Concise AI enhancement for resume entries
+- [x] Give work experience and projects context-specific concise AI rewrites
+- [x] Keep the AI enhancement action available in both sections and clarify its purpose
+- [x] Remove the arbitrary 12,000-character AI input limit and accept larger request bodies
+
+## Follow-up: Mock interview reliability
+- [x] Align question-generation instructions with the JSON response format
+- [x] Show actionable generation and evaluation errors in the modal
+
+## Follow-up: Mock interview provider response handling
+- [x] Normalize common AI response shapes into usable interview questions
+- [x] Restart the API so the corrected handler is live

@@ -76,33 +76,17 @@ export default function SeniorConnect() {
     return config[availability] || 'bg-gray-50 text-gray-700'
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading seniors...</div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-        {error}
-      </div>
-    )
-  }
-
   return (
-    <div>
+    <div className="mx-auto max-w-7xl space-y-6 pb-10">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Senior Connect</h1>
-          <p className="text-gray-600 mt-2">Find and connect with experienced professionals</p>
+          <h1 className="text-3xl font-bold tracking-tight text-card-foreground">Senior Connect</h1>
+          <p className="mt-2 text-muted-foreground">Find and connect with experienced professionals</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
             to="/connect/profile"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-colors"
           >
             <Award className="w-4 h-4" />
             Mentor Profile
@@ -122,16 +106,18 @@ export default function SeniorConnect() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
+            aria-label="Search mentors"
             placeholder="Search by name, company, or expertise..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <select 
+          aria-label="Filter mentors by domain"
           value={domain} 
           onChange={(e) => setDomain(e.target.value)} 
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">All Domains</option>
           <option value="Backend">Backend</option>
@@ -142,14 +128,18 @@ export default function SeniorConnect() {
         </select>
       </div>
 
-      {seniors.length === 0 ? (
+      {error && <div role="alert" aria-live="assertive" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span>{error}</span><button type="button" onClick={fetchSeniors} className="font-semibold underline underline-offset-2">Try again</button></div>}
+
+      {loading ? (
+        <div role="status" aria-live="polite" className="flex min-h-64 items-center justify-center text-muted-foreground">Loading mentors…</div>
+      ) : seniors.length === 0 && error ? null : seniors.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
           <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No mentors found</h3>
           <p className="text-gray-600">Try adjusting your search filters</p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4" aria-live="polite" aria-label={`${seniors.length} mentors found`}>
           {seniors.map((senior) => (
             <div
               key={senior.id}
@@ -184,7 +174,7 @@ export default function SeniorConnect() {
                 <p className="mt-2 text-sm text-gray-600 line-clamp-2">{senior.bio}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   {senior.expertise.slice(0, 4).map((skill) => (
-                    <span key={skill} className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700">
+                    <span key={skill} className="text-xs px-2 py-1 rounded-full bg-primary/5 text-primary">
                       {skill}
                     </span>
                   ))}
@@ -202,7 +192,7 @@ export default function SeniorConnect() {
               </div>
               <button
                 onClick={() => navigate(`/connect/booking/${senior.id}`)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Book Session
               </button>

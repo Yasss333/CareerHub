@@ -8,11 +8,6 @@ interface Resume {
   template: string
   public: boolean
   createdAt: string
-  skills: string[]
-  personalInfo: any
-  experience: any[]
-  projects: any[]
-  education: any[]
 }
 
 export default function ResumeList() {
@@ -35,7 +30,7 @@ export default function ResumeList() {
         return
       }
 
-      const response = await fetch('http://localhost:5000/api/resume', {
+      const response = await fetch('/api/resume', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -58,7 +53,7 @@ export default function ResumeList() {
   const handleCreateResume = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:5000/api/resume', {
+      const response = await fetch('/api/resume', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +62,7 @@ export default function ResumeList() {
         body: JSON.stringify({
           title: 'Untitled-resume',
           template: 'modern',
-          accentColor: '#3B82F6',
+          accentColor: '#9333EA',
           professionSummary: '',
           skills: [],
           personalInfo: {},
@@ -102,7 +97,7 @@ export default function ResumeList() {
 
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`http://localhost:5000/api/resume/${id}`, {
+      const response = await fetch(`/api/resume/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -123,7 +118,7 @@ export default function ResumeList() {
   const handleDuplicateResume = async (id: string) => {
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`http://localhost:5000/api/resume/${id}/duplicate`, {
+      const response = await fetch(`/api/resume/${id}/duplicate`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -145,26 +140,33 @@ export default function ResumeList() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading resumes...</div>
+        <div className="text-muted-foreground">Loading your resumes…</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-        {error}
+      <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-4 text-destructive">
+        <p>{error}</p>
+        <button onClick={() => { setError(''); setLoading(true); void fetchResumes(); }} className="mt-3 rounded-lg border border-current/20 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-destructive/10">
+          Try again
+        </button>
       </div>
     )
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Resume Builder</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-primary">YOUR CAREER TOOLKIT</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">Resume Builder</h1>
+          <p className="mt-2 text-muted-foreground">Create tailored resumes, review your drafts, and keep every version in one place.</p>
+        </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
         >
           <Plus className="w-5 h-5" />
           <span>Create Resume</span>
@@ -172,13 +174,13 @@ export default function ResumeList() {
       </div>
 
       {resumes.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No resumes yet</h3>
-          <p className="text-gray-600 mb-6">Create your first resume to get started</p>
+        <div className="rounded-2xl border border-dashed border-primary/30 bg-card px-6 py-14 text-center shadow-sm sm:px-12">
+          <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><FileText className="size-7" /></span>
+          <h3 className="text-xl font-semibold text-foreground">Start with your first resume</h3>
+          <p className="mx-auto mb-6 mt-2 max-w-md text-muted-foreground">Choose a template, add your experience, and preview your resume as you build it.</p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="rounded-lg bg-primary px-6 py-2.5 font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             Create Your First Resume
           </button>
@@ -186,36 +188,42 @@ export default function ResumeList() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {resumes.map((resume) => (
-            <div key={resume.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div key={resume.id} className="group rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md sm:p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{resume.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {resume.template} template • {resume.public ? 'Public' : 'Private'}
+                  <h3 className="text-lg font-semibold text-foreground">{resume.title || 'Untitled resume'}</h3>
+                  <p className="mt-1 text-sm capitalize text-muted-foreground">
+                    {resume.template} template · {resume.public ? 'Public' : 'Private'}
                   </p>
                 </div>
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleEditResume(resume.id)}
-                    className="text-gray-600 hover:text-blue-600 transition-colors"
+                    aria-label={`Edit ${resume.title || 'resume'}`}
+                    title="Edit resume"
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDuplicateResume(resume.id)}
-                    className="text-gray-600 hover:text-green-600 transition-colors"
+                    aria-label={`Duplicate ${resume.title || 'resume'}`}
+                    title="Duplicate resume"
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                   >
                     <Copy className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDeleteResume(resume.id)}
-                    className="text-gray-600 hover:text-red-600 transition-colors"
+                    aria-label={`Delete ${resume.title || 'resume'}`}
+                    title="Delete resume"
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="mt-6 border-t border-border pt-3 text-xs text-muted-foreground">
                 Created {new Date(resume.createdAt).toLocaleDateString()}
               </p>
             </div>
@@ -225,19 +233,19 @@ export default function ResumeList() {
 
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Create New Resume</h2>
-            <p className="text-gray-600 mb-6">A new resume will be created with default settings. You can customize it after creation.</p>
+          <div role="dialog" aria-modal="true" aria-labelledby="create-resume-title" className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xl">
+            <h2 id="create-resume-title" className="mb-2 text-xl font-semibold text-foreground">Create a new resume?</h2>
+            <p className="mb-6 text-muted-foreground">We’ll open a fresh draft with a live preview. You can tailor the content and template as you go.</p>
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="rounded-lg px-4 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateResume}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Create Resume
               </button>

@@ -112,7 +112,7 @@ export default function PlaylistDetail() {
               </p>
               <Link
                 to="/algorank"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Browse Problems
               </Link>
@@ -129,7 +129,7 @@ export default function PlaylistDetail() {
                       <div className="flex items-center gap-3 mb-2">
                         <Link
                           to={`/algorank/problems/${item.problem.id}`}
-                          className="text-lg font-semibold text-gray-900 hover:text-blue-600"
+                          className="text-lg font-semibold text-gray-900 hover:text-primary"
                         >
                           {item.problem.title}
                         </Link>

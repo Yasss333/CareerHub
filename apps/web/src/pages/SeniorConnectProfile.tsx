@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Save, Plus, Trash2, Calendar, Clock, X, Layers } from 'lucide-react'
 import BulkAvailabilityModal from '../components/BulkAvailabilityModal'
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 
 interface SeniorProfile {
   id: string
@@ -60,7 +61,7 @@ function TagInput({ value, onChange, placeholder }: {
       placeholder={placeholder}
       onChange={(e) => setText(e.target.value)}
       onBlur={handleBlur}
-      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
     />
   )
 }
@@ -91,6 +92,9 @@ export default function SeniorConnectProfile() {
     achievements: [] as string[],
     availability: 'available'
   })
+  const savedFormSnapshot = useRef(JSON.stringify(form))
+  const hasUnsavedChanges = JSON.stringify(form) !== savedFormSnapshot.current
+  useUnsavedChangesWarning(hasUnsavedChanges)
 
   const [newSlot, setNewSlot] = useState({ date: '', startTime: '', endTime: '' })
   const isApprovedMentor = profile?.user.isAlumniMentor && profile.user.mentorApprovalStatus === 'APPROVED'
@@ -112,7 +116,7 @@ export default function SeniorConnectProfile() {
       const data = await response.json()
       setProfile(data)
       setHasProfile(true)
-      setForm({
+      const loadedForm = {
         name: data.user?.name || '',
         avatar: data.user?.avatar || '',
         title: data.title || '',
@@ -125,7 +129,9 @@ export default function SeniorConnectProfile() {
         expertise: data.expertise || [],
         achievements: data.achievements || [],
         availability: data.availability || 'available'
-      })
+      }
+      setForm(loadedForm)
+      savedFormSnapshot.current = JSON.stringify(loadedForm)
     } catch (err) {
       console.error(err)
       setError('Failed to load your mentor profile.')
@@ -183,6 +189,7 @@ export default function SeniorConnectProfile() {
       setSuccess(result?.mentorApprovalStatus === 'PENDING'
         ? 'Mentor application submitted. Your profile will be visible after admin approval.'
         : 'Mentor profile saved successfully')
+      savedFormSnapshot.current = JSON.stringify(form)
       await fetchProfile()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile')
@@ -278,7 +285,7 @@ export default function SeniorConnectProfile() {
   if (loadingProfile) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading profile...</div>
+        <div role="status" aria-live="polite" className="text-muted-foreground">Loading your mentor profile…</div>
       </div>
     )
   }
@@ -286,7 +293,7 @@ export default function SeniorConnectProfile() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link to="/connect" className="text-gray-600 hover:text-gray-900 flex items-center gap-2">
+        <Link to="/connect" onClick={(event) => { if (hasUnsavedChanges && !window.confirm('Leave this page? Your unsaved profile changes will be lost.')) event.preventDefault(); }} className="text-muted-foreground hover:text-foreground flex items-center gap-2">
           <X className="w-4 h-4" />
           Back to Mentors
         </Link>
@@ -319,16 +326,16 @@ export default function SeniorConnectProfile() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+        <div role="alert" aria-live="assertive" className="bg-destructive/5 border border-destructive/30 text-destructive px-4 py-3 rounded-xl mb-6 flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">
+          <button type="button" onClick={() => setError('')} aria-label="Dismiss error" className="text-red-400 hover:text-red-600">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6">
+        <div role="status" aria-live="polite" className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl mb-6">
           {success}
         </div>
       )}
@@ -354,7 +361,7 @@ export default function SeniorConnectProfile() {
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
@@ -364,7 +371,7 @@ export default function SeniorConnectProfile() {
               value={form.avatar}
               onChange={(e) => setForm({ ...form, avatar: e.target.value })}
               placeholder="https://..."
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
@@ -375,7 +382,7 @@ export default function SeniorConnectProfile() {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="e.g., Senior Software Engineer"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
@@ -386,7 +393,7 @@ export default function SeniorConnectProfile() {
               value={form.company}
               onChange={(e) => setForm({ ...form, company: e.target.value })}
               placeholder="e.g., Tech Company"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
@@ -394,7 +401,7 @@ export default function SeniorConnectProfile() {
             <select
               value={form.domain}
               onChange={(e) => setForm({ ...form, domain: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Select domain</option>
               <option value="Backend">Backend</option>
@@ -412,7 +419,7 @@ export default function SeniorConnectProfile() {
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
               placeholder="e.g., Backend Engineer"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
@@ -422,7 +429,7 @@ export default function SeniorConnectProfile() {
               min={0}
               value={form.experience}
               onChange={(e) => setForm({ ...form, experience: parseInt(e.target.value) || 0 })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
@@ -432,7 +439,7 @@ export default function SeniorConnectProfile() {
               value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
               placeholder="e.g., Bengaluru, India"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
         </div>
@@ -444,7 +451,7 @@ export default function SeniorConnectProfile() {
             onChange={(e) => setForm({ ...form, bio: e.target.value })}
             rows={4}
             placeholder="Tell juniors about your experience and how you can help..."
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -475,7 +482,7 @@ export default function SeniorConnectProfile() {
           <select
             value={form.availability}
             onChange={(e) => setForm({ ...form, availability: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="available">Available</option>
             <option value="limited">Limited</option>
@@ -487,7 +494,7 @@ export default function SeniorConnectProfile() {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : hasProfile ? 'Save Profile' : 'Create Mentor Profile'}
@@ -499,12 +506,12 @@ export default function SeniorConnectProfile() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
+              <Calendar className="w-5 h-5 text-primary" />
               Availability Slots
             </h2>
             <button
               onClick={() => setShowBulkModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-colors"
             >
               <Layers className="w-4 h-4" />
               Bulk Add
@@ -519,7 +526,7 @@ export default function SeniorConnectProfile() {
                 required
                 value={newSlot.date}
                 onChange={(e) => setNewSlot({ ...newSlot, date: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div>
@@ -529,7 +536,7 @@ export default function SeniorConnectProfile() {
                 required
                 value={newSlot.startTime}
                 onChange={(e) => setNewSlot({ ...newSlot, startTime: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div>
@@ -539,14 +546,14 @@ export default function SeniorConnectProfile() {
                 required
                 value={newSlot.endTime}
                 onChange={(e) => setNewSlot({ ...newSlot, endTime: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div className="flex items-end">
               <button
                 type="submit"
                 disabled={addingSlot}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 w-full justify-center"
+                className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 w-full justify-center"
               >
                 <Plus className="w-4 h-4" />
                 {addingSlot ? 'Adding...' : 'Add Slot'}
@@ -575,7 +582,7 @@ export default function SeniorConnectProfile() {
                           className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${
                             slot.isBooked
                               ? 'bg-gray-50 border-gray-200 text-gray-400'
-                              : 'bg-blue-50 border-blue-200 text-blue-700'
+                              : 'bg-primary/5 border-primary/15 text-primary'
                           }`}
                         >
                           <Clock className="w-3.5 h-3.5" />
@@ -587,7 +594,7 @@ export default function SeniorConnectProfile() {
                           ) : (
                             <button
                               onClick={() => handleDeleteSlot(slot.id)}
-                              className="text-blue-400 hover:text-red-600"
+                              className="text-primary/50 hover:text-red-600"
                               title="Delete slot"
                             >
                               <Trash2 className="w-4 h-4" />

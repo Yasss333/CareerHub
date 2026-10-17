@@ -1,33 +1,56 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
-import Landing from './pages/Landing'
-import Dashboard from './pages/DashboardNew'
-import ResumeList from './pages/ResumeList'
-import ResumeBuilder from './pages/ResumeBuilder'
-import SeniorConnect from './pages/SeniorConnect'
-import SeniorConnectBooking from './pages/SeniorConnectBooking'
-import SeniorConnectSessions from './pages/SeniorConnectSessions'
-import SeniorConnectProfile from './pages/SeniorConnectProfile'
-import AlgoRank from './pages/AlgoRank'
-import ProblemDetail from './pages/ProblemDetail'
-import ProblemEditor from './pages/ProblemEditor'
-import ProblemCreate from './pages/ProblemCreate'
-import Submissions from './pages/Submissions'
-import AdminProblems from './pages/AdminProblems'
-import Leaderboard from './pages/Leaderboard'
-import Playlists from './pages/Playlists'
-import PlaylistDetail from './pages/PlaylistDetail'
-import RoadmapList from './pages/RoadmapList'
-import RoadmapBuilder from './pages/RoadmapBuilder'
-import RoadmapDetail from './pages/RoadmapDetail'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import AdminMentorApplications from './pages/AdminMentorApplications'
+
+const Landing = lazy(() => import('./pages/Landing'))
+const Dashboard = lazy(() => import('./pages/DashboardNew'))
+const ResumeList = lazy(() => import('./pages/ResumeList'))
+const ResumeBuilder = lazy(() => import('./pages/ResumeBuilder'))
+const SeniorConnect = lazy(() => import('./pages/SeniorConnect'))
+const SeniorConnectBooking = lazy(() => import('./pages/SeniorConnectBooking'))
+const SeniorConnectSessions = lazy(() => import('./pages/SeniorConnectSessions'))
+const SeniorConnectProfile = lazy(() => import('./pages/SeniorConnectProfile'))
+const AlgoRank = lazy(() => import('./pages/AlgoRank'))
+const ProblemDetail = lazy(() => import('./pages/ProblemDetail'))
+const ProblemEditor = lazy(() => import('./pages/ProblemEditor'))
+const ProblemCreate = lazy(() => import('./pages/ProblemCreate'))
+const Submissions = lazy(() => import('./pages/Submissions'))
+const AdminProblems = lazy(() => import('./pages/AdminProblems'))
+const Leaderboard = lazy(() => import('./pages/Leaderboard'))
+const Playlists = lazy(() => import('./pages/Playlists'))
+const PlaylistDetail = lazy(() => import('./pages/PlaylistDetail'))
+const RoadmapList = lazy(() => import('./pages/RoadmapList'))
+const RoadmapBuilder = lazy(() => import('./pages/RoadmapBuilder'))
+const RoadmapDetail = lazy(() => import('./pages/RoadmapDetail'))
+const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
+const AdminMentorApplications = lazy(() => import('./pages/AdminMentorApplications'))
+const Settings = lazy(() => import('./pages/Settings'))
+
+function AppRootLayout() {
+  const location = useLocation()
+
+  if (!localStorage.getItem('token') && location.pathname === '/') {
+    return <Landing />
+  }
+
+  return (
+    <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
+      <Layout />
+    </ProtectedRoute>
+  )
+}
 
 function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={(
+        <div role="status" className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+          <span className="mr-3 size-5 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
+          Loading CareerHub…
+        </div>
+      )}>
       <Routes>
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
@@ -39,13 +62,11 @@ function App() {
         }>
           <Route index element={<SeniorConnectSessions />} />
           <Route path="profile" element={<SeniorConnectProfile />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
-        <Route path="/" element={
-          <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
-            <Layout />
-          </ProtectedRoute>
-        }>
+        <Route path="/" element={<AppRootLayout />}>
           <Route index element={<Dashboard />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="resume" element={<ResumeList />} />
           <Route path="resume-builder/:resumeId" element={<ResumeBuilder />} />
           <Route path="connect" element={<SeniorConnect />} />
@@ -73,6 +94,7 @@ function App() {
         </Route>
         <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

@@ -1,140 +1,347 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle, Code, FileText, Users, Target, Zap, Star, Menu, X } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import '../landing.css';
+import {
+  ArrowRight,
+  Code,
+  FileText,
+  Users,
+  Target,
+  Menu,
+  X,
+  Trophy,
+  Terminal,
+  TrendingUp,
+  Bell,
+  Search,
+  Laptop,
+  GraduationCap,
+  ChevronDown,
+  Shield,
+  Cpu,
+  Brain,
+  Video,
+  CheckCircle2,
+  GitBranch
+} from 'lucide-react';
 
-export default function Landing() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+/* ─── Interfaces ─── */
+interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+}
 
-  const features = [
-    {
-      icon: Code,
-      title: 'AlgoRank - Coding Practice',
-      description: '500+ DSA problems with real-time execution. Track your progress on the leaderboard and climb the ranks.',
-      color: 'from-purple-500 to-indigo-500'
-    },
-    {
-      icon: FileText,
-      title: 'AI Resume Builder',
-      description: 'Create ATS-friendly resumes with AI suggestions. Export to PDF and get professional templates.',
-      color: 'from-blue-500 to-cyan-500'
-    },
-    {
-      icon: Users,
-      title: 'Senior Connect',
-      description: 'Book 1-on-1 mentorship sessions with industry professionals. Get personalized career guidance.',
-      color: 'from-orange-500 to-red-500'
-    },
-    {
-      icon: Target,
-      title: 'AI Mock Interviews',
-      description: 'Practice with AI-powered interviews. Get real-time feedback and improve your performance.',
-      color: 'from-green-500 to-emerald-500'
+/* ─── Constants ─── */
+const TECH_STACK_ITEMS = [
+  'FastAPI Microservices',
+  'Next.js 14 & React',
+  'PostgreSQL 15',
+  'ViT-Base Vision Transformer',
+  'Wav2Vec2-XLSR-53',
+  'DistilRoBERTa Sentiment',
+  'MTCNN Face Detection',
+  'FaceNet 512-D Embeddings',
+  'Piston Isolated Sandbox',
+  'WebRTC & Jitsi Core',
+  'SpaCy NLP Engine',
+  'Docker Containers'
+];
+
+const FAQS: FaqItem[] = [
+  {
+    id: 'item-1',
+    question: 'What is Career Hub?',
+    answer: 'Career Hub brings career preparation tools together, including interview practice, coding challenges, resume building, mentorship, and learning roadmaps.'
+  },
+  {
+    id: 'item-2',
+    question: 'How does the AI Mock Interviewer evaluate candidates?',
+    answer: 'It employs decision-level late fusion across three neural backbones: Vision Transformers (ViT-Base) for facial affect, Wav2Vec2 for speech tone and vocal micro-tremors, and DistilRoBERTa for transcript sentiment, achieving 91.82% affect classification accuracy with automated MTCNN proctoring.'
+  },
+  {
+    id: 'item-3',
+    question: 'What is the Placement Readiness Index (PRI)?',
+    answer: 'The Placement Readiness Index is a composite mathematical formulation: S_Placement = 0.45 · S_Interview + 0.40 · S_AlgoRank + 0.15 · S_Resume, consolidating interview nonverbal composure, code pass rate, and ATS resume alignment into a standardized 0–100 benchmark.'
+  },
+  {
+    id: 'item-4',
+    question: 'Which programming languages are supported in AlgoRank?',
+    answer: 'AlgoRank runs in an isolated Piston sandbox container and supports C++, Python, and Java with per-testcase verdicts (Accepted, Wrong Answer, Runtime Error) and execution time/memory profiling.'
+  },
+  {
+    id: 'item-5',
+    question: 'How does SeniorConnect work?',
+    answer: 'SeniorConnect provides peer-to-peer live mock interviews using WebRTC, Jitsi Core, and Socket.io signaling, enabling students to schedule review slots and receive structured evaluation feedback.'
+  },
+  {
+    id: 'item-6',
+    question: 'What can I do with Career Hub?',
+    answer: 'Create a resume, practice coding, explore learning roadmaps, prepare for interviews, and connect with mentors. Available features depend on your account access.'
+  }
+];
+
+/* ─── Rising Cosmic Stardust Canvas ─── */
+function CosmicStardustCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let width = (canvas.width = canvas.parentElement?.clientWidth || 800);
+    let height = (canvas.height = canvas.parentElement?.clientHeight || 600);
+
+    const handleResize = () => {
+      if (!canvas || !canvas.parentElement) return;
+      width = canvas.width = canvas.parentElement.clientWidth;
+      height = canvas.height = canvas.parentElement.clientHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    interface Particle {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      size: number;
+      color: string;
+      alpha: number;
+      decay: number;
     }
-  ];
 
-  const howItWorks = [
-    {
-      step: '01',
-      title: 'Create Your Profile',
-      description: 'Sign up in seconds and set up your career profile. Add your skills, experience, and goals.'
-    },
-    {
-      step: '02',
-      title: 'Choose Your Path',
-      description: 'Practice coding problems, build your resume, or connect with mentors - your choice.'
-    },
-    {
-      step: '03',
-      title: 'Track & Improve',
-      description: 'Monitor your progress with detailed analytics. Get AI-powered insights to level up faster.'
-    },
-    {
-      step: '04',
-      title: 'Land Your Dream Job',
-      description: 'Apply with confidence using your polished resume and interview skills.'
+    const particles: Particle[] = [];
+    const colors = ['#818CF8', '#A78BFA', '#C084FC', '#38BDF8', '#FFFFFF'];
+
+    for (let i = 0; i < 45; i++) {
+      particles.push({
+        x: width / 2 + (Math.random() - 0.5) * (Math.min(width * 0.8, 600)),
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.7,
+        vy: -0.5 - Math.random() * 1.4,
+        size: Math.random() * 2.2 + 0.8,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        alpha: Math.random() * 0.7 + 0.2,
+        decay: Math.random() * 0.005 + 0.003
+      });
     }
-  ];
 
-  const testimonials = [
-    {
-      name: 'Sarah Chen',
-      role: 'Software Engineer at Google',
-      content: 'CareerHub helped me crack my dream job. The coding practice platform and mock interviews were game-changers.',
-      avatar: 'SC'
-    },
-    {
-      name: 'Michael Rodriguez',
-      role: 'Senior Developer at Meta',
-      content: 'The mentorship sessions were invaluable. My mentor helped me negotiate a 40% higher salary.',
-      avatar: 'MR'
-    },
-    {
-      name: 'Priya Sharma',
-      role: 'Full Stack Developer at Amazon',
-      content: 'AI Resume Builder saved me hours. The ATS optimization got me past all the filters.',
-      avatar: 'PS'
-    }
-  ];
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
 
-  const stats = [
-    { value: '500+', label: 'Coding Problems' },
-    { value: '10K+', label: 'Active Users' },
-    { value: '95%', label: 'Success Rate' },
-    { value: '500+', label: 'Expert Mentors' }
-  ];
+      if (particles.length < 55) {
+        particles.push({
+          x: width / 2 + (Math.random() - 0.5) * (Math.min(width * 0.7, 500)),
+          y: height * 0.88 + Math.random() * 40,
+          vx: (Math.random() - 0.5) * 0.7,
+          vy: -0.7 - Math.random() * 1.6,
+          size: Math.random() * 2.4 + 1,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 0.85,
+          decay: Math.random() * 0.006 + 0.003
+        });
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= p.decay;
+
+        if (p.alpha <= 0 || p.y < 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">CH</span>
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                CareerHub
-              </span>
-            </div>
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none z-10 w-full h-full"
+    />
+  );
+}
 
-            {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
-              <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
-              <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors">Success Stories</a>
-              <Link to="/login" className="text-muted-foreground hover:text-foreground transition-colors">Login</Link>
-              <Link to="/register">
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  Get Started Free
-                </Button>
-              </Link>
-            </div>
+/* ─── Career Hub Logo Icon ─── */
+function CareerHubLogo({ className = 'w-7 h-7' }: { className?: string }) {
+  return (
+    <div className={`rounded-xl ln-btn-primary grid place-items-center font-bold text-white shadow-md ${className}`}>
+      CH
+    </div>
+  );
+}
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-muted-foreground hover:text-foreground"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+/* ─── Main Landing Component ─── */
+export default function Landing() {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // 3D Dashboard Mockup Interactive State
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'dashboard' | 'interview' | 'algo' | 'resume' | 'senior' | 'pri'>('dashboard');
+  const [activeChartMetric, setActiveChartMetric] = useState<'pri' | 'algo'>('pri');
+
+  // Bento Interactive States
+  const [skillLevel, setSkillLevel] = useState<number>(85);
+  const [checklist, setChecklist] = useState<{ [key: string]: boolean }>({
+    affect: true,
+    algo: true,
+    ats: false
+  });
+  const [codeLanguage, setCodeLanguage] = useState<'cpp' | 'py'>('cpp');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 24);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      document.querySelectorAll('.landing [data-reveal]').forEach((el) => {
+        el.classList.add('ln-visible');
+      });
+      return;
+    }
+
+    const revealElements = document.querySelectorAll('.landing [data-reveal]');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('ln-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    revealElements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  const closeMenu = () => setMobileMenuOpen(false);
+
+  return (
+    <div className="landing min-h-screen text-white bg-[#05050B]">
+      {/* ─── Career Hub Navbar ─── */}
+      <nav
+        className={`sticky top-0 inset-x-0 z-40 transition-all duration-300 border-b ${
+          scrolled
+            ? 'bg-[rgba(5,5,11,0.85)] backdrop-blur-xl border-[#242433]'
+            : 'border-transparent bg-[#05050B]/90 backdrop-blur-md'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 sm:h-20">
+          {/* Brand Logo */}
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <CareerHubLogo className="w-8 h-8 text-sm" />
+            <span className="font-bold text-2xl tracking-tight text-white">
+              Career Hub
+            </span>
+          </Link>
+
+          {/* Desktop Nav Links */}
+          <div className="hidden md:flex items-center gap-7 text-[#9A9AAE] text-sm font-medium">
+            <a href="#features" className="hover:text-white transition-colors">
+              Modules
+            </a>
+            <a href="#dashboard" className="hover:text-white transition-colors">
+              Platform Preview
+            </a>
+            <a href="#pri-formula" className="hover:text-white transition-colors">
+              PRI Architecture
+            </a>
+            <a href="#faq" className="hover:text-white transition-colors">
+              FAQ
+            </a>
           </div>
+
+          {/* Right Action Controls */}
+          <div className="hidden md:flex items-center gap-4">
+            <Link to="/login" className="text-sm font-medium text-[#C7C7D6] transition-colors hover:text-white">
+              Sign in
+            </Link>
+            <Link to="/register">
+              <Button
+                size="sm"
+                className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white rounded-full px-6 py-2 text-sm font-semibold shadow-[0_4px_20px_rgba(139,92,246,0.4)] transition-all"
+              >
+                Get Started
+              </Button>
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            type="button"
+            className="md:hidden text-[#9A9AAE] hover:text-white p-2 rounded-lg border border-[#242433] bg-[#12121C]"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Dropdown */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-background/95 border-t border-border">
-            <div className="px-4 py-4 space-y-4">
-              <a href="#features" className="block text-muted-foreground hover:text-foreground transition-colors">Features</a>
-              <a href="#how-it-works" className="block text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
-              <a href="#testimonials" className="block text-muted-foreground hover:text-foreground transition-colors">Success Stories</a>
-              <Link to="/login" className="block text-muted-foreground hover:text-foreground transition-colors">Login</Link>
-              <Link to="/register">
-                <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  Get Started Free
+          <div className="md:hidden border-t border-[#242433] bg-[#05050B]/98 backdrop-blur-2xl px-4 py-6 space-y-4">
+            <div className="flex flex-col space-y-3 text-base font-medium text-[#9A9AAE]">
+              <a href="#features" onClick={closeMenu} className="hover:text-white py-1">
+                Modules
+              </a>
+              <a href="#dashboard" onClick={closeMenu} className="hover:text-white py-1">
+                Platform Preview
+              </a>
+              <a href="#pri-formula" onClick={closeMenu} className="hover:text-white py-1">
+                PRI Architecture
+              </a>
+              <a href="#faq" onClick={closeMenu} className="hover:text-white py-1">
+                FAQ
+              </a>
+            </div>
+            <div className="pt-4 border-t border-[#242433] flex flex-col gap-3">
+              <Link to="/login" onClick={closeMenu}>
+                <Button
+                  variant="outline"
+                  className="w-full rounded-full border-[#32324A] bg-white/5 text-white"
+                >
+                  Log In
+                </Button>
+              </Link>
+              <Link to="/register" onClick={closeMenu}>
+                <Button className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] rounded-full text-white font-semibold">
+                  Get Started
                 </Button>
               </Link>
             </div>
@@ -142,272 +349,916 @@ export default function Landing() {
         )}
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-black" />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMDAwMDAwIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz48L3N2Zz4=')] opacity-20" />
+      {/* ─── Hero Section with Serif Headline & Cosmic Beam ─── */}
+      <section className="relative overflow-hidden pt-20 sm:pt-28 pb-12 sm:pb-16 ln-hero-bg">
+        {/* Central Atmospheric Cosmic Beam */}
+        <div
+          aria-hidden="true"
+          className="ln-beam-anim absolute top-0 left-1/2 -translate-x-1/2 w-[340px] sm:w-[540px] h-[750px] bg-gradient-to-b from-primary/35 via-primary/20 to-transparent blur-[90px] rounded-full pointer-events-none z-0"
+        />
 
-        {/* Animated Glow */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500 rounded-full filter blur-[128px] opacity-30 animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500 rounded-full filter blur-[128px] opacity-30 animate-pulse" />
+        {/* Rising Stardust Particles */}
+        <CosmicStardustCanvas />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Badge className="mb-8 bg-blue-500/10 border-blue-500/20 text-blue-300">
-            <Zap className="w-4 h-4 mr-2" />
-            Now with AI-Powered Features
-          </Badge>
+        {/* Concentric Faint Orbital Arcs with Floating Badges */}
+        <div
+          aria-hidden="true"
+          className="absolute top-12 left-1/2 -translate-x-1/2 w-[720px] sm:w-[1040px] h-[480px] sm:h-[620px] border border-violet-500/15 rounded-[50%] pointer-events-none z-10"
+        >
+          <div className="ln-float-node-1 absolute top-[28%] left-[10%] w-10 h-10 rounded-xl bg-[#12121C]/90 border border-violet-500/30 flex items-center justify-center text-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.3)]">
+            <Brain className="w-5 h-5" />
+          </div>
+          <div className="ln-float-node-2 absolute top-[62%] left-[16%] w-10 h-10 rounded-xl bg-[#12121C]/90 border border-violet-500/30 flex items-center justify-center text-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.3)]">
+            <Code className="w-5 h-5" />
+          </div>
+          <div className="ln-float-node-2 absolute top-[24%] right-[12%] w-10 h-10 rounded-xl bg-[#12121C]/90 border border-primary/30 flex items-center justify-center text-primary/70 shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+            <GraduationCap className="w-5 h-5" />
+          </div>
+          <div className="ln-float-node-1 absolute top-[58%] right-[14%] w-10 h-10 rounded-xl bg-[#12121C]/90 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]">
+            <Shield className="w-5 h-5" />
+          </div>
+        </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Launch Your Career with
+        {/* Hero Content Container */}
+        <div className="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 text-center">
+          {/* Headline requested by user: Serif "Prepare with Career Hub" + Sans "An All-in-One..." */}
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl tracking-tight leading-[1.08] text-white">
+            <span className="ln-font-serif block font-normal tracking-wide text-white">
+              Prepare with Career Hub
             </span>
-            <br />
-            <span className="text-white">AI-Powered Interview Prep</span>
+            <span className="font-extrabold tracking-tight block mt-2 sm:mt-3 text-white text-3xl sm:text-5xl lg:text-6xl">
+              An All-in-One Interview Preparation Platform
+            </span>
           </h1>
 
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            One platform to master coding, build perfect resumes, and connect with mentors. 
-            From junior to senior - we've got you covered.
+          {/* Landing page introduction */}
+          <p className="mt-5 text-base sm:text-lg lg:text-xl text-[#9A9AAE] max-w-2xl mx-auto leading-relaxed">
+            An end-to-end placement preparation platform unifying multimodal affective AI mock interviews,
+            an AlgoRank DSA coding sandbox, ResumeRanker ATS optimization, and SeniorConnect peer mentorship.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Link to="/register">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg">
-                Get Started Free
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
-            <a href="#how-it-works">
-              <Button size="lg" variant="outline" className="bg-white/10 hover:bg-white/20 border-white/20 text-lg">
-                See How It Works
-              </Button>
-            </a>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  {stat.value}
-                </div>
-                <div className="text-gray-400 mt-1">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-gray-500 rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-gray-500 rounded-full mt-2" />
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-24 bg-gradient-to-b from-black to-gray-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Everything You Need
-              </span>
-            </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Comprehensive tools for every stage of your career journey
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
-                <Card key={index} className="group relative bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 hover:border-blue-500/50 transition-all duration-300">
-                  <div className={`absolute inset-0 bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-10 rounded-lg transition-opacity`} />
-                  <CardHeader>
-                    <div className={`w-14 h-14 bg-gradient-to-r ${feature.color} rounded-xl flex items-center justify-center mb-6`}>
-                      <Icon className="w-7 h-7 text-white" />
-                    </div>
-                    <CardTitle className="text-white">{feature.title}</CardTitle>
-                    <CardDescription className="text-gray-400 leading-relaxed">
-                      {feature.description}
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="how-it-works" className="py-24 bg-black">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                How It Works
-              </span>
-            </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Start improving your career in 4 simple steps
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {howItWorks.map((step, index) => (
-              <div key={index} className="relative">
-                <div className="text-6xl font-bold text-gray-800 mb-4">{step.step}</div>
-                <div className="absolute top-2 left-4 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg" />
-                <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
-                <p className="text-gray-400">{step.description}</p>
-                {index < howItWorks.length - 1 && (
-                  <div className="hidden lg:block absolute top-4 right-0 w-full h-px bg-gradient-to-r from-blue-500/50 to-transparent" />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Success Stories */}
-      <section id="testimonials" className="py-24 bg-gradient-to-b from-black to-gray-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Success Stories
-              </span>
-            </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Join thousands who landed their dream jobs with CareerHub
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700">
-                <CardContent className="p-8">
-                  <div className="flex items-center gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                    ))}
-                  </div>
-                  <p className="text-gray-300 mb-6 italic">"{testimonial.content}"</p>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                      {testimonial.avatar}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-white">{testimonial.name}</div>
-                      <div className="text-sm text-gray-400">{testimonial.role}</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-24 bg-black relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-900/20 to-purple-900/20" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-transparent via-blue-500/10 to-transparent" />
-
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Ready to Launch Your Career?
-            </span>
-          </h2>
-          <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-            Join thousands of developers who are already accelerating their career growth
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg">
-                Get Started Free
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
+          {/* Hero CTAs */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="#features">
-              <Button size="lg" variant="outline" className="bg-white/10 hover:bg-white/20 border-white/20 text-lg">
-                Learn More
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-full px-7 text-sm sm:text-base border-[#32324A] bg-[#12121C]/90 hover:bg-[#161622] text-white"
+              >
+                Explore Modules
               </Button>
             </a>
-          </div>
-
-          <div className="mt-12 flex items-center justify-center gap-8 text-gray-400">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span>Free to start</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span>No credit card required</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span>Cancel anytime</span>
-            </div>
+            <Link to="/register">
+              <Button
+                size="lg"
+                className="bg-[#6366F1] hover:bg-[#4F46E5] text-white rounded-full px-8 text-sm sm:text-base font-semibold shadow-[0_10px_35px_-10px_rgba(99,102,241,0.65)] flex items-center gap-2"
+              >
+                <span>Explore Career Hub</span>
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
           </div>
         </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="bg-black border-t border-gray-800 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">CH</span>
-                </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  CareerHub
+        {/* ─── Career Hub Dashboard Preview ─── */}
+        <div id="dashboard" className="ln-perspective-container max-w-6xl mx-auto px-4 sm:px-6 mt-14 sm:mt-20">
+          <div className="ln-dashboard-3d rounded-2xl border border-[#242433] bg-[#0E0E17]/95 backdrop-blur-2xl overflow-hidden text-left shadow-2xl">
+            {/* Window Chrome Header Bar */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[#242433] bg-[#0A0A12]/80">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-[#EF4444]" />
+                <span className="w-3 h-3 rounded-full bg-[#F59E0B]" />
+                <span className="w-3 h-3 rounded-full bg-[#10B981]" />
+                <span className="ml-3 text-xs text-[#9A9AAE] font-mono">
+                  careerhub.internal/dashboard
                 </span>
               </div>
-              <p className="text-gray-400 text-sm">
-                Your complete career development platform. From coding practice to mentorship.
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-emerald-400 font-medium">Career Hub dashboard</span>
+              </div>
+            </div>
+
+            {/* Dashboard Workspace Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 min-h-[480px]">
+              {/* Left Sidebar */}
+              <div className="hidden md:block md:col-span-3 border-r border-[#242433] p-4 bg-[#090910]/70">
+                <div className="flex items-center gap-2 px-3 py-2 mb-4">
+                  <CareerHubLogo className="w-6 h-6 text-xs" />
+                  <span className="font-bold text-white text-base tracking-tight">Career Hub</span>
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <button
+                    onClick={() => setActiveSidebarTab('dashboard')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition-colors text-left ${
+                      activeSidebarTab === 'dashboard'
+                        ? 'bg-[#1C1C2A] text-white border border-[#32324A]'
+                        : 'text-[#9A9AAE] hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Laptop className="w-3.5 h-3.5 text-[#A78BFA]" />
+                    Diagnostic Dashboard
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSidebarTab('interview')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition-colors text-left ${
+                      activeSidebarTab === 'interview'
+                        ? 'bg-[#1C1C2A] text-white border border-[#32324A]'
+                        : 'text-[#9A9AAE] hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5 text-primary/70" />
+                    AI Mock Interviewer
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSidebarTab('algo')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition-colors text-left ${
+                      activeSidebarTab === 'algo'
+                        ? 'bg-[#1C1C2A] text-white border border-[#32324A]'
+                        : 'text-[#9A9AAE] hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Code className="w-3.5 h-3.5 text-violet-400" />
+                    AlgoRank Sandbox
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSidebarTab('resume')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition-colors text-left ${
+                      activeSidebarTab === 'resume'
+                        ? 'bg-[#1C1C2A] text-white border border-[#32324A]'
+                        : 'text-[#9A9AAE] hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5 text-amber-400" />
+                    ResumeRanker ATS
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSidebarTab('senior')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition-colors text-left ${
+                      activeSidebarTab === 'senior'
+                        ? 'bg-[#1C1C2A] text-white border border-[#32324A]'
+                        : 'text-[#9A9AAE] hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5 text-emerald-400" />
+                    SeniorConnect
+                  </button>
+
+                  <div className="pt-3 pb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-[#6E6E85]">
+                    Architecture
+                  </div>
+                  <div className="text-[#9A9AAE] px-3 py-1.5 hover:text-white cursor-pointer transition-colors flex items-center gap-2">
+                    <Brain className="w-3 h-3 text-[#A78BFA]" />
+                    Affective AI Late Fusion
+                  </div>
+                  <div className="text-[#9A9AAE] px-3 py-1.5 hover:text-white cursor-pointer transition-colors flex items-center gap-2">
+                    <Shield className="w-3 h-3 text-violet-400" />
+                    MTCNN CV Proctoring
+                  </div>
+                  <div className="text-[#9A9AAE] px-3 py-1.5 hover:text-white cursor-pointer transition-colors flex items-center gap-2">
+                    <Cpu className="w-3 h-3 text-amber-400" />
+                    PRI Scoring Engine
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Content Stage */}
+              <div className="md:col-span-9 p-5 sm:p-7 space-y-6">
+                {/* Search & Top Action Bar */}
+                <div className="flex items-center justify-between gap-4 pb-3 border-b border-[#242433]">
+                  <div>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Placement Readiness Index (PRI)</h2>
+                    <p className="text-xs text-[#9A9AAE]">Candidate Evaluation Pipeline — Trial Sample (D16-ECS)</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#242433] bg-[#0A0A12] text-xs text-[#6E6E85]">
+                      <Search className="w-3.5 h-3.5" />
+                      <span>Search modules &amp; testcases...</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-[#161622] text-[10px] text-[#A78BFA] border border-[#32324A]">
+                        ⌘ K
+                      </kbd>
+                    </div>
+                    <button className="w-8 h-8 rounded-lg border border-[#242433] bg-[#0A0A12] grid place-items-center text-[#9A9AAE] hover:text-white">
+                      <Bell className="w-4 h-4" />
+                    </button>
+                    <div className="px-3 py-1 rounded-lg border border-[#242433] bg-[#12121C] text-xs text-white font-medium flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      Latency: 27.52ms
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3 Real Metric KPI Cards based on PRD mathematical formula */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Card 1: Composite PRI */}
+                  <div className="p-4 rounded-xl border border-[#242433] bg-[#12121C] hover:border-[#32324A] transition-colors">
+                    <div className="flex items-center justify-between text-xs text-[#9A9AAE]">
+                      <span className="flex items-center gap-1.5">
+                        <Trophy className="w-3.5 h-3.5 text-[#F59E0B]" />
+                        Composite PRI Score
+                      </span>
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                    </div>
+                    <div className="mt-3 flex items-baseline gap-2">
+                      <span className="text-2xl sm:text-3xl font-extrabold text-white">84.6</span>
+                      <span className="text-[11px] font-medium text-emerald-400">
+                        / 100 High Readiness
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-[#6E6E85]">
+                      0.45·Interview + 0.40·Algo + 0.15·ATS
+                    </div>
+                  </div>
+
+                  {/* Card 2: AlgoRank Pass Rate */}
+                  <div className="p-4 rounded-xl border border-[#242433] bg-[#12121C] hover:border-[#32324A] transition-colors">
+                    <div className="flex items-center justify-between text-xs text-[#9A9AAE]">
+                      <span className="flex items-center gap-1.5">
+                        <Code className="w-3.5 h-3.5 text-primary/70" />
+                        AlgoRank Pass Rate
+                      </span>
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                    </div>
+                    <div className="mt-3 flex items-baseline gap-2">
+                      <span className="text-2xl sm:text-3xl font-extrabold text-white">87.5%</span>
+                      <span className="text-[11px] font-medium text-emerald-400">
+                        Piston Sandbox
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-[#6E6E85]">
+                      Testcases passed: 28 / 32
+                    </div>
+                  </div>
+
+                  {/* Card 3: Multimodal Poise */}
+                  <div className="p-4 rounded-xl border border-[#242433] bg-[#12121C] hover:border-[#32324A] transition-colors">
+                    <div className="flex items-center justify-between text-xs text-[#9A9AAE]">
+                      <span className="flex items-center gap-1.5">
+                        <Brain className="w-3.5 h-3.5 text-primary/70" />
+                        Affective Poise
+                      </span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    </div>
+                    <div className="mt-3 flex items-baseline gap-2">
+                      <span className="text-2xl sm:text-3xl font-extrabold text-white">91.8%</span>
+                      <span className="text-xs text-[#9A9AAE]">Confidence</span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-[#6E6E85]">
+                      ViT-Base + Wav2Vec2 + DistilRoBERTa
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rank & Score Progress Chart Card */}
+                <div className="p-4 sm:p-5 rounded-xl border border-[#242433] bg-[#12121C]">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-white">Diagnostic Trajectory &amp; Microservice Benchmarks</h3>
+                      <p className="text-xs text-[#9A9AAE]">Asynchronous pipeline operates at 27.52 ms vs 90.0 ms budget</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex p-0.5 rounded-lg bg-[#0A0A12] border border-[#242433] text-xs">
+                        <button
+                          onClick={() => setActiveChartMetric('pri')}
+                          className={`px-3 py-1 rounded-md font-medium transition-all ${
+                            activeChartMetric === 'pri'
+                              ? 'bg-[#1C1C2A] text-white shadow'
+                              : 'text-[#9A9AAE] hover:text-white'
+                          }`}
+                        >
+                          PRI Trend
+                        </button>
+                        <button
+                          onClick={() => setActiveChartMetric('algo')}
+                          className={`px-3 py-1 rounded-md font-medium transition-all ${
+                            activeChartMetric === 'algo'
+                              ? 'bg-[#1C1C2A] text-white shadow'
+                              : 'text-[#9A9AAE] hover:text-white'
+                          }`}
+                        >
+                          AlgoRank
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-[#9A9AAE] px-2.5 py-1 rounded bg-[#0A0A12] border border-[#242433]">
+                        <span>Trial Cohort</span>
+                        <ChevronDown className="w-3 h-3" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chart Visual Progress Bars */}
+                  <div className="h-28 flex items-end gap-2 sm:gap-3 pt-4 border-b border-[#242433]">
+                    {[50, 58, 55, 68, 64, 76, 72, 80, 82, 85, 90, 88, 92, 94, 96].map(
+                      (val, idx) => {
+                        const heightPct = activeChartMetric === 'pri' ? (val / 100) * 100 : ((val * 1.2) / 120) * 100;
+                        return (
+                          <div
+                            key={idx}
+                            className="flex-1 flex flex-col items-center gap-1 group cursor-pointer"
+                          >
+                            <div
+                              style={{ height: `${heightPct}%` }}
+                              className={`w-full rounded-t-sm transition-all duration-300 ${
+                                idx === 14
+                                  ? 'bg-gradient-to-t from-violet-600 to-violet-400 shadow-[0_0_12px_rgba(139,92,246,0.6)]'
+                                  : 'bg-[#1E1E2E] group-hover:bg-violet-500/50'
+                              }`}
+                            />
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                  <div className="flex justify-between text-[10px] text-[#6E6E85] pt-2 font-mono">
+                    <span>Trial 1</span>
+                    <span>Trial 5</span>
+                    <span>Trial 10</span>
+                    <span className="text-[#A78BFA] font-medium">Evaluation Final: PRI 84.6</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Tech Stack Marquee ─── */}
+      <section className="py-10 border-y border-[#242433] bg-[#05050B] overflow-hidden">
+        <p className="text-center text-xs sm:text-sm uppercase tracking-[0.22em] text-[#6E6E85] mb-6 font-semibold">
+          Built on a decoupled microservice &amp; multimodal AI stack
+        </p>
+        <div className="relative">
+          <div className="ln-marquee gap-12 items-center text-[#9A9AAE]">
+            {[...TECH_STACK_ITEMS, ...TECH_STACK_ITEMS].map((item, index) => (
+              <span
+                key={index}
+                className="text-base sm:text-lg font-semibold whitespace-nowrap opacity-75 hover:opacity-100 transition-opacity select-none flex items-center gap-2"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                {item}
+              </span>
+            ))}
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#05050B] to-transparent pointer-events-none z-10"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#05050B] to-transparent pointer-events-none z-10"
+          />
+        </div>
+      </section>
+
+      {/* ─── Features: "Power Your Learning" (Kept per instruction, mapped to real 4 modules) ─── */}
+      <section id="features" className="py-20 sm:py-28 bg-[#0A0A12] scroll-mt-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-left max-w-3xl mb-14" data-reveal>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white">
+              Power Your Learning
+            </h2>
+            <p className="mt-3 text-base text-[#9A9AAE]">
+              Four core engineering modules designed to eliminate preparation silos and measure real technical competence.
+            </p>
+          </div>
+
+          {/* 4 Bento Grid Cards with Ambient Glow Spots */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Bento Card 1: AI Mock Interviewer & Affect Engine */}
+            <div
+              data-reveal
+              className="relative rounded-2xl border border-[#242433] bg-[#12121C] hover:border-[#32324A] p-7 flex flex-col justify-between transition-all overflow-hidden"
+            >
+              <div aria-hidden="true" className="ln-ambient-glow absolute inset-0 pointer-events-none" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between text-xs text-[#9A9AAE] mb-4">
+                  <span className="font-semibold text-white">Affective Computing Readiness</span>
+                  <span className="font-semibold text-[#A78BFA]">ViT-Base + Wav2Vec2</span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="relative w-full h-3 bg-[#1A1A28] rounded-full overflow-hidden p-0.5">
+                  <div
+                    style={{ width: `${skillLevel}%` }}
+                    className="h-full rounded-full bg-gradient-to-r from-primary/50 via-primary/30 to-primary/10 transition-all duration-300"
+                  />
+                </div>
+                <div className="mt-3 flex justify-between items-center text-xs">
+                  <span className="text-[#6E6E85]">Nonverbal Poise &amp; Stress Regulation</span>
+                  <span className="font-mono text-violet-400 font-semibold">{skillLevel}% Verified</span>
+                </div>
+
+                <div className="mt-4 flex gap-2">
+                  {[45, 70, 92].map((lvl) => (
+                    <button
+                      key={lvl}
+                      onClick={() => setSkillLevel(lvl)}
+                      className={`px-3 py-1 rounded text-xs transition-colors ${
+                        skillLevel === lvl
+                          ? 'bg-violet-600/30 text-violet-300 border border-violet-500/40'
+                          : 'bg-[#161622] text-[#9A9AAE] border border-[#242433]'
+                      }`}
+                    >
+                      {lvl === 45 ? 'Hesitant' : lvl === 70 ? 'Composed' : '91.82% Poised'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="relative z-10 mt-8 pt-4 border-t border-[#242433]">
+                <h3 className="text-lg font-semibold text-white">AI Mock Interviewer &amp; Proctoring</h3>
+                <p className="mt-1 text-sm text-[#9A9AAE]">
+                  Tri-modal decision late fusion evaluating facial expression, vocal tone, and transcript sentiment with automated MTCNN identity verification.
+                </p>
+              </div>
+            </div>
+
+            {/* Bento Card 2: ResumeRanker ATS Optimization */}
+            <div
+              data-reveal
+              style={{ transitionDelay: '80ms' }}
+              className="relative rounded-2xl border border-[#242433] bg-[#12121C] hover:border-[#32324A] p-7 flex flex-col justify-between transition-all overflow-hidden"
+            >
+              <div aria-hidden="true" className="ln-ambient-glow absolute inset-0 pointer-events-none" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                    ResumeRanker Engine
+                  </span>
+                  <span className="text-xs text-[#6E6E85]">PyMuPDF + SpaCy NLP</span>
+                </div>
+
+                {/* Interactive Checklist */}
+                <div className="space-y-3">
+                  <label
+                    onClick={() => setChecklist({ ...checklist, affect: !checklist.affect })}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border border-[#242433] bg-[#0A0A12] cursor-pointer hover:bg-[#161622] transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checklist.affect}
+                      readOnly
+                      className="w-4 h-4 rounded text-violet-600 focus:ring-0 cursor-pointer"
+                    />
+                    <span className={`text-sm ${checklist.affect ? 'text-white' : 'text-[#6E6E85]'}`}>
+                      ATS Formatting &amp; Section Hierarchy Check
+                    </span>
+                  </label>
+
+                  <label
+                    onClick={() => setChecklist({ ...checklist, algo: !checklist.algo })}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border border-[#242433] bg-[#0A0A12] cursor-pointer hover:bg-[#161622] transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checklist.algo}
+                      readOnly
+                      className="w-4 h-4 rounded text-violet-600 focus:ring-0 cursor-pointer"
+                    />
+                    <span className={`text-sm ${checklist.algo ? 'text-white' : 'text-[#6E6E85]'}`}>
+                      Coding Achievements Linked to Resume Skill Bullets
+                    </span>
+                  </label>
+
+                  <label
+                    onClick={() => setChecklist({ ...checklist, ats: !checklist.ats })}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border border-[#242433] bg-[#0A0A12] cursor-pointer hover:bg-[#161622] transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checklist.ats}
+                      readOnly
+                      className="w-4 h-4 rounded text-violet-600 focus:ring-0 cursor-pointer"
+                    />
+                    <span className={`text-sm ${checklist.ats ? 'text-white' : 'text-[#6E6E85]'}`}>
+                      TF-IDF Keyword Density &amp; Jaccard Similarity Score
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="relative z-10 mt-8 pt-4 border-t border-[#242433]">
+                <h3 className="text-lg font-semibold text-white">ResumeRanker ATS Engine</h3>
+                <p className="mt-1 text-sm text-[#9A9AAE]">
+                  Automated parsing, formatting compliance analysis, and algorithmic skill validation directly mapped into your PRI profile.
+                </p>
+              </div>
+            </div>
+
+            {/* Bento Card 3: AlgoRank DSA Coding Sandbox */}
+            <div
+              data-reveal
+              style={{ transitionDelay: '160ms' }}
+              className="relative rounded-2xl border border-[#242433] bg-[#12121C] hover:border-[#32324A] p-7 flex flex-col justify-between transition-all overflow-hidden"
+            >
+              <div aria-hidden="true" className="ln-ambient-glow absolute inset-0 pointer-events-none" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCodeLanguage('cpp')}
+                      className={`px-3 py-1 rounded text-xs font-mono transition-colors ${
+                        codeLanguage === 'cpp'
+                          ? 'bg-[#1E1E2E] text-violet-400 border border-[#32324A]'
+                          : 'text-[#6E6E85] hover:text-white'
+                      }`}
+                    >
+                      solution.cpp
+                    </button>
+                    <button
+                      onClick={() => setCodeLanguage('py')}
+                      className={`px-3 py-1 rounded text-xs font-mono transition-colors ${
+                        codeLanguage === 'py'
+                          ? 'bg-[#1E1E2E] text-violet-400 border border-[#32324A]'
+                          : 'text-[#6E6E85] hover:text-white'
+                      }`}
+                    >
+                      solution.py
+                    </button>
+                  </div>
+                  <span className="text-xs text-[#10B981] font-mono flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Piston Runner Active
+                  </span>
+                </div>
+
+                {/* Code Window Box */}
+                <pre className="p-4 rounded-xl border border-[#242433] bg-[#0A0A12] text-xs font-mono text-[#C7C7D6] overflow-x-auto leading-relaxed">
+                  {codeLanguage === 'cpp' ? (
+                    <code>
+                      <span className="text-[#6E6E85]">1.</span>{' '}
+                      <span className="text-[#A78BFA]">#include</span>{' '}
+                      <span className="text-[#6EE7B7]">&lt;vector&gt;</span>
+                      <span className="animate-pulse text-violet-400 font-bold ml-1">|</span>
+                      {'\n'}
+                      <span className="text-[#6E6E85]">2.</span>{' '}
+                      <span className="text-[#60A5FA]">vector&lt;int&gt;</span>{' '}
+                      <span className="text-[#F472B6]">twoSum</span>(vector&lt;int&gt;&amp; nums, <span className="text-[#60A5FA]">int</span> target) &#123;{'\n'}
+                      <span className="text-[#6E6E85]">3.</span>     unordered_map&lt;int, int&gt; mp;{'\n'}
+                      <span className="text-[#6E6E85]">4.</span>     <span className="text-[#A78BFA]">for</span> (<span className="text-[#60A5FA]">int</span> i = 0; i &lt; nums.size(); i++) &#123;{'\n'}
+                      <span className="text-[#6E6E85]">5.</span>         <span className="text-[#A78BFA]">if</span> (mp.count(target - nums[i])) <span className="text-[#A78BFA]">return</span> &#123;mp[target - nums[i]], i&#125;;{'\n'}
+                      <span className="text-[#6E6E85]">6.</span>         mp[nums[i]] = i;{'\n'}
+                      <span className="text-[#6E6E85]">7.</span>     &#125;{'\n'}
+                      <span className="text-[#6E6E85]">8.</span>     <span className="text-[#A78BFA]">return</span> &#123;&#125;;{'\n'}
+                      <span className="text-[#6E6E85]">9.</span> &#125;
+                    </code>
+                  ) : (
+                    <code>
+                      <span className="text-[#6E6E85]">1.</span>{' '}
+                      <span className="text-[#A78BFA]">def</span>{' '}
+                      <span className="text-[#60A5FA]">two_sum</span>(nums: list[int], target: int) -&gt; list[int]:{'\n'}
+                      <span className="text-[#6E6E85]">2.</span>     seen = &#123;&#125;{'\n'}
+                      <span className="text-[#6E6E85]">3.</span>     <span className="text-[#A78BFA]">for</span> i, num{' '}
+                      <span className="text-[#A78BFA]">in</span>{' '}
+                      <span className="text-[#60A5FA]">enumerate</span>(nums):{'\n'}
+                      <span className="text-[#6E6E85]">4.</span>         comp = target - num{'\n'}
+                      <span className="text-[#6E6E85]">5.</span>         <span className="text-[#A78BFA]">if</span> comp in seen:{'\n'}
+                      <span className="text-[#6E6E85]">6.</span>             <span className="text-[#A78BFA]">return</span> [seen[comp], i]{'\n'}
+                      <span className="text-[#6E6E85]">7.</span>         seen[num] = i
+                    </code>
+                  )}
+                </pre>
+              </div>
+
+              <div className="relative z-10 mt-8 pt-4 border-t border-[#242433]">
+                <h3 className="text-lg font-semibold text-white">AlgoRank DSA Coding Sandbox</h3>
+                <p className="mt-1 text-sm text-[#9A9AAE]">
+                  Piston-backed isolated code execution supporting Python, C++, and Java with per-testcase verdicts and runtime metrics.
+                </p>
+              </div>
+            </div>
+
+            {/* Bento Card 4: SeniorConnect & AI Roadmap */}
+            <div
+              data-reveal
+              style={{ transitionDelay: '240ms' }}
+              className="relative rounded-2xl border border-[#242433] bg-[#12121C] hover:border-[#32324A] p-7 flex flex-col justify-between transition-all overflow-hidden"
+            >
+              <div aria-hidden="true" className="ln-ambient-glow absolute inset-0 pointer-events-none" />
+              <div className="relative z-10">
+                <div className="relative h-44 flex items-center justify-center">
+                  <div className="w-36 h-36 rounded-full border border-violet-500/20 flex items-center justify-center">
+                    <div className="w-24 h-24 rounded-full border border-violet-500/30 flex items-center justify-center">
+                      <CareerHubLogo className="w-9 h-9 text-xs" />
+                    </div>
+                  </div>
+
+                  <div className="absolute top-2 left-16 p-2 rounded-lg bg-[#161622] border border-[#242433] text-violet-400 text-xs shadow-md">
+                    <Brain className="w-4 h-4" />
+                  </div>
+                  <div className="absolute bottom-2 left-14 p-2 rounded-lg bg-[#161622] border border-[#242433] text-violet-400 text-xs shadow-md">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="absolute top-2 right-16 p-2 rounded-lg bg-[#161622] border border-[#242433] text-primary/50 text-xs shadow-md">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="absolute bottom-2 right-14 p-2 rounded-lg bg-[#161622] border border-[#242433] text-emerald-400 text-xs shadow-md">
+                    <Target className="w-4 h-4" />
+                  </div>
+                  <div className="absolute top-[42%] left-4 p-2 rounded-lg bg-[#161622] border border-[#242433] text-sky-400 text-xs shadow-md">
+                    <Video className="w-4 h-4" />
+                  </div>
+                  <div className="absolute top-[42%] right-4 p-2 rounded-lg bg-[#161622] border border-[#242433] text-amber-400 text-xs shadow-md">
+                    <GitBranch className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative z-10 mt-8 pt-4 border-t border-[#242433]">
+                <h3 className="text-lg font-semibold text-white">SeniorConnect &amp; AI Roadmap</h3>
+                <p className="mt-1 text-sm text-[#9A9AAE]">
+                  Peer-to-peer WebRTC mentorship sessions combined with Gemini 1.5 Flash dynamic study roadmaps based on PRI analytics.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Placement Readiness Index (PRI) Mathematical Framework ─── */}
+      <section id="pri-formula" className="py-20 sm:py-28 bg-[#05050B] border-t border-[#242433]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-14" data-reveal>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#242433] bg-[#12121C] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#A78BFA]">
+              How progress comes together
+            </span>
+            <h2 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white">
+              The Placement Readiness Index (PRI)
+            </h2>
+            <p className="mt-3 text-base text-[#9A9AAE]">
+              One 0–100 summary of interview, coding, and resume results. Each input is normalized to the same scale before the weighted score is calculated.
+            </p>
+          </div>
+
+          {/* Formula Callout Strip */}
+          <div className="max-w-4xl mx-auto mb-12 p-5 rounded-2xl border border-violet-500/30 bg-gradient-to-r from-violet-950/30 via-violet-950/20 to-primary/30 text-center font-mono text-sm sm:text-base text-violet-200 shadow-xl" data-reveal>
+            <span className="text-[#A78BFA] font-bold">S_Placement</span> = 0.45 · <span className="text-primary/70">S_Interview</span> + 0.40 · <span className="text-emerald-300">S_AlgoRank</span> + 0.15 · <span className="text-amber-300">S_Resume</span>
+          </div>
+
+          {/* 3 Component Breakdown Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6" data-reveal>
+            <div className="p-7 rounded-2xl border border-[#242433] bg-[#12121C] flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary grid place-items-center mb-5">
+                  <Brain className="w-6 h-6" />
+                </div>
+                <div className="text-xs uppercase font-mono font-bold text-primary/70 tracking-wider">Weight: 45%</div>
+                <h3 className="text-xl font-bold text-white mt-1">S_Interview (0–100)</h3>
+                <p className="mt-3 text-sm text-[#9A9AAE] leading-relaxed">
+                  Combines technical interview performance with affective signals from ViT facial expression, Wav2Vec2-XLSR-53 voice, and DistilRoBERTa transcript analysis. Available modalities are reweighted when a sensor is unavailable.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-[#242433] text-xs font-mono text-[#6E6E85]">
+                10 behavioral competencies · normalized to 0–100
+              </div>
+            </div>
+
+            <div className="p-7 rounded-2xl border border-[#242433] bg-[#12121C] flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 grid place-items-center mb-5">
+                  <Code className="w-6 h-6" />
+                </div>
+                <div className="text-xs uppercase font-mono font-bold text-emerald-400 tracking-wider">Weight: 40%</div>
+                <h3 className="text-xl font-bold text-white mt-1">S_AlgoRank (0–100)</h3>
+                <p className="mt-3 text-sm text-[#9A9AAE] leading-relaxed">
+                  Percentile based on DSA problem-solving performance in the isolated Docker sandbox. The target execution time is under 1,200 ms.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-[#242433] text-xs font-mono text-[#6E6E85]">
+                Languages: JavaScript, Python, C++, Java
+              </div>
+            </div>
+
+            <div className="p-7 rounded-2xl border border-[#242433] bg-[#12121C] flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 grid place-items-center mb-5">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div className="text-xs uppercase font-mono font-bold text-amber-400 tracking-wider">Weight: 15%</div>
+                <h3 className="text-xl font-bold text-white mt-1">S_Resume (0–100)</h3>
+                <p className="mt-3 text-sm text-[#9A9AAE] leading-relaxed">
+                  ATS compatibility score from resume parsing and optimization, including SpaCy entity extraction and STAR-format bullet guidance.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-[#242433] text-xs font-mono text-[#6E6E85]">
+                PDF parsing target: under 2,500 ms
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto mt-10 grid gap-6 md:grid-cols-2" data-reveal>
+            <div className="rounded-2xl border border-[#242433] bg-[#12121C] p-6">
+              <h3 className="text-lg font-bold text-white">Interview signal and availability</h3>
+              <p className="mt-3 text-sm leading-relaxed text-[#9A9AAE]">
+                Face, voice, and transcript branches start with weights of 0.45, 0.45, and 0.10. When a signal is unavailable, the remaining weights are renormalized using its availability mask.
+              </p>
+              <p className="mt-3 rounded-lg bg-[#0A0A12] p-3 text-center font-mono text-xs text-violet-200 sm:text-sm">
+                w′<sub>m</sub> = (m<sub>m</sub> · w<sub>m</sub>) / Σ(m<sub>k</sub> · w<sub>k</sub>)
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-[#9A9AAE]">
+                The fused signal describes Composure, Confidence, Anxiety, Engagement, Frustration, Stability, Fluency, Speech Recovery, Adaptability, and Stress Index. The final interview sub-score also needs a defined blend with the technical answer score; high Anxiety, Frustration, and Stress values should be inverted before averaging.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#242433] bg-[#12121C] p-6">
+              <h3 className="text-lg font-bold text-white">Example and interpretation</h3>
+              <p className="mt-3 text-sm leading-relaxed text-[#9A9AAE]">
+                Interview 70, AlgoRank 80, and resume 60 produce:
+              </p>
+              <p className="mt-3 rounded-lg bg-[#0A0A12] p-3 text-center font-mono text-xs text-violet-200 sm:text-sm">
+                0.45(70) + 0.40(80) + 0.15(60) = 72.5 / 100
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-[#9A9AAE]">
+                These are initial weights, not yet validated against placement outcomes. Deterministic scoring means the same inputs produce the same result; it does not by itself show that the score predicts readiness. Proctoring is an integrity signal for review and is not part of this formula.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 sm:py-28 bg-[#0A0A12] border-t border-[#242433]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center" data-reveal>
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#242433] bg-[#12121C] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#A78BFA]">
+            Your next step
+          </span>
+          <h2 className="mt-5 text-3xl sm:text-4xl font-bold tracking-tight text-white">
+            Build skills with a plan that keeps moving.
+          </h2>
+          <p className="mt-4 text-base text-[#9A9AAE] leading-relaxed">
+            Follow a learning roadmap, practice coding, improve your resume, and get ready for interviews in one place.
+          </p>
+        </div>
+      </section>
+
+      {/* ─── Interactive FAQ Accordion ─── */}
+      <section id="faq" className="py-20 sm:py-28 bg-[#05050B] border-t border-[#242433] scroll-mt-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-14" data-reveal>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#242433] bg-[#12121C] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[#A78BFA]">
+              FAQ
+            </span>
+            <h2 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white">
+              Questions? <span className="ln-text-gradient-2">Answered.</span>
+            </h2>
+          </div>
+
+          <Accordion type="single" collapsible className="max-w-3xl mx-auto" data-reveal>
+            {FAQS.map((faq) => (
+              <AccordionItem key={faq.id} value={faq.id} className="border-b border-[#242433]">
+                <AccordionTrigger className="text-base sm:text-lg font-semibold text-white py-5 hover:text-[#A78BFA]">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="pb-5 text-[#9A9AAE] leading-relaxed text-sm sm:text-base">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
+      {/* ─── Final CTA ─── */}
+      <section className="relative overflow-hidden py-20 sm:py-28 bg-[#0A0A12] border-t border-[#242433]">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_50%,rgba(99,102,241,0.22),transparent_70%)] pointer-events-none"
+        />
+
+        <div className="relative z-10 max-w-3xl mx-auto px-4 text-center" data-reveal>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
+            Ready to explore <span className="ln-text-gradient">Career Hub?</span>
+          </h2>
+          <p className="mt-5 text-base sm:text-lg text-[#9A9AAE]">
+            Bring your career preparation tools together and keep making progress.
+          </p>
+
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/register">
+              <Button
+                size="lg"
+                className="bg-[#8B5CF6] hover:bg-[#7C3AED] rounded-full px-8 text-base text-white w-full sm:w-auto shadow-[0_10px_40px_-15px_rgba(139,92,246,0.45)]"
+              >
+                Get Started <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
+            <Link to="/login">
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-full px-8 text-base border-[#32324A] bg-white/5 hover:bg-white/10 text-white w-full sm:w-auto"
+              >
+                Access Dashboard
+              </Button>
+            </Link>
+          </div>
+
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-xs sm:text-sm text-[#C7C7D6]">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+              <span>Multimodal Affective AI</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+              <span>Sub-30ms Microservices</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+              <span>Standardized PRI Score</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Footer ─── */}
+      <footer className="border-t border-[#242433] bg-[#05050B] pt-14 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+            {/* Col 1: Logo + Blurb */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <CareerHubLogo className="w-7 h-7 text-xs" />
+                <span className="font-bold text-xl tracking-tight text-white">Career Hub</span>
+              </div>
+              <p className="text-sm text-[#9A9AAE] leading-relaxed max-w-xs">
+                Tools to help you prepare, practice, and plan your next career move.
               </p>
             </div>
 
+            {/* Col 2: Modules */}
             <div>
-              <h4 className="font-semibold text-white mb-4">Product</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
-                <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
-                <li><a href="#testimonials" className="hover:text-white transition-colors">Success Stories</a></li>
-                <li><Link to="/login" className="hover:text-white transition-colors">Login</Link></li>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-white mb-4">
+                Core Modules
+              </h4>
+              <ul className="space-y-2.5 text-sm text-[#9A9AAE]">
+                <li>
+                  <a href="#dashboard" className="hover:text-white transition-colors">
+                    AI Mock Interviewer
+                  </a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-white transition-colors">
+                    AlgoRank Sandbox
+                  </a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-white transition-colors">
+                    ResumeRanker ATS
+                  </a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-white transition-colors">
+                    SeniorConnect
+                  </a>
+                </li>
               </ul>
             </div>
 
+            {/* Col 3: Explore */}
             <div>
-              <h4 className="font-semibold text-white mb-4">Resources</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Documentation</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Community</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-white mb-4">
+                Explore
+              </h4>
+              <ul className="space-y-2.5 text-sm text-[#9A9AAE]">
+                <li>
+                  <a href="#pri-formula" className="hover:text-white transition-colors">
+                    Learning Roadmaps
+                  </a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-white transition-colors">
+                    Platform Preview
+                  </a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-white transition-colors">
+                    Sign in
+                  </a>
+                </li>
+                <li>
+                  <a href="#faq" className="hover:text-white transition-colors">
+                    FAQ
+                  </a>
+                </li>
               </ul>
             </div>
 
+            {/* Col 4: Account */}
             <div>
-              <h4 className="font-semibold text-white mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms</a></li>
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-white mb-4">
+                Get started
+              </h4>
+              <ul className="space-y-2.5 text-sm text-[#9A9AAE]">
+                <li><Link to="/register" className="hover:text-white transition-colors">Create an account</Link></li>
+                <li><Link to="/login" className="hover:text-white transition-colors">Sign in</Link></li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400 text-sm">
-            <p>&copy; 2024 CareerHub. All rights reserved.</p>
+          <div className="border-t border-[#242433] mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs sm:text-sm text-[#6E6E85] gap-4">
+            <div>&copy; {new Date().getFullYear()} Career Hub</div>
           </div>
         </div>
       </footer>

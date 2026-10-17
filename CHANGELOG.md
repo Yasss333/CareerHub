@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Made Resume Builder AI enhancement context-aware for work experience and projects, with a two-bullet, fact-grounded output limit
+- Unified resume and roadmap AI calls on the verified OpenRouter model ID, corrected the local model setting, and added a local `DIRECT_URL` matching the Docker database URL
+- Added accessible loading, recoverable error and retry states across AlgoRank, Roadmaps, and Senior Connect, with consistent page framing on core screens
+- Added unsaved-work warnings for resume editing, roadmap setup, mentor profiles, and coding solutions
+- Added Vercel and Render deployment configuration, Neon pooled/direct database URLs, production health checks, and deployment documentation
+- Added a collapsible dashboard sidebar and account settings for name, email, and profile photo updates
+- Integrated a CareerHub product landing page as the public home page with working sign-in and registration links
+- Removed school, department, and final-year project branding from the landing page
+- Expanded the landing page PRI methodology with component definitions, modality handling, example calculation, and validation caveats
+- Refreshed the signed-in dashboard with a prominent PRI readiness card, PRI trend, and roadmap shortcut
+- Added daily authenticated PRI snapshot persistence and a screenshot-inspired dashboard layout with a labeled sample trend, four student KPIs, and score entry
+- Roadmap learning map with selectable connected stages, progress tracking, curated free resources, and searchable career path setup
+- Added beginner, intermediate, and advanced roadmap practice paths, free YouTube search links without an API key, and standardized app accents on the shared purple theme
 - Dashboard widget customization with persisted hide/show preferences and a restore-defaults action
 - Guided six-step Resume Builder with save-and-continue navigation, live desktop preview, and mobile editor/preview tabs
 - Administrator review queue for mentor applications, with explicit approve/reject decisions
@@ -84,6 +97,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Senior Connect SessionAnalytics component with overview stats, metrics, monthly trends, and recent sessions
 
 ### Changed
+- Fixed mock interview question generation to use a consistent JSON contract and added inline generation/evaluation errors
+- Normalized common OpenRouter question response shapes and restarted the local API with the updated handler
+- Removed the arbitrary 12,000-character cap from Resume Builder AI enhancement inputs
+- Added route-level lazy loading, reducing the main production JavaScript entry from about 760 kB to 277 kB; made legacy brand colors and fixed neutral surfaces adapt to the shared purple/dark theme
+- Added an ESLint 10 flat config and inline Resume Builder save feedback
+- Standardized the signed-in shell and active module brand accents on shared purple theme tokens; refreshed Resume Builder navigation, responsive forms, preview surfaces, and resume list feedback
+- Fixed roadmap builder submission to send a valid JSON payload to the API
 - Mentor profiles remain private until approved; approved status is required for discovery, availability management, and mentor session actions
 - Added a dedicated MENTOR account role, role-selected login, and Senior Connect-only interface and API access
 - Resume AI enhancement now uses the Vite same-origin API proxy, a consistent model fallback, input validation, and safe actionable provider-configuration errors

@@ -32,6 +32,7 @@ let adminToken
 let resumeId
 let duplicateResumeId
 let roadmapId
+let generatedRoadmapId
 let playlistId
 let commentId
 let sessionId
@@ -319,6 +320,22 @@ async function run() {
     const template = result.data?.templates?.[0]
     if (!template) throw new Error('No roadmap templates were returned')
 
+    result = await request('/api/roadmaps/generate', {
+      method: 'POST',
+      token: juniorToken,
+      body: { roleType: template.key, skillLevel: 'beginner', userGoals: 'Build accessible web applications' }
+    })
+    expectStatus(result, 201)
+    generatedRoadmapId = result.data?.roadmap?.id
+    const generatedMilestone = result.data?.roadmap?.milestones?.[0]
+    if (!generatedRoadmapId || !generatedMilestone) throw new Error('Roadmap generation did not return stages')
+    if (!generatedMilestone.resources?.articles?.some((resource) => resource.free)) {
+      throw new Error('Generated stages did not include curated free resources')
+    }
+    result = await request(`/api/roadmaps/${generatedRoadmapId}`, { method: 'DELETE', token: juniorToken })
+    expectStatus(result, 200)
+    generatedRoadmapId = undefined
+
     result = await request('/api/roadmaps', {
       method: 'POST',
       token: juniorToken,
@@ -337,7 +354,7 @@ async function run() {
       result = await request(`/api/roadmaps/${roadmapId}/milestones`, {
         method: 'POST',
         token: juniorToken,
-        body: { title: `E2E milestone ${order}`, order, topics: [] }
+        body: { title: `E2E milestone ${order}`, order, topics: order === 1 ? ['JavaScript', 'DOM manipulation'] : [] }
       })
       expectStatus(result, 201)
     }
@@ -346,6 +363,20 @@ async function run() {
     expectStatus(result, 200)
     const firstMilestone = result.data?.roadmap?.milestones?.[0]
     if (!firstMilestone) throw new Error('Created milestones were not returned')
+    const jsResources = firstMilestone.resources?.articles || []
+    if (!jsResources.some((resource) => resource.free && resource.url.startsWith('https://'))) {
+      throw new Error('Milestone did not include a curated free learning link')
+    }
+
+    result = await request(`/api/roadmaps/${roadmapId}/resources`, {
+      method: 'POST',
+      token: juniorToken,
+      body: { topic: firstMilestone.title, milestoneId: firstMilestone.id }
+    })
+    expectStatus(result, 200)
+    if (!result.data?.resources?.articles?.some((resource) => resource.free)) {
+      throw new Error('Milestone resource refresh did not return free learning links')
+    }
 
     result = await request(`/api/roadmaps/${roadmapId}/milestones/${firstMilestone.id}/complete`, {
       method: 'PUT',
@@ -596,6 +627,12 @@ async function cleanup() {
   const userIds = [juniorId, mentorId, adminId].filter(Boolean)
 
   try {
+    if (generatedRoadmapId) {
+      await prisma.roadmap.deleteMany({ where: { id: generatedRoadmapId } })
+    }
+    if (roadmapId) {
+      await prisma.roadmap.deleteMany({ where: { id: roadmapId } })
+    }
     if (sessionId) {
       await prisma.sessionFeedback.deleteMany({ where: { bookingId: sessionId } })
       await prisma.sessionBooking.deleteMany({ where: { id: sessionId } })

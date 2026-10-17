@@ -23,7 +23,7 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/ai/cover-letter', {
+      const response = await fetch('/api/ai/cover-letter', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,7 +205,7 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
                 </label>
                 <input
                   type="text"
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="e.g., Google"
@@ -218,7 +218,7 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
                 </label>
                 <input
                   type="text"
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none"
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
                   placeholder="e.g., Software Engineer"
@@ -230,7 +230,7 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
                 </label>
                 <textarea
                   rows={3}
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none resize-none"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Any specific points you want to highlight..."
@@ -240,7 +240,7 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
             <div className="mt-4 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:shadow-lg transition flex items-center gap-2"
+                className="px-6 py-2.5 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg hover:shadow-lg transition flex items-center gap-2"
               >
                 <span>✨ Generate Cover Letter</span>
               </button>
@@ -251,7 +251,7 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
         {/* Phase 2: Loading */}
         {loading && (
           <div className="py-12 flex flex-col items-center justify-center">
-            <LoaderCircle className="w-12 h-12 text-blue-500 animate-spin" />
+            <LoaderCircle className="w-12 h-12 text-primary animate-spin" />
             <p className="mt-4 text-gray-600 font-medium">Crafting your cover letter...</p>
             <p className="text-sm text-gray-400">This may take a few seconds</p>
           </div>
@@ -283,14 +283,14 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
               </button>
               <button
                 onClick={downloadPDF}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm"
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition flex items-center gap-2 text-sm"
               >
                 <Download className="w-4 h-4" />
                 Download PDF
               </button>
               <button
                 onClick={regenerate}
-                className="px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition flex items-center gap-2 text-sm"
+                className="px-4 py-2 border border-primary/30 text-primary rounded-lg hover:bg-primary/5 transition flex items-center gap-2 text-sm"
               >
                 <RefreshCw className="w-4 h-4" />
                 Regenerate

@@ -70,11 +70,11 @@ export default function AlgoRank() {
   }, [fetchProblems])
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl space-y-6 pb-10">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">AlgoRank</h1>
-          <p className="text-gray-600 mt-2">Practice DSA problems and climb the leaderboard</p>
+          <h1 className="text-3xl font-bold tracking-tight text-card-foreground">AlgoRank</h1>
+          <p className="mt-2 text-muted-foreground">Practice DSA problems and climb the leaderboard</p>
         </div>
         <div className="flex gap-2">
           {isAdmin && (
@@ -95,7 +95,7 @@ export default function AlgoRank() {
           </Link>
           <Link
             to="/algorank/playlists"
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors"
+            className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-primary transition-colors hover:bg-primary/10"
           >
             <ListMusic className="w-4 h-4" />
             Playlists
@@ -110,7 +110,7 @@ export default function AlgoRank() {
           {isAdmin && (
             <Link
               to="/algorank/admin"
-              className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/15 transition-colors"
             >
               <Settings className="w-4 h-4" />
               Admin
@@ -125,16 +125,18 @@ export default function AlgoRank() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
+            aria-label="Search problems"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             placeholder="Search problems..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <select
+          aria-label="Filter by difficulty"
           value={difficulty}
           onChange={(e) => { setDifficulty(e.target.value); setPage(1) }}
-          className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">All Difficulties</option>
           <option value="EASY">Easy</option>
@@ -142,9 +144,10 @@ export default function AlgoRank() {
           <option value="HARD">Hard</option>
         </select>
         <select
+          aria-label="Filter by tag"
           value={tag}
           onChange={(e) => { setTag(e.target.value); setPage(1) }}
-          className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-xs"
+          className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary max-w-xs"
         >
           <option value="">All Tags</option>
           {tags.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -152,27 +155,28 @@ export default function AlgoRank() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6">
-          {error}
+        <div role="alert" aria-live="assertive" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-destructive">
+          <span>{error}</span>
+          <button type="button" onClick={fetchProblems} className="font-semibold underline underline-offset-2">Try again</button>
         </div>
       )}
 
       {/* Problem list */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-600">Loading problems...</div>
+        <div role="status" aria-live="polite" className="flex h-64 items-center justify-center text-muted-foreground">
+          Loading problems…
         </div>
       ) : problems.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
+        <div className="rounded-2xl border border-border bg-card p-12 text-center text-muted-foreground">
           No problems found{search || difficulty || tag ? ' for the current filters' : ' yet'}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2" aria-label={`${totalProblems} coding problems`}>
           {problems.map((problem) => (
             <Link
               key={problem.id}
               to={`/algorank/problems/${problem.id}`}
-              className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md hover:border-blue-300 transition-all"
+              className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md hover:border-primary/20 transition-all"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">

@@ -81,7 +81,7 @@ const EducationForm = ({ data, onChange }: EducationFormProps) => {
                   <input
                     type="text"
                     onChange={(e) => updateEducation(index, "institution", e.target.value)}
-                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={education.institution || ""}
                     placeholder="Institution"
                   />
@@ -92,7 +92,7 @@ const EducationForm = ({ data, onChange }: EducationFormProps) => {
                   <input
                     type="text"
                     onChange={(e) => updateEducation(index, "degree", e.target.value)}
-                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={education.degree || ""}
                     placeholder="Degree (ex: BE, BTECH, MSC)"
                   />
@@ -103,7 +103,7 @@ const EducationForm = ({ data, onChange }: EducationFormProps) => {
                   <input
                     type="text"
                     onChange={(e) => updateEducation(index, "field", e.target.value)}
-                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={education.field || ""}
                     placeholder="Field of Study (ex: Computer Science)"
                   />
@@ -114,7 +114,7 @@ const EducationForm = ({ data, onChange }: EducationFormProps) => {
                   <input
                     type="month"
                     onChange={(e) => updateEducation(index, "graduationDate", e.target.value)}
-                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={education.graduationDate || ""}
                   />
                 </div>
@@ -127,7 +127,7 @@ const EducationForm = ({ data, onChange }: EducationFormProps) => {
                     min="0"
                     max="4.0"
                     onChange={(e) => updateEducation(index, "gpa", parseFloat(e.target.value))}
-                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={education.gpa || ""}
                     placeholder="GPA (e.g., 3.5)"
                   />

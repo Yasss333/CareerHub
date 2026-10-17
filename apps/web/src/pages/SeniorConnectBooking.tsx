@@ -172,7 +172,7 @@ export default function SeniorConnectBooking() {
     return (
       <div className="max-w-2xl mx-auto text-center py-16">
         <p className="text-gray-600 mb-6">Mentor not found.</p>
-        <Link to="/connect" className="text-blue-600 hover:text-blue-700">
+        <Link to="/connect" className="text-primary hover:text-primary">
           Back to Mentors
         </Link>
       </div>
@@ -247,8 +247,8 @@ export default function SeniorConnectBooking() {
                           onClick={() => handleSlotSelect(slot)}
                           className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-colors ${
                             selectedSlotId === slot.id
-                              ? 'bg-blue-600 border-blue-600 text-white'
-                              : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                              ? 'border-primary bg-primary text-white'
+                              : 'bg-primary/5 border-primary/15 text-primary hover:bg-primary/10'
                           }`}
                         >
                           <Clock className="w-3.5 h-3.5" />
@@ -271,13 +271,13 @@ export default function SeniorConnectBooking() {
               type="date"
               value={manualDate}
               onChange={(e) => { setManualDate(e.target.value); setSelectedSlotId('') }}
-              className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <input
               type="time"
               value={manualTime}
               onChange={(e) => { setManualTime(e.target.value); setSelectedSlotId('') }}
-              className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
         </div>
@@ -288,7 +288,7 @@ export default function SeniorConnectBooking() {
             value={duration}
             disabled={!!selectedSlotId}
             onChange={(e) => setDuration(parseInt(e.target.value))}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 disabled:text-gray-500"
           >
             <option value={30}>30 minutes</option>
             <option value={45}>45 minutes</option>
@@ -307,7 +307,7 @@ export default function SeniorConnectBooking() {
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder="e.g., Career advice, Technical interview prep"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             required
           />
         </div>
@@ -319,7 +319,7 @@ export default function SeniorConnectBooking() {
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Any specific questions or areas you'd like to focus on..."
             rows={4}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -331,7 +331,7 @@ export default function SeniorConnectBooking() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-primary text-white py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? 'Booking...' : 'Book Session'}
         </button>

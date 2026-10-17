@@ -46,7 +46,6 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
     setGeneratingIndex(index);
     setAiError('');
     const experience = data[index];
-    const prompt = `enhance this job description "${experience.description}" for the position of "${experience.position}" at "${experience.company}"`;
 
     try {
       const token = localStorage.getItem('token');
@@ -56,7 +55,12 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ userContent: prompt })
+        body: JSON.stringify({
+          entryType: 'experience',
+          title: experience.position || '',
+          organization: experience.company || '',
+          description: experience.description || '',
+        })
       });
 
       const result = await response.json().catch(() => null);
@@ -123,7 +127,7 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
                   <input
                     type="text"
                     onChange={(e) => updateExperience(index, "company", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={experience.company || ""}
                     placeholder="Enter company name"
                   />
@@ -133,7 +137,7 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
                   <input
                     type="text"
                     onChange={(e) => updateExperience(index, "position", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={experience.position || ""}
                     placeholder="Enter job title"
                   />
@@ -143,7 +147,7 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
                   <input
                     type="month"
                     onChange={(e) => updateExperience(index, "startDate", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary"
                     value={experience.startDate || ""}
                   />
                 </div>
@@ -153,7 +157,7 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
                     type="month"
                     onChange={(e) => updateExperience(index, "endDate", e.target.value)}
                     disabled={experience.isCurrent}
-                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100"
                     value={experience.endDate || ""}
                   />
                 </div>
@@ -164,25 +168,28 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
                   type="checkbox"
                   checked={experience.isCurrent || false}
                   onChange={(e) => updateExperience(index, "isCurrent", e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 text-primary focus:ring-primary"
                 />
                 <span className="text-sm text-gray-700">Currently working here</span>
               </label>
 
               <div className="space-y-2">
                 <div className="flex justify-between mt-3">
-                  <h3 className="text-sm font-medium text-gray-700">Job Description</h3>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700">Experience Description</h3>
+                    <p className="text-xs text-gray-500">Keep it focused: up to 2 short bullets.</p>
+                  </div>
                   <button
                     onClick={() => generateDescription(index)}
-                    disabled={generatingIndex === index || !experience.position || !experience.company}
-                    className="flex bg-gradient-to-br from-purple-50 to-purple-400 text-purple-700 hover:bg-purple-200 transition-colors disabled:opacity-50 text-sm rounded-lg px-3 py-1 border-transparent border-1 hover:border-purple-950"
+                    disabled={generatingIndex === index || !experience.position || !experience.company || !experience.description?.trim()}
+                    className="flex bg-gradient-to-br from-primary/10 to-primary/20 text-primary hover:bg-primary/15 transition-colors disabled:opacity-50 text-sm rounded-lg px-3 py-1 border-transparent border-1 hover:border-primary"
                   >
                     {generatingIndex === index ? (
                       <Loader2 className="w-3 h-3 animate-spin" />
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 ml-2 mt-0.5" />
-                        AI Enhance
+                        Shorten & improve
                       </>
                     )}
                   </button>
@@ -190,7 +197,7 @@ const ExperienceForm = ({ data, onChange }: ExperienceFormProps) => {
                 <textarea
                   value={experience.description || ""}
                   rows={4}
-                  className="w-full text-sm px-3 py-2 rounded-lg border border-gray-300 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-sm px-3 py-2 rounded-lg border border-gray-300 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                   onChange={(e) => updateExperience(index, "description", e.target.value)}
                   placeholder="Describe your responsibilities and achievements..."
                 />

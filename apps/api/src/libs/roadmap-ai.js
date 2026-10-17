@@ -1,16 +1,44 @@
 // AI integration for roadmap personalization and resource generation
 // Uses OpenRouter API (same as Resume Builder)
+import { getFreeResourcesForTopics } from './roadmap-resources.js';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_MODEL = process.env.MODEL_NAME || 'openai/gpt-4o-mini';
+
+function adaptRoadmapForLevel(template, skillLevel = 'beginner') {
+  const level = ['beginner', 'intermediate', 'advanced'].includes(skillLevel) ? skillLevel : 'beginner';
+  const guidance = {
+    beginner: 'Start with guided practice and build confidence with the foundations.',
+    intermediate: 'Use familiar topics as a quick review, then focus on applying them in a practical project.',
+    advanced: 'Treat familiar topics as optional review and focus on production trade-offs, architecture, and performance.'
+  }[level];
+
+  return {
+    ...template,
+    milestones: template.milestones.map((milestone) => {
+      const anchorTopic = milestone.topics?.at(level === 'advanced' ? -1 : 0) || milestone.title;
+      const projectTopic = level === 'beginner'
+        ? `Guided practice: ${milestone.title}`
+        : level === 'intermediate'
+          ? `Project practice applying ${anchorTopic}`
+          : `Production project: apply ${anchorTopic} with architecture and performance trade-offs`;
+
+      return {
+        ...milestone,
+        description: `${milestone.description}. ${guidance}`,
+        topics: [...(milestone.topics || []), projectTopic]
+      };
+    })
+  };
+}
 
 /**
  * Generate personalized roadmap based on template and user goals
  */
 export async function generatePersonalizedRoadmap(template, skillLevel, userGoals) {
   if (!OPENROUTER_API_KEY) {
-    // Return template as-is if no API key
-    return template;
+    return adaptRoadmapForLevel(template, skillLevel);
   }
 
   try {
@@ -23,11 +51,11 @@ ${JSON.stringify(template, null, 2)}
 User goals: ${userGoals}
 
 Personalize this roadmap by:
-1. Adjusting milestone order based on ${skillLevel} level (${skillLevel === 'beginner' ? 'start with fundamentals' : skillLevel === 'intermediate' ? 'focus on advanced topics' : 'mastery level'})
-2. Adding specific sub-topics relevant to user goals
-3. Suggesting realistic time estimates for each milestone (in weeks)
-4. Highlighting critical learning paths
-5. Adding difficulty indicators to each topic
+1. Adapt the roadmap to the learner's ${skillLevel} starting point: beginner learners need foundations and guided practice; intermediate learners should briefly review prerequisites then focus on applied projects and deeper concepts; advanced learners should skip fundamentals they likely know and focus on architecture, trade-offs, performance, and production-level projects.
+2. Keep prerequisites in a sensible order and identify optional review topics so learners can move faster where they are already confident.
+3. Add specific sub-topics relevant to the learner's goals without making the path unnecessarily long.
+4. Suggest realistic time estimates for each milestone (in weeks) and highlight critical learning paths.
+5. Add difficulty indicators to each topic and make the difficulty appropriate to the selected starting level.
 
 Return JSON structure with milestones array. Each milestone should have:
 - title
@@ -49,7 +77,7 @@ Only return the JSON, no other text.
         'HTTP-Referer': 'https://careerhub.com',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3-8b-instruct:free',
+        model: OPENROUTER_MODEL,
         messages: [
           {
             role: 'system',
@@ -80,10 +108,10 @@ Only return the JSON, no other text.
     }
 
     // Fallback to template if JSON parsing fails
-    return template;
+    return adaptRoadmapForLevel(template, skillLevel);
   } catch (error) {
     console.error('Error generating personalized roadmap:', error);
-    return template; // Fallback to original template
+    return adaptRoadmapForLevel(template, skillLevel);
   }
 }
 
@@ -91,9 +119,10 @@ Only return the JSON, no other text.
  * Generate AI-suggested free learning resources for a topic
  */
 export async function generateResources(topic, skillLevel) {
+  const curatedResources = getFreeResourcesForTopics([topic]);
+
   if (!OPENROUTER_API_KEY) {
-    // Return default curated resources if no API key
-    return getDefaultResources(topic);
+    return curatedResources;
   }
 
   try {
@@ -155,7 +184,7 @@ Only return the JSON, no other text. Make URLs as specific and real as possible.
         'HTTP-Referer': 'https://careerhub.com',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3-8b-instruct:free',
+        model: OPENROUTER_MODEL,
         messages: [
           {
             role: 'system',
@@ -178,70 +207,26 @@ Only return the JSON, no other text. Make URLs as specific and real as possible.
     const data = await response.json();
     const content = data.choices[0].message.content;
 
-    // Extract JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const resources = JSON.parse(jsonMatch[0]);
-      return resources;
+      const suggestedResources = JSON.parse(jsonMatch[0]);
+      const resourceTypes = ['articles', 'videos', 'practice', 'courses'];
+
+      return Object.fromEntries(resourceTypes.map((type) => {
+        const curated = curatedResources[type] || [];
+        const suggested = (Array.isArray(suggestedResources[type]) ? suggestedResources[type] : [])
+          .filter((resource) => typeof resource.url === 'string' && resource.url.startsWith('https://'))
+          .map((resource) => ({ ...resource, free: false, aiSuggested: true }));
+        const unique = new Set(curated.map((resource) => resource.url));
+        return [type, [...curated, ...suggested.filter((resource) => !unique.has(resource.url))].slice(0, 5)];
+      }));
     }
 
-    // Fallback to default resources
-    return getDefaultResources(topic);
+    return curatedResources;
   } catch (error) {
     console.error('Error generating resources:', error);
-    return getDefaultResources(topic);
+    return curatedResources;
   }
-}
-
-/**
- * Default curated resources when AI is unavailable
- */
-function getDefaultResources(topic) {
-  return {
-    articles: [
-      {
-        title: `${topic} - GeeksforGeeks`,
-        url: `https://www.geeksforgeeks.org/${topic.toLowerCase().replace(/\s+/g, '-')}/`,
-        source: 'GeeksforGeeks',
-        description: 'Comprehensive tutorials and examples'
-      },
-      {
-        title: `${topic} - MDN Web Docs`,
-        url: 'https://developer.mozilla.org/en-US/',
-        source: 'MDN',
-        description: 'Official documentation and guides'
-      }
-    ],
-    videos: [
-      {
-        title: `${topic} Tutorial`,
-        url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(topic + ' tutorial'),
-        channel: 'YouTube Search',
-        duration: 'Various',
-        description: 'Search YouTube for tutorial videos'
-      }
-    ],
-    practice: [
-      {
-        title: 'LeetCode Practice',
-        url: 'https://leetcode.com/',
-        description: 'Practice coding problems'
-      },
-      {
-        title: 'HackerRank',
-        url: 'https://www.hackerrank.com/',
-        description: 'Coding challenges and competitions'
-      }
-    ],
-    courses: [
-      {
-        title: 'freeCodeCamp',
-        url: 'https://www.freecodecamp.org/',
-        platform: 'freeCodeCamp',
-        description: 'Free coding certifications'
-      }
-    ]
-  };
 }
 
 /**
@@ -276,7 +261,7 @@ Return updated milestones array in JSON format only.
         'HTTP-Referer': 'https://careerhub.com',
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-3-8b-instruct:free',
+        model: OPENROUTER_MODEL,
         messages: [
           {
             role: 'system',

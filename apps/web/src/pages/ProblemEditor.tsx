@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { DifficultyBadge, SubmissionStatusBadge, languageLabel, type Difficulty } from '../components/ProblemBadges'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 
 interface Example {
   input?: string
@@ -109,14 +110,17 @@ export default function ProblemEditor() {
   const [problem, setProblem] = useState<Problem | null>(null)
   const [language, setLanguage] = useState('JAVASCRIPT')
   const [code, setCode] = useState('')
+  const [initialCode, setInitialCode] = useState('')
   const [customInput, setCustomInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const hasUnsavedCode = Boolean(code.trim() && code !== initialCode)
 
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<RunResult | null>(null)
 
   const [submitting, setSubmitting] = useState(false)
+  useUnsavedChangesWarning(hasUnsavedCode && !running && !submitting)
   const [submissionStatus, setSubmissionStatus] = useState('')
   const [testCaseResults, setTestCaseResults] = useState<TestCaseResult[]>([])
   const [recentSubmissions, setRecentSubmissions] = useState<SubmissionRow[]>([])
@@ -137,6 +141,7 @@ export default function ProblemEditor() {
       setProblem(problem)
       const snippets = problem.codeSnippets || {}
       setCode(snippets['JAVASCRIPT'] || snippets[Object.keys(snippets)[0]] || '// Write your solution here')
+      setInitialCode(snippets['JAVASCRIPT'] || snippets[Object.keys(snippets)[0]] || '// Write your solution here')
       if (Array.isArray(problem.testcases) && problem.testcases.length > 0) {
         setCustomInput(problem.testcases[0].input)
       }
@@ -220,22 +225,22 @@ export default function ProblemEditor() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading problem...</div>
+        <div role="status" aria-live="polite" className="text-muted-foreground">Loading problem…</div>
       </div>
     )
   }
 
   if (error && !problem) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-        {error}
+      <div role="alert" aria-live="assertive" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-destructive">
+        {error}<button type="button" onClick={() => { setLoading(true); loadProblem(); }} className="ml-3 font-semibold underline underline-offset-2">Try again</button>
       </div>
     )
   }
 
   return (
     <div>
-      <Link to={`/algorank/problems/${id}`} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
+      <Link to={`/algorank/problems/${id}`} onClick={(event) => { if (hasUnsavedCode && !window.confirm('Leave this problem? Your unsaved solution will be lost.')) event.preventDefault(); }} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
         <ChevronLeft className="w-4 h-4" />
         Back to problem
       </Link>
@@ -297,7 +302,7 @@ export default function ProblemEditor() {
                     key={lang.key}
                     onClick={() => switchLanguage(lang.key)}
                     className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                      language === lang.key ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                      language === lang.key ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
                     {lang.label}

@@ -89,7 +89,7 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'session_request': return 'bg-blue-50 border-blue-200';
+      case 'session_request': return 'bg-primary/5 text-primary/15';
       case 'session_accepted': return 'bg-green-50 border-green-200';
       case 'session_rejected': return 'bg-red-50 border-red-200';
       case 'session_reminder': return 'bg-yellow-50 border-yellow-200';
@@ -131,7 +131,7 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
         <button
           onClick={markAllAsRead}
           disabled={unreadCount === 0}
-          className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+          className="text-sm text-primary hover:text-primary disabled:text-gray-400 disabled:cursor-not-allowed"
         >
           Mark all as read
         </button>
@@ -171,7 +171,7 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
                       </p>
                     </div>
                     {!notification.isRead && (
-                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                      <div className="w-2 h-2 bg-primary/50 rounded-full" />
                     )}
                   </div>
                 </div>

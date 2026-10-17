@@ -58,7 +58,7 @@ export default function Submissions() {
           <h1 className="text-3xl font-bold text-gray-900">My Submissions</h1>
           <p className="text-gray-600 mt-2">Your coding activity across all problems</p>
         </div>
-        <Link to="/algorank" className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm">
+        <Link to="/algorank" className="px-4 py-2 bg-primary/5 text-primary rounded-lg hover:bg-primary/10 transition-colors text-sm">
           Back to Problems
         </Link>
       </div>
@@ -76,7 +76,7 @@ export default function Submissions() {
       ) : submissions.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
           No submissions yet.{' '}
-          <Link to="/algorank" className="text-blue-600 hover:underline">Start solving problems.</Link>
+          <Link to="/algorank" className="text-primary hover:underline">Start solving problems.</Link>
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">

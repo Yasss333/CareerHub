@@ -3,6 +3,8 @@
 ## Overview
 The Roadmap Generator is a hybrid AI-powered learning path system that creates personalized career roadmaps. It combines predefined career role templates with AI personalization to generate structured learning paths with free resources (GFG, YouTube, etc.).
 
+Roadmap setup supports beginner, intermediate, and advanced starting levels. Level-specific project practice is added even when the AI provider is unavailable. Curated topics without a video receive a public YouTube search link; this link-based fallback does not require a YouTube Data API key.
+
 ## Architecture
 
 ### Backend Structure
@@ -10,6 +12,7 @@ The Roadmap Generator is a hybrid AI-powered learning path system that creates p
 - **API Routes**: `apps/api/src/routes/roadmap.routes.js`
 - **Templates**: `apps/api/src/templates/roadmap-templates.js`
 - **AI Integration**: `apps/api/src/libs/roadmap-ai.js`
+- **Curated Free Resources**: `apps/api/src/libs/roadmap-resources.js`
 
 ### Frontend Structure
 - **Pages**:
@@ -85,7 +88,7 @@ model RoadmapMilestone {
 
 ### AI Generation
 - `POST /api/roadmaps/generate` - Generate roadmap from template with AI personalization
-- `POST /api/roadmaps/:id/resources` - Generate AI-suggested free resources for a topic
+- `POST /api/roadmaps/:id/resources` - Return free resources for a topic; pass `{ milestoneId }` to refresh and persist resources on one roadmap stage
 - `POST /api/roadmaps/:id/customize` - AI-customize existing roadmap
 
 ### Templates
@@ -97,7 +100,8 @@ model RoadmapMilestone {
 ### Hybrid Approach
 1. **Base Templates**: Predefined career role roadmaps in `roadmap-templates.js`
 2. **AI Personalization**: OpenRouter API enhances templates based on user goals and skill level
-3. **Resource Generation**: AI suggests free learning resources (GFG, YouTube, blogs, documentation)
+3. **Curated Resources**: `roadmap-resources.js` attaches free documentation, courses, and practice links to each stage; AI suggestions are added when available
+4. **Progress Map**: RoadmapDetail presents selectable connected stages and tracks completion against overall progress
 
 ### AI Functions
 - `generatePersonalizedRoadmap(template, skillLevel, userGoals)` - Personalize template
@@ -105,7 +109,7 @@ model RoadmapMilestone {
 - `customizeRoadmap(roadmap, userGoals)` - Customize existing roadmap
 
 ### AI Configuration
-- Uses OpenRouter API with model: `meta-llama/llama-3-8b-instruct:free`
+- Uses the shared `MODEL_NAME` configured for OpenRouter; defaults to `openai/gpt-4o-mini`
 - Falls back to base templates if API key not configured
 - Returns curated default resources if AI generation fails
 

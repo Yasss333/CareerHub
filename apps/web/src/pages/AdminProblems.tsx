@@ -213,7 +213,7 @@ export default function AdminProblems() {
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
             </div>
@@ -223,7 +223,7 @@ export default function AdminProblems() {
               <select
                 value={form.difficulty}
                 onChange={(e) => setForm({ ...form, difficulty: e.target.value as any })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="EASY">Easy</option>
                 <option value="MEDIUM">Medium</option>
@@ -237,7 +237,7 @@ export default function AdminProblems() {
                 type="text"
                 value={form.tags.join(', ')}
                 onChange={(e) => setForm({ ...form, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="e.g., Arrays, Dynamic Programming"
               />
             </div>
@@ -248,7 +248,7 @@ export default function AdminProblems() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 required
               />
             </div>
@@ -259,7 +259,7 @@ export default function AdminProblems() {
                 value={form.constraints}
                 onChange={(e) => setForm({ ...form, constraints: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
@@ -269,7 +269,7 @@ export default function AdminProblems() {
                 value={form.hints || ''}
                 onChange={(e) => setForm({ ...form, hints: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
@@ -312,7 +312,7 @@ export default function AdminProblems() {
                             newExamples[index] = { ...example, input: e.target.value };
                             setForm({ ...form, examples: newExamples });
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                       </div>
                       <div>
@@ -325,7 +325,7 @@ export default function AdminProblems() {
                             newExamples[index] = { ...example, output: e.target.value };
                             setForm({ ...form, examples: newExamples });
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                       </div>
                       <div>
@@ -338,7 +338,7 @@ export default function AdminProblems() {
                             setForm({ ...form, examples: newExamples });
                           }}
                           rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                       </div>
                     </div>
@@ -394,7 +394,7 @@ export default function AdminProblems() {
                             setForm({ ...form, testcases: newTestcases });
                           }}
                           rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                       </div>
                       <div>
@@ -407,7 +407,7 @@ export default function AdminProblems() {
                             setForm({ ...form, testcases: newTestcases });
                           }}
                           rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                       </div>
                     </div>
@@ -480,7 +480,7 @@ export default function AdminProblems() {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Saving...' : 'Save Problem'}
@@ -504,7 +504,7 @@ export default function AdminProblems() {
             setEditingProblem(null);
             resetForm();
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
         >
           <Plus className="w-4 h-4" />
           Create Problem
@@ -561,7 +561,7 @@ export default function AdminProblems() {
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <button
                     onClick={() => handleEdit(problem)}
-                    className="text-blue-600 hover:text-blue-800 mr-3"
+                    className="text-primary hover:text-primary mr-3"
                   >
                     <Edit className="w-4 h-4 inline" />
                   </button>

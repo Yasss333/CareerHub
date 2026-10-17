@@ -226,3 +226,8 @@ The following tasks are optional enhancements for future iterations:
 - Authentication system unified with CareerHub JWT
 - Frontend being rebuilt with React 18 + TypeScript
 - Piston integration logic adapted from legacy code
+
+## Follow-up: core interaction feedback
+- [x] Add retryable problem-list and problem-detail load errors
+- [x] Announce loading states and provide accessible names for search and discussion inputs
+- [x] Warn before leaving the editor with an unsaved code solution

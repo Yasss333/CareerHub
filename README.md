@@ -42,7 +42,7 @@ CareerHub/
 
 ### Prerequisites
 
-- Node.js 18 or newer
+- Node.js 20.19 or newer
 - npm 9 or newer
 - PostgreSQL 15, either locally or through Neon
 - Docker Compose, if running the included local PostgreSQL container
@@ -64,6 +64,8 @@ docker compose up -d postgres
 ```
 
 The included Compose configuration creates a local database named `careerhub`. Alternatively, use a PostgreSQL connection string from Neon or another PostgreSQL provider.
+
+For production deployment to Vercel, Render, and Neon, follow [docs/deployment.md](docs/deployment.md).
 
 Create the API environment file:
 

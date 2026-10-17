@@ -32,7 +32,7 @@ const ATSModal = ({ isOpen, onClose, resumeId }: ATSModalProps) => {
     setError(null);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/ai/ats-score', {
+      const response = await fetch('/api/ai/ats-score', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ ${result.suggestions?.map((s, i) => `${i+1}. ${s}`).join("\n")}
             </p>
             <textarea
               rows={8}
-              className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm"
+              className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary outline-none resize-none text-sm"
               placeholder="Paste the full job description here..."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
@@ -111,7 +111,7 @@ ${result.suggestions?.map((s, i) => `${i+1}. ${s}`).join("\n")}
             <div className="mt-4 flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition flex items-center gap-2"
+                className="px-6 py-2.5 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg hover:shadow-lg transition flex items-center gap-2"
               >
                 <span>🔍 Analyze Match</span>
               </button>
@@ -122,11 +122,11 @@ ${result.suggestions?.map((s, i) => `${i+1}. ${s}`).join("\n")}
         {/* Phase 2: Loading */}
         {loading && (
           <div className="py-12 flex flex-col items-center justify-center">
-            <LoaderCircle className="w-12 h-12 text-blue-500 animate-spin" />
+            <LoaderCircle className="w-12 h-12 text-primary animate-spin" />
             <p className="mt-4 text-gray-600 font-medium">Analyzing your resume...</p>
             <p className="text-sm text-gray-400">This may take a few seconds</p>
             <div className="w-full max-w-xs mt-4 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: "70%" }}></div>
+              <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: "70%" }}></div>
             </div>
           </div>
         )}
@@ -203,9 +203,9 @@ ${result.suggestions?.map((s, i) => `${i+1}. ${s}`).join("\n")}
             </div>
 
             {/* Suggestions */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4">
-              <h3 className="text-sm font-semibold text-blue-800 mb-2">💡 Suggestions to Improve</h3>
-              <ul className="space-y-2 text-sm text-blue-700 list-disc list-inside">
+            <div className="bg-primary/5 border border-primary/25 rounded-xl p-6 mb-4">
+              <h3 className="text-sm font-semibold text-primary mb-2">💡 Suggestions to Improve</h3>
+              <ul className="space-y-2 text-sm text-primary list-disc list-inside">
                 {(result.suggestions || []).map((s, i) => (
                   <li key={i}>{s}</li>
                 ))}
@@ -226,7 +226,7 @@ ${result.suggestions?.map((s, i) => `${i+1}. ${s}`).join("\n")}
               </button>
               <button
                 onClick={() => { setResult(null); setJobDescription(""); }}
-                className="px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition flex items-center gap-2 text-sm"
+                className="px-4 py-2 border border-primary/30 text-primary rounded-lg hover:bg-primary/5 transition flex items-center gap-2 text-sm"
               >
                 <span>↻</span> New Scan
               </button>

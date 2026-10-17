@@ -178,7 +178,7 @@ export default function ProblemCreate() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="e.g., Two Sum"
               required
             />
@@ -190,7 +190,7 @@ export default function ProblemCreate() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Describe the problem in detail..."
               required
             />
@@ -202,7 +202,7 @@ export default function ProblemCreate() {
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {DIFFICULTIES.map((diff) => (
                   <option key={diff} value={diff}>
@@ -220,13 +220,13 @@ export default function ProblemCreate() {
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Add tag and press Enter"
                 />
                 <button
                   type="button"
                   onClick={addTag}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   Add
                 </button>
@@ -236,13 +236,13 @@ export default function ProblemCreate() {
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-sm"
+                      className="inline-flex items-center gap-1 bg-primary/5 text-primary px-2 py-1 rounded-full text-sm"
                     >
                       {tag}
                       <button
                         type="button"
                         onClick={() => removeTag(tag)}
-                        className="hover:text-blue-900"
+                        className="hover:text-primary"
                       >
                         ×
                       </button>
@@ -261,7 +261,7 @@ export default function ProblemCreate() {
             <button
               type="button"
               onClick={addExample}
-              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+              className="flex items-center gap-1 text-sm text-primary hover:text-primary"
             >
               <Plus className="w-4 h-4" />
               Add Example
@@ -289,7 +289,7 @@ export default function ProblemCreate() {
                   value={example.input}
                   onChange={(e) => updateExample(idx, 'input', e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
                   placeholder="Example input..."
                 />
               </div>
@@ -300,7 +300,7 @@ export default function ProblemCreate() {
                   value={example.output}
                   onChange={(e) => updateExample(idx, 'output', e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
                   placeholder="Example output..."
                 />
               </div>
@@ -311,7 +311,7 @@ export default function ProblemCreate() {
                   value={example.explanation}
                   onChange={(e) => updateExample(idx, 'explanation', e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                   placeholder="Explain this example..."
                 />
               </div>
@@ -326,7 +326,7 @@ export default function ProblemCreate() {
             <button
               type="button"
               onClick={addTestcase}
-              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+              className="flex items-center gap-1 text-sm text-primary hover:text-primary"
             >
               <Plus className="w-4 h-4" />
               Add Test Case
@@ -354,7 +354,7 @@ export default function ProblemCreate() {
                   value={testcase.input}
                   onChange={(e) => updateTestcase(idx, 'input', e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
                   placeholder="Test case input..."
                   required={idx === 0}
                 />
@@ -366,7 +366,7 @@ export default function ProblemCreate() {
                   value={testcase.output}
                   onChange={(e) => updateTestcase(idx, 'output', e.target.value)}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
                   placeholder="Expected output..."
                   required={idx === 0}
                 />
@@ -385,7 +385,7 @@ export default function ProblemCreate() {
               value={constraints}
               onChange={(e) => setConstraints(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="e.g., 1 <= nums.length <= 10^4..."
             />
           </div>
@@ -396,7 +396,7 @@ export default function ProblemCreate() {
               value={hints}
               onChange={(e) => setHints(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Provide hints to help users solve the problem..."
             />
           </div>
@@ -407,7 +407,7 @@ export default function ProblemCreate() {
               value={editorial}
               onChange={(e) => setEditorial(e.target.value)}
               rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Provide a detailed explanation of the solution approach..."
             />
           </div>
@@ -424,7 +424,7 @@ export default function ProblemCreate() {
                 value={codeSnippets[lang.key]}
                 onChange={(e) => updateCodeSnippet(lang.key, e.target.value)}
                 rows={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
                 placeholder={`Provide a starter code template for ${lang.label}...`}
               />
             </div>

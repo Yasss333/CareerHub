@@ -83,8 +83,8 @@ export default function Dashboard() {
   }
 
   const statItems = [
-    { label: 'Resumes Created', value: stats.resumesCount, icon: FileText, color: 'bg-blue-500', link: '/resume' },
-    { label: 'Problems Solved', value: `${stats.problemsSolved}/${stats.totalProblems}`, icon: Code, color: 'bg-purple-500', link: '/algorank' },
+    { label: 'Resumes Created', value: stats.resumesCount, icon: FileText, color: 'bg-primary', link: '/resume' },
+    { label: 'Problems Solved', value: `${stats.problemsSolved}/${stats.totalProblems}`, icon: Code, color: 'bg-primary', link: '/algorank' },
     { label: 'Mentorship Sessions', value: stats.connectSessions, icon: Users, color: 'bg-orange-500', link: '/connect/sessions' },
     { label: 'Upcoming Sessions', value: stats.upcomingSessions, icon: Calendar, color: 'bg-green-500', link: '/connect/sessions' },
   ]
@@ -126,7 +126,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3 mb-2">
-            <Target className="w-5 h-5 text-purple-500" />
+            <Target className="w-5 h-5 text-primary/50" />
             <h3 className="font-semibold text-gray-900">Acceptance Rate</h3>
           </div>
           <p className="text-3xl font-bold text-gray-900">{stats.acceptanceRate?.toFixed(1) || 0}%</p>
@@ -152,7 +152,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Recent Sessions</h2>
-            <Link to="/connect/sessions" className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1">
+            <Link to="/connect/sessions" className="text-primary hover:text-primary text-sm flex items-center gap-1">
               View all <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -167,7 +167,7 @@ export default function Dashboard() {
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full ${
                   session.status === 'completed' ? 'bg-green-100 text-green-700' :
-                  session.status === 'accepted' ? 'bg-blue-100 text-blue-700' :
+                  session.status === 'accepted' ? 'bg-primary/10 text-primary' :
                   session.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
                   'bg-gray-100 text-gray-700'
                 }`}>
@@ -183,8 +183,8 @@ export default function Dashboard() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link to="/resume" className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-            <FileText className="w-6 h-6 text-blue-600" />
+          <Link to="/resume" className="flex items-center gap-3 p-4 bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors">
+            <FileText className="w-6 h-6 text-primary" />
             <div>
               <p className="font-semibold text-gray-900">Create Resume</p>
               <p className="text-sm text-gray-600">Build your professional resume</p>
@@ -197,8 +197,8 @@ export default function Dashboard() {
               <p className="text-sm text-gray-600">Connect with senior professionals</p>
             </div>
           </Link>
-          <Link to="/algorank" className="flex items-center gap-3 p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
-            <Code className="w-6 h-6 text-purple-600" />
+          <Link to="/algorank" className="flex items-center gap-3 p-4 bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors">
+            <Code className="w-6 h-6 text-primary" />
             <div>
               <p className="font-semibold text-gray-900">Practice Problems</p>
               <p className="text-sm text-gray-600">Solve DSA challenges</p>

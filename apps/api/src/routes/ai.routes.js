@@ -32,7 +32,7 @@ const isAIConfigured = () => {
 };
 
 const validateEnhancementInput = (userContent) => {
-  return typeof userContent === 'string' && userContent.trim().length > 0 && userContent.length <= 12000;
+  return typeof userContent === 'string' && userContent.trim().length > 0;
 };
 
 // Enhance professional summary
@@ -41,7 +41,7 @@ router.post('/enhance-pro-sum', authenticate, async (req, res) => {
     const { userContent } = req.body || {};
     
     if (!validateEnhancementInput(userContent)) {
-      return res.status(400).json({ error: "Provide text to enhance (up to 12,000 characters)." });
+      return res.status(400).json({ error: "Add a description before enhancing it." });
     }
     if (!isAIConfigured()) {
       return res.status(503).json({ error: "AI enhancement is not configured. Set a valid OPENROUTER_API_KEY in apps/api/.env and restart the API." });
@@ -71,24 +71,46 @@ You are a professional resume writer and ATS optimization expert. Your task is t
 // Enhance job description
 router.post('/enhance-job-desc', authenticate, async (req, res) => {
   try {
-    const { userContent } = req.body || {};
-    if (!validateEnhancementInput(userContent)) {
-      return res.status(400).json({ error: "Provide text to enhance (up to 12,000 characters)." });
+    const { userContent, description, entryType, title, organization, projectType } = req.body || {};
+    const sourceText = description ?? userContent;
+    if (!validateEnhancementInput(sourceText)) {
+      return res.status(400).json({ error: "Add a description before enhancing it." });
+    }
+    if (entryType !== undefined && !['experience', 'project'].includes(entryType)) {
+      return res.status(400).json({ error: "Entry type must be 'experience' or 'project'." });
+    }
+    for (const value of [title, organization, projectType]) {
+      if (value !== undefined && (typeof value !== 'string' || value.length > 200)) {
+        return res.status(400).json({ error: "Resume entry details must be text under 200 characters." });
+      }
     }
     if (!isAIConfigured()) {
       return res.status(503).json({ error: "AI enhancement is not configured. Set a valid OPENROUTER_API_KEY in apps/api/.env and restart the API." });
     }
+
+    const entryLabel = entryType === 'project' ? 'personal project' : 'work experience';
+    const systemPrompt = entryType === 'project'
+      ? "You are a concise resume editor. Rewrite the supplied personal project description as at most 2 short resume bullets, 45 words total. Focus on what the project does, the implementation, and outcomes only when stated. Use the supplied project name and technologies as context. Improve clarity and action verbs. Never invent technologies, features, metrics, users, or results; omit unsupported claims. Return only the rewritten text, with no preamble or explanation."
+      : "You are a concise resume editor. Rewrite the supplied work experience description as at most 2 short resume bullets, 45 words total. Focus on responsibilities and results only when stated. Use the supplied role and organization as context. Improve clarity and action verbs. Never invent responsibilities, technologies, metrics, or results; omit unsupported claims. Return only the rewritten text, with no preamble or explanation.";
+    const entryContext = JSON.stringify({
+      type: entryLabel,
+      title: typeof title === 'string' ? title : '',
+      organization: typeof organization === 'string' ? organization : '',
+      projectType: typeof projectType === 'string' ? projectType : '',
+      description: sourceText,
+    });
     
     const response = await createChatCompletion({
       model: modelName(),
+      max_tokens: 180,
       messages: [
         {
           role: "system",
-          content: "You are a professional recruiter and job description optimization expert. Your task is to rewrite and enhance the user's job description to make it clear, structured, and professional. Ensure the description is ATS-friendly and easy to understand, with concise and well-organized content. Improve clarity, grammar, and flow while preserving the original meaning and responsibilities. Do not add false requirements, fake responsibilities, or unrealistic expectations. Keep the tone professional and neutral. Avoid unnecessary buzzwords and filler text. The output should be clean, readable, and suitable for posting on job portals or internal hiring platforms. Output only the enhanced job description.",
+          content: systemPrompt,
         },
         {
           role: "user",
-          content: userContent,
+          content: entryContext,
         },
       ],
     });
@@ -97,7 +119,7 @@ router.post('/enhance-job-desc', authenticate, async (req, res) => {
     if (!enhancedSolution?.trim()) throw new Error('AI provider returned an empty response');
     return res.status(200).json({ enhancedSolution });
   } catch (error) {
-    console.error("AI job description enhancement error:", error);
+    console.error("AI resume entry enhancement error:", error);
     return res.status(503).json({ error: "AI enhancement is temporarily unavailable. Check the server's AI model configuration and try again." });
   }
 });
@@ -132,7 +154,7 @@ Be strict but fair. Consider skills, experience, education, and projects. Do not
     const userPrompt = `Job Description:\n${jobDescription}\n\nResume Data (JSON):\n${JSON.stringify(resume, null, 2)}`;
 
     const response = await createChatCompletion({
-      model: process.env.MODEL_NAME || "gpt-4o-mini",
+      model: modelName(),
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -175,7 +197,7 @@ router.post('/cover-letter', authenticate, async (req, res) => {
     userPrompt += `Write a cover letter.`;
 
     const response = await createChatCompletion({
-      model: process.env.MODEL_NAME || "gpt-4o-mini",
+      model: modelName(),
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -196,13 +218,17 @@ router.post('/interview/generate', authenticate, async (req, res) => {
     const { resumeId, count = 5, types = ["technical", "behavioral"], focus = "", jobDescription = "" } = req.body;
     const userId = req.user.id;
 
+    if (!resumeId || !Number.isInteger(count) || count < 1 || count > 10 || !Array.isArray(types)) {
+      return res.status(400).json({ message: "Choose a valid resume, question count, and question types." });
+    }
+
     const resume = await prisma.resume.findFirst({
       where: { id: resumeId, userId }
     });
     
     if (!resume) return res.status(404).json({ message: "Resume not found" });
 
-    const systemPrompt = `You are an expert interview coach. Generate ${count} interview questions for a candidate based on their resume. The questions should be realistic and tailored to their experience. Return a JSON array of objects with fields: "question", "category" (one of "technical", "behavioral", "system design"). Do not include answers.`;
+    const systemPrompt = `You are an expert interview coach. Generate exactly ${count} realistic, distinct interview questions tailored to the candidate's resume. Use only the requested categories. Return one JSON object with this exact shape: {"questions":[{"question":"...","category":"technical|behavioral|system design"}]}. Do not include answers or any text outside the JSON object.`;
 
     let userPrompt = `Resume: ${JSON.stringify(resume, null, 2)}\n`;
     if (focus) userPrompt += `Focus area: ${focus}\n`;
@@ -210,7 +236,8 @@ router.post('/interview/generate', authenticate, async (req, res) => {
     if (types.length) userPrompt += `Include these categories: ${types.join(", ")}\n`;
 
     const response = await createChatCompletion({
-      model: process.env.MODEL_NAME || "gpt-4o-mini",
+      model: modelName(),
+      max_tokens: 1200,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -218,12 +245,32 @@ router.post('/interview/generate', authenticate, async (req, res) => {
       response_format: { type: "json_object" }
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
-    const questions = result.questions || [];
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error('AI provider returned an empty question response');
+    const result = JSON.parse(content);
+    const questionList = Array.isArray(result)
+      ? result
+      : result.questions ?? result.interviewQuestions ?? result.interview_questions ?? [];
+    const allowedCategories = new Set(['technical', 'behavioral', 'system design']);
+    const questions = Array.isArray(questionList)
+      ? questionList.flatMap((item, index) => {
+          const question = typeof item === 'string' ? item : item?.question ?? item?.text ?? item?.prompt;
+          if (typeof question !== 'string' || !question.trim()) return [];
+          const rawCategory = typeof item === 'object' && item ? item.category ?? item.type : undefined;
+          const normalizedCategory = typeof rawCategory === 'string'
+            ? rawCategory.toLowerCase().replace(/[_-]+/g, ' ').trim()
+            : '';
+          const category = allowedCategories.has(normalizedCategory)
+            ? normalizedCategory
+            : types[index % Math.max(types.length, 1)];
+          return [{ question: question.trim(), category: category || 'technical' }];
+        })
+      : [];
+    if (!questions.length) throw new Error('AI provider returned no valid interview questions');
     return res.status(200).json({ questions });
   } catch (error) {
     console.error("Generate questions error:", error);
-    return res.status(500).json({ message: error.message });
+    return res.status(503).json({ message: "Could not generate interview questions. Check the AI configuration and try again." });
   }
 });
 
@@ -248,7 +295,7 @@ router.post('/interview/evaluate', authenticate, async (req, res) => {
     const userPrompt = `Resume: ${JSON.stringify(resume, null, 2)}\n\nQuestion: ${question}\n\nCandidate's Answer: ${answer}`;
 
     const response = await createChatCompletion({
-      model: process.env.MODEL_NAME || "gpt-4o-mini",
+      model: modelName(),
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -256,11 +303,18 @@ router.post('/interview/evaluate', authenticate, async (req, res) => {
       response_format: { type: "json_object" }
     });
 
-    const evaluation = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error('AI provider returned an empty evaluation');
+    const evaluation = JSON.parse(content);
+    if (!['Excellent', 'Good', 'Needs Improvement'].includes(evaluation.rating)
+      || typeof evaluation.feedback !== 'string'
+      || typeof evaluation.modelAnswer !== 'string') {
+      throw new Error('AI provider returned an invalid evaluation');
+    }
     return res.status(200).json(evaluation);
   } catch (error) {
     console.error("Evaluation error:", error);
-    return res.status(500).json({ message: error.message });
+    return res.status(503).json({ message: "Could not evaluate your answer. Check the AI configuration and try again." });
   }
 });
 
@@ -345,7 +399,7 @@ ${resumeText}
 `;
 
     const response = await createChatCompletion({
-      model: "gpt-4o-mini",
+      model: modelName(),
       messages: [
         {
           role: "system",

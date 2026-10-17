@@ -15,7 +15,9 @@ This document describes the API design conventions, authentication patterns, err
 ### Server Configuration
 - **Development Port**: 5000
 - **Base URL**: `http://localhost:5000/api`
-- **CORS**: Configured for frontend on `http://localhost:5173`
+- **CORS**: Local origins plus the comma-separated production origins in `CLIENT_ORIGIN`
+- **Health checks**: `/health` for process health and `/health/ready` for database readiness
+- **Production hosting**: Express web service on Render; Vercel forwards `/api/*` to the service
 
 ## Authentication
 
@@ -167,6 +169,13 @@ All other endpoints require valid JWT token in Authorization header.
   - `POST /ml/text` - Proxy to ML text analysis
   - `POST /ml/fusion` - Proxy to ML fusion
   - `POST /ml/verify-face` - Proxy to face verification
+
+### Dashboard PRI history
+- **Base Path**: `/api/dashboard`
+- **Purpose**: Store and retrieve each authenticated user's daily PRI snapshots
+- **Routes**:
+  - `GET /pri/history?days=30` - List the user's snapshots for up to 365 days
+  - `PUT /pri/today` - Validate three 0–100 component scores, calculate the weighted PRI, and upsert today's UTC snapshot
 
 ## Error Handling
 

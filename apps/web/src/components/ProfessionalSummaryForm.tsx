@@ -51,7 +51,7 @@ const ProfessionalSummaryForm = ({ value, onChange }: ProfessionalSummaryFormPro
         <button
           onClick={generateSummary}
           disabled={isGenerating || !value.trim()}
-          className="flex bg-gradient-to-br from-purple-50 to-purple-400 text-purple-700 hover:bg-purple-200 transition-colors disabled:opacity-50 text-sm rounded-lg px-3 py-1 border-transparent hover:border-purple-950"
+          className="flex bg-gradient-to-br from-primary/10 to-primary/20 text-primary hover:bg-primary/15 transition-colors disabled:opacity-50 text-sm rounded-lg px-3 py-1 border-transparent hover:border-primary"
         >
           {isGenerating ? (
             <Loader2 className="w-3 h-3 animate-spin" />
@@ -66,7 +66,7 @@ const ProfessionalSummaryForm = ({ value, onChange }: ProfessionalSummaryFormPro
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
         rows={4}
         placeholder="Write a brief professional summary..."
       />

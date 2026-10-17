@@ -3,6 +3,13 @@
 ## Overview
 Track the implementation progress of the Roadmap Generator feature - a hybrid AI-powered learning path system similar to roadmap.sh.
 
+## Phase 7: Interactive roadmap experience
+- [x] Create a roadmap.sh-inspired visual learning map with connected, selectable stages and clear progress
+- [x] Add curated free resource links to generated milestones so useful links are available immediately
+- [x] Improve roadmap discovery and setup with a polished responsive template explorer
+- [x] Verify roadmap resources, milestone progress, authenticated API flows, and frontend production build
+- [x] Verify the builder submits a valid roadmap generation payload
+
 ## Phase 1: Database & Backend Foundation
 
 ### Database Schema
@@ -47,7 +54,7 @@ Track the implementation progress of the Roadmap Generator feature - a hybrid AI
 - [x] Implement POST /api/roadmaps/:id/resources endpoint
 - [x] Implement POST /api/roadmaps/:id/customize endpoint
 - [x] Use OpenRouter API (same as Resume Builder)
-- [x] Configure model: meta-llama/llama-3-8b-instruct:free
+- [x] Use the shared, verified OpenRouter model ID for roadmap generation and resources
 
 ## Phase 3: Frontend Implementation
 
@@ -142,7 +149,6 @@ Track the implementation progress of the Roadmap Generator feature - a hybrid AI
 ## Known Issues & Limitations
 
 ### Current Limitations
-- Database migration pending (requires database running)
 - AI resources quality varies based on model
 - No roadmap sharing between users
 - No export to PDF/image
@@ -197,3 +203,12 @@ A roadmap generator is considered complete when:
 - Progress calculation is automatic based on milestones
 - Frontend uses existing API utility and authentication
 - Dark mode support inherited from Layout component
+
+## Follow-up: Flexible levels and free video resources
+- [x] Make generated paths adapt explicitly to beginner, intermediate, and advanced starting levels
+- [x] Always include a free YouTube video search link when curated videos are missing
+- [x] Mention free videos in roadmap setup and resource guidance
+- [x] Verify resource fallback and frontend/API builds
+- [x] Use the verified shared OpenRouter model instead of the unavailable hard-coded model
+- [x] Add retryable template and roadmap loading feedback with screen-reader announcements
+- [x] Warn before leaving an unsaved roadmap setup
