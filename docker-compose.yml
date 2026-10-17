@@ -19,5 +19,17 @@ services:
       timeout: 5s
       retries: 5
 
+  proctoring:
+    build:
+      context: ./services/proctoring
+      dockerfile: Dockerfile
+    container_name: careerhub-proctoring
+    restart: unless-stopped
+    ports:
+      - "8000:7860"
+    environment:
+      - INTERVIEW_ML_TOKEN=careerhub-ml-secret-token-2026-auth-secure
+      - PORT=7860
+
 volumes:
   postgres_data:

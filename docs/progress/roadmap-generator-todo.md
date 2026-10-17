@@ -3,6 +3,12 @@
 ## Overview
 Track the implementation progress of the Roadmap Generator feature - a hybrid AI-powered learning path system similar to roadmap.sh.
 
+## Phase 8: Expanded engineering paths and custom AI roadmaps
+- [x] Add electronics and robotics career templates
+- [x] Add authenticated custom roadmap generation using the configured OpenRouter key
+- [x] Add custom roadmap setup to the builder and document the API
+- [x] Update the changelog
+
 ## Phase 7: Interactive roadmap experience
 - [x] Create a roadmap.sh-inspired visual learning map with connected, selectable stages and clear progress
 - [x] Add curated free resource links to generated milestones so useful links are available immediately

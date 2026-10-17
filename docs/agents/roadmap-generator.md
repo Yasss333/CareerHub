@@ -88,6 +88,7 @@ model RoadmapMilestone {
 
 ### AI Generation
 - `POST /api/roadmaps/generate` - Generate roadmap from template with AI personalization
+- `POST /api/roadmaps/generate-custom` - Generate and save an AI roadmap from `{ field, goals, skillLevel }` (authenticated; uses the server's configured `OPENROUTER_API_KEY`)
 - `POST /api/roadmaps/:id/resources` - Return free resources for a topic; pass `{ milestoneId }` to refresh and persist resources on one roadmap stage
 - `POST /api/roadmaps/:id/customize` - AI-customize existing roadmap
 
@@ -99,7 +100,7 @@ model RoadmapMilestone {
 
 ### Hybrid Approach
 1. **Base Templates**: Predefined career role roadmaps in `roadmap-templates.js`
-2. **AI Personalization**: OpenRouter API enhances templates based on user goals and skill level
+2. **AI Personalization**: OpenRouter API enhances templates based on user goals and skill level; custom generation builds a new milestone path from the learner's field and goals
 3. **Curated Resources**: `roadmap-resources.js` attaches free documentation, courses, and practice links to each stage; AI suggestions are added when available
 4. **Progress Map**: RoadmapDetail presents selectable connected stages and tracks completion against overall progress
 
@@ -121,6 +122,8 @@ model RoadmapMilestone {
 - **Full Stack Developer**: Combined frontend and backend fundamentals
 - **DevOps Engineer**: Linux, Git, Docker, Kubernetes, CI/CD, Cloud Platforms, IaC, Monitoring
 - **Data Scientist**: Python, Statistics, Visualization, SQL, Machine Learning, Deep Learning, Big Data
+- **Electronics Engineer**: circuit foundations, analog/digital electronics, embedded systems, PCB design, and test engineering
+- **Robotics Engineer**: electronics, mechanics, control systems, ROS 2, autonomy, and a capstone project
 
 ### Template Structure
 ```javascript

@@ -24,3 +24,17 @@ services:
         sync: false
       - key: JWT_EXPIRES_IN
         value: 7d
+      - key: INTERVIEW_ML_URL
+        sync: false
+      - key: INTERVIEW_ML_TOKEN
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: MODEL_NAME
+        value: openai/gpt-4o-mini
+      - key: IMAGEKIT_PUBLIC_KEY
+        sync: false
+      - key: IMAGEKIT_PRIVATE_KEY
+        sync: false
+      - key: IMAGEKIT_URL_ENDPOINT
+        sync: false

@@ -2,7 +2,8 @@
 // This schema merges models from AlgoRank, Resume Builder, AI Interview, and Senior Connect
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -74,6 +75,8 @@ model User {
   availabilitySlots AvailabilitySlot[]
   notifications   Notification[]
   roadmaps       Roadmap[]
+  achievements   Achievement[]
+  sessionMessages SessionMessage[]
   
   // AlgoRank relations
   problems      Problem[]
@@ -287,6 +290,7 @@ model SeniorProfile {
   reviewCount Int      @default(0)
   sessionCount Int     @default(0)
   availability String   @default("available")
+  hourlyRate  Int      @default(0)
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -309,6 +313,7 @@ model SessionBooking {
   
   availabilitySlot AvailabilitySlot? @relation(fields: [availabilitySlotId], references: [id])
   feedbacks   SessionFeedback[]
+  messages    SessionMessage[]
   
   junior      User     @relation("JuniorBookings", fields: [juniorId], references: [id])
   senior      User     @relation("SeniorBookings", fields: [seniorId], references: [id])
@@ -318,6 +323,19 @@ model SessionBooking {
   @@index([juniorId, createdAt])
   @@index([seniorId, createdAt])
   @@index([availabilitySlotId])
+}
+
+model SessionMessage {
+  id        String   @id @default(uuid())
+  sessionId String
+  senderId  String
+  message   String
+  createdAt DateTime @default(now())
+
+  session   SessionBooking @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender    User           @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
 }
 
 // Additional Senior Connect models
@@ -382,8 +400,13 @@ model InterviewSession {
   topics      String[]
   role        String?
   experienceLevel String?
+  difficulty  String   @default("medium")
   plannedDuration Int @default(30)
   cameraEnabled Boolean @default(false)
+  cameraConsentAt DateTime?
+  microphoneEnabled Boolean @default(false)
+  microphoneConsentAt DateTime?
+  modalityAvailability Json?
   status      String   @default("in_progress")
   startedAt   DateTime @default(now())
   endedAt     DateTime?
@@ -392,6 +415,8 @@ model InterviewSession {
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   questions   InterviewQuestion[]
+  emotionResults EmotionResult[]
+  proctoringEvents ProctoringEvent[]
   createdAt   DateTime @default(now())
   
   @@index([userId])
@@ -404,15 +429,49 @@ model InterviewQuestion {
   questionText String
   questionIndex Int
   category    String?
+  questionType String?
+  topic       String?
+  difficulty  String?
+  expectedAnswerPoints String[] @default([])
+  evaluationCriteria String[] @default([])
   answerText  String?
   answeredAt  DateTime?
   questionFeedback Json?
   
   session     InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  emotionResults EmotionResult[]
   createdAt   DateTime @default(now())
   
   @@index([sessionId])
   @@index([questionIndex])
+}
+
+model EmotionResult {
+  id        String   @id @default(uuid())
+  sessionId String
+  questionId String?
+  modality  String
+  result    Json
+  createdAt DateTime @default(now())
+
+  session  InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question InterviewQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([questionId])
+}
+
+model ProctoringEvent {
+  id        String   @id @default(uuid())
+  sessionId String
+  eventType String
+  severity  String   @default("info")
+  details   Json?
+  createdAt DateTime @default(now())
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
 }
 
 model PriSnapshot {
@@ -474,4 +533,24 @@ model RoadmapMilestone {
 
   @@index([roadmapId])
   @@index([order])
+}
+
+// ============================================
+// ACHIEVEMENT SYSTEM MODELS
+// ============================================
+
+model Achievement {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String   // 'algorank_first_solve', 'algorank_streak_7', 'resume_created', 'session_completed', etc.
+  title       String
+  description String
+  icon        String?  // Emoji or icon name
+  unlockedAt  DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@unique([userId, type])
 }

@@ -27,3 +27,9 @@
 - [x] Add accessible names and keyboard focus behavior to updated interactive controls
 - [x] Warn users before losing unsaved edits in resume, roadmap, mentor profile, and coding workflows
 - [x] Keep small-screen navigation polish out of scope per user direction
+
+## Cross-module features
+- [x] Achievement/badge system with gamification across all modules
+- [x] Cross-module recommendation engine for problems, skills, and mentors
+- [x] Dashboard integration with achievements badge
+- [x] Roadmap detail page with cross-module recommendations

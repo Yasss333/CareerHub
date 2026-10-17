@@ -107,7 +107,11 @@ export default function Login() {
                 ))}
               </div>
               <p className="mt-2 text-xs text-gray-500">
-                Mentor access is available after administrator approval.
+                {accountType === 'MENTOR'
+                  ? 'Sign in as a mentor to manage your 1:1 sessions, chat, and review candidates.'
+                  : accountType === 'ADMIN'
+                  ? 'Sign in as an administrator.'
+                  : 'Sign in to access your dashboard, practice DSA, AI interviews, and book sessions.'}
               </p>
             </fieldset>
 

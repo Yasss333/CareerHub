@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: careerhub-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-careerhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-careerhub_secure_password_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-careerhub}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-careerhub} -d ${POSTGRES_DB:-careerhub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  proctoring:
+    build:
+      context: ./services/proctoring
+      dockerfile: Dockerfile
+    container_name: careerhub-prod-proctoring
+    restart: unless-stopped
+    ports:
+      - "8000:7860"
+    environment:
+      - PORT=7860
+      - APP_PORT=7860
+      - INTERVIEW_ML_TOKEN=${INTERVIEW_ML_TOKEN:-careerhub-ml-secret-token-2026-auth-secure}
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: careerhub-prod-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_URL=${DATABASE_URL:-postgresql://careerhub:careerhub_secure_password_2026@postgres:5432/careerhub}
+      - DIRECT_URL=${DIRECT_URL:-postgresql://careerhub:careerhub_secure_password_2026@postgres:5432/careerhub}
+      - JWT_SECRET=${JWT_SECRET:-careerhub-production-super-secret-jwt-key-minimum-32-chars-long}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - CLIENT_ORIGIN=${CLIENT_ORIGIN:-http://localhost,http://localhost:80,http://localhost:5173}
+      - PISTON_API_URL=${PISTON_API_URL:-https://emkc.org/api/v2/piston/execute}
+      - INTERVIEW_ML_URL=${INTERVIEW_ML_URL:-http://proctoring:7860}
+      - INTERVIEW_ML_TOKEN=${INTERVIEW_ML_TOKEN:-careerhub-ml-secret-token-2026-auth-secure}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - MODEL_NAME=${MODEL_NAME:-openai/gpt-4o-mini}
+      - IMAGEKIT_PUBLIC_KEY=${IMAGEKIT_PUBLIC_KEY:-}
+      - IMAGEKIT_PRIVATE_KEY=${IMAGEKIT_PRIVATE_KEY:-}
+      - IMAGEKIT_URL_ENDPOINT=${IMAGEKIT_URL_ENDPOINT:-}
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: careerhub-prod-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_prod_data:

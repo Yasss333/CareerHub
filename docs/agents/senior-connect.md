@@ -171,14 +171,12 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 - All routes are protected and require authentication
 
 ### Mentor approval and permissions
-- New registrations receive the `USER` role; submitting a profile does not elevate the account or make the profile public.
-- New applications have `mentorApprovalStatus = PENDING` and `isAlumniMentor = false`.
-- Only an administrator can transition a pending application to `APPROVED` or `REJECTED`; approval promotes non-admin applicants to `MENTOR`.
-- Rejected applications remain `USER`; removing an approved mentor profile returns a `MENTOR` account to `USER`.
-- The MENTOR login selection accepts only approved MENTOR accounts. MENTOR accounts receive a Senior Connect-only layout and are denied access to other platform APIs.
-- Availability writes and mentor session-status actions require both `isAlumniMentor = true` and `mentorApprovalStatus = APPROVED`.
-- Mentor discovery and booking resolve only approved profiles.
-- Existing approved mentor accounts are promoted to `MENTOR` by migration; administrator accounts retain the `ADMIN` role.
+- Streamlined Topmate-style flow: when a user sets up or updates their mentor profile, it is instantly approved (`mentorApprovalStatus = APPROVED`, `isAlumniMentor = true`, `role = MENTOR`).
+- Mentors can auto-populate their entire profile by uploading their resume (PDF or text) via AI extraction (`POST /api/connect/parse-senior-resume`).
+- MENTOR accounts receive a focused Senior Connect-only layout (`/mentor`, `/mentor/profile`, `/mentor/settings`) and are shielded from candidate-centric features (Resume Builder, AlgoRank, Roadmaps).
+- Session requests go directly to the mentor to accept or decline (Topmate style) with no admin approval required.
+- Seniors can review candidate readiness before accepting: each session card includes the student's Placement Readiness Index (PRI) breakdown (AI Mock Interview score, AlgoRank DSA accuracy, and Resume score).
+- Meetings and communication: Both mentor and mentee have guaranteed working in-page video conferencing (`VideoMeetingModal` with Jitsi Meet) and real-time interactive session chat (`SessionChatModal` with `GET/POST /api/connect/sessions/:id/messages`).
 
 ## External Integrations
 

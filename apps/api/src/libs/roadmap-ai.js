@@ -3,8 +3,43 @@
 import { getFreeResourcesForTopics } from './roadmap-resources.js';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_MODEL = process.env.MODEL_NAME || 'openai/gpt-4o-mini';
+const getApiKey = () => process.env.OPENROUTER_API_KEY?.trim();
+const getModel = () => process.env.MODEL_NAME || 'openai/gpt-4o-mini';
+
+export async function generateCustomRoadmap({ field, goals, skillLevel }) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('AI roadmap generation is not configured. Set OPENROUTER_API_KEY in apps/api/.env.');
+  }
+
+  const prompt = `Create a practical learning roadmap for the field: ${field}\nLearner goals: ${goals}\nStarting level: ${skillLevel}.\n\nReturn only JSON in this shape: {"title":"...","description":"...","milestones":[{"title":"...","description":"...","order":1,"topics":["..."]}]}. Provide 5 to 8 ordered milestones with 3 to 7 concrete topics each. Keep prerequisites in order, adapt depth to the starting level, and include hands-on projects. Do not include URLs.`;
+  const response = await fetch(OPENROUTER_API_URL, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://careerhub.com' },
+    body: JSON.stringify({ model: getModel(), messages: [
+      { role: 'system', content: 'You create accurate, structured career learning roadmaps. Return valid JSON only.' },
+      { role: 'user', content: prompt }
+    ], temperature: 0.6, max_tokens: 3000 })
+  });
+  if (!response.ok) throw new Error(`Roadmap AI provider returned ${response.status}`);
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  const match = content.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('AI provider returned an invalid roadmap');
+  const roadmap = JSON.parse(match[0]);
+  if (!Array.isArray(roadmap.milestones) || roadmap.milestones.length < 3 || roadmap.milestones.length > 10) {
+    throw new Error('AI provider returned an invalid roadmap structure');
+  }
+  roadmap.title = String(roadmap.title || `${field} Roadmap`).slice(0, 120);
+  roadmap.description = String(roadmap.description || `A personalized ${skillLevel} learning path for ${field}.`).slice(0, 500);
+  roadmap.milestones = roadmap.milestones.map((milestone, index) => ({
+    title: String(milestone.title || `Stage ${index + 1}`).slice(0, 160),
+    description: String(milestone.description || '').slice(0, 500),
+    order: index + 1,
+    topics: Array.isArray(milestone.topics) ? milestone.topics.slice(0, 12).map((topic) => String(topic).slice(0, 200)) : []
+  }));
+  return roadmap;
+}
 
 function adaptRoadmapForLevel(template, skillLevel = 'beginner') {
   const level = ['beginner', 'intermediate', 'advanced'].includes(skillLevel) ? skillLevel : 'beginner';
@@ -37,7 +72,8 @@ function adaptRoadmapForLevel(template, skillLevel = 'beginner') {
  * Generate personalized roadmap based on template and user goals
  */
 export async function generatePersonalizedRoadmap(template, skillLevel, userGoals) {
-  if (!OPENROUTER_API_KEY) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
     return adaptRoadmapForLevel(template, skillLevel);
   }
 
@@ -72,12 +108,12 @@ Only return the JSON, no other text.
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://careerhub.com',
       },
       body: JSON.stringify({
-        model: OPENROUTER_MODEL,
+        model: getModel(),
         messages: [
           {
             role: 'system',
@@ -120,8 +156,9 @@ Only return the JSON, no other text.
  */
 export async function generateResources(topic, skillLevel) {
   const curatedResources = getFreeResourcesForTopics([topic]);
+  const apiKey = getApiKey();
 
-  if (!OPENROUTER_API_KEY) {
+  if (!apiKey) {
     return curatedResources;
   }
 
@@ -179,12 +216,12 @@ Only return the JSON, no other text. Make URLs as specific and real as possible.
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://careerhub.com',
       },
       body: JSON.stringify({
-        model: OPENROUTER_MODEL,
+        model: getModel(),
         messages: [
           {
             role: 'system',
@@ -233,7 +270,8 @@ Only return the JSON, no other text. Make URLs as specific and real as possible.
  * Generate AI suggestions for customizing an existing roadmap
  */
 export async function customizeRoadmap(roadmap, userGoals) {
-  if (!OPENROUTER_API_KEY) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
     return roadmap;
   }
 
@@ -256,12 +294,12 @@ Return updated milestones array in JSON format only.
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://careerhub.com',
       },
       body: JSON.stringify({
-        model: OPENROUTER_MODEL,
+        model: getModel(),
         messages: [
           {
             role: 'system',

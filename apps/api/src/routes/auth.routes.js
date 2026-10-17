@@ -70,7 +70,7 @@ const verifyToken = (token) => {
 // Register new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, role } = req.body;
     
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -84,13 +84,36 @@ router.post('/register', async (req, res) => {
     // Hash password
     const passwordHash = await hashPassword(password);
     
+    const isMentor = role === 'MENTOR';
+    const assignedRole = isMentor ? 'MENTOR' : 'USER';
+    const isAlumniMentor = isMentor;
+    const mentorApprovalStatus = isMentor ? 'APPROVED' : 'NONE';
+
     // Create user
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
         name: name || email.split('@')[0],
-        role: 'USER'
+        role: assignedRole,
+        isAlumniMentor,
+        mentorApprovalStatus,
+        ...(isMentor ? {
+          seniorProfile: {
+            create: {
+              title: 'Senior Mentor',
+              company: 'Tech Enterprise',
+              domain: 'Fullstack',
+              role: 'Senior Engineer',
+              bio: 'Passionate about mentoring junior developers in interview prep, code quality, and career progression.',
+              location: 'Remote',
+              experience: 3,
+              expertise: ['Career Guidance', 'System Design', 'Code Reviews'],
+              achievements: ['Industry Mentor'],
+              hourlyRate: 0
+            }
+          }
+        } : {})
       },
       select: {
         id: true,

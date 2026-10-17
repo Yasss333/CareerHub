@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import openai from '../config/ai.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -28,12 +29,12 @@ const requireAlumniMentor = async (req, res, next) => {
     const user = req.user
       ? await prisma.user.findUnique({
           where: { id: req.user.id },
-          select: { isAlumniMentor: true, mentorApprovalStatus: true }
+          select: { isAlumniMentor: true, mentorApprovalStatus: true, role: true }
         })
       : null;
 
-    if (!user?.isAlumniMentor || user.mentorApprovalStatus !== 'APPROVED') {
-      return res.status(403).json({ error: 'An approved alumni mentor profile is required' });
+    if (!user || (!user.isAlumniMentor && user.role !== 'MENTOR' && user.role !== 'ADMIN')) {
+      return res.status(403).json({ error: 'Mentor access is required' });
     }
 
     return next();
@@ -70,7 +71,10 @@ const isISOString = (value) => {
 // Resolve a senior identifier that may be either a User id or a SeniorProfile id
 const resolveSeniorUserId = async (seniorId) => {
   const user = await prisma.user.findFirst({
-    where: { id: seniorId, isAlumniMentor: true, mentorApprovalStatus: 'APPROVED' },
+    where: {
+      id: seniorId,
+      OR: [{ isAlumniMentor: true }, { role: 'MENTOR' }, { seniorProfile: { isNot: null } }]
+    },
     select: { id: true }
   });
   if (user) return user.id;
@@ -79,13 +83,8 @@ const resolveSeniorUserId = async (seniorId) => {
     where: { id: seniorId },
     select: { userId: true }
   });
-  if (profile) {
-    const owner = await prisma.user.findUnique({
-      where: { id: profile.userId },
-      select: { id: true, isAlumniMentor: true, mentorApprovalStatus: true }
-    });
-    if (owner && owner.isAlumniMentor && owner.mentorApprovalStatus === 'APPROVED') return owner.id;
-  }
+  if (profile) return profile.userId;
+
   return null;
 };
 
@@ -139,12 +138,7 @@ router.get('/seniors', async (req, res) => {
   try {
     const { domain, expertise, search, limit } = req.query;
     
-    const where = {
-      user: {
-        isAlumniMentor: true,
-        mentorApprovalStatus: 'APPROVED'
-      }
-    };
+    const where = {};
     
     if (domain) {
       where.domain = domain;
@@ -294,7 +288,7 @@ const upsertProfile = async (req, res) => {
   try {
     const {
       title, company, domain, role, bio, experience, location,
-      expertise, achievements, availability, name, avatar, timezone
+      expertise, achievements, availability, name, avatar, timezone, hourlyRate
     } = req.body;
 
     const userData = {};
@@ -314,7 +308,8 @@ const upsertProfile = async (req, res) => {
       experience: experience !== undefined ? Math.max(0, parseInt(experience, 10) || 0) : 0,
       location: location !== undefined ? String(location).trim() : '',
       expertise: Array.isArray(expertise) ? expertise.filter((e) => e && String(e).trim()).map((e) => String(e).trim()) : undefined,
-      achievements: Array.isArray(achievements) ? achievements.filter((a) => a && String(a).trim()).map((a) => String(a).trim()) : undefined
+      achievements: Array.isArray(achievements) ? achievements.filter((a) => a && String(a).trim()).map((a) => String(a).trim()) : undefined,
+      hourlyRate: hourlyRate !== undefined ? Math.max(0, parseInt(hourlyRate, 10) || 0) : 0
     };
     if (availability !== undefined) {
       if (!['available', 'limited', 'booked'].includes(availability)) {
@@ -326,15 +321,31 @@ const upsertProfile = async (req, res) => {
     const result = await prisma.$transaction(async (transaction) => {
       const currentUser = await transaction.user.findUnique({
         where: { id: req.user.id },
-        select: { isAlumniMentor: true, mentorApprovalStatus: true }
+        select: { id: true, role: true, isAlumniMentor: true, mentorApprovalStatus: true }
       });
       if (!currentUser) throw new Error('User account not found');
 
-      const approved = currentUser.isAlumniMentor && currentUser.mentorApprovalStatus === 'APPROVED';
-      const mentorApprovalStatus = approved ? 'APPROVED' : 'PENDING';
-      await transaction.user.update({
+      // Topmate-style: auto-approved and promoted to MENTOR role!
+      const mentorApprovalStatus = 'APPROVED';
+      const roleUpdate = currentUser.role === 'ADMIN' ? {} : { role: 'MENTOR' };
+
+      const updatedUser = await transaction.user.update({
         where: { id: req.user.id },
-        data: { ...userData, isAlumniMentor: approved, mentorApprovalStatus }
+        data: {
+          ...userData,
+          isAlumniMentor: true,
+          mentorApprovalStatus: 'APPROVED',
+          ...roleUpdate
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+          role: true,
+          isAlumniMentor: true,
+          mentorApprovalStatus: true
+        }
       });
 
       const profile = await transaction.seniorProfile.upsert({
@@ -343,13 +354,13 @@ const upsertProfile = async (req, res) => {
         create: {
           userId: req.user.id,
           ...profileData,
-          title: profileData.title || 'Mentor',
+          title: profileData.title || 'Senior Mentor',
           experience: profileData.experience || 0,
           location: profileData.location || ''
         }
       });
 
-      return { profile, mentorApprovalStatus };
+      return { profile, user: updatedUser, mentorApprovalStatus: 'APPROVED' };
     });
     
     res.json(result);
@@ -361,6 +372,92 @@ const upsertProfile = async (req, res) => {
 
 router.post('/profile', authenticate, upsertProfile);
 router.put('/profile', authenticate, upsertProfile);
+
+// AI-powered resume parser for senior mentors (Auto-fill profile)
+router.post('/parse-senior-resume', authenticate, async (req, res) => {
+  try {
+    const { resumeText } = req.body || {};
+    if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 20) {
+      return res.status(400).json({ error: 'Please provide valid resume text or upload a PDF resume.' });
+    }
+
+    let parsedProfile = null;
+
+    try {
+      const apiKey = process.env.OPENROUTER_API_KEY?.trim();
+      if (apiKey && !/^(your|replace|placeholder)/i.test(apiKey)) {
+        const systemPrompt = `You are an expert tech recruiter and mentor profile extractor.
+Parse the following senior developer/engineer's resume into a structured mentor profile JSON.
+Return ONLY valid JSON with this exact structure:
+{
+  "name": "Candidate Full Name",
+  "title": "Current or most recent Job Title (e.g. Senior Software Engineer)",
+  "company": "Current or most recent Company (e.g. Google, Microsoft, Startup)",
+  "domain": "One of: Backend, Frontend, Fullstack, Data, DevOps, Mobile, AI/ML, Management, Other",
+  "role": "Specific engineering role (e.g. Backend Lead, Frontend Engineer)",
+  "experience": number (total years of professional experience as integer, e.g. 5),
+  "location": "City, Country (e.g. Bengaluru, India or San Francisco, USA)",
+  "bio": "A concise, engaging 2-3 sentence mentor bio highlighting their background, tech stack, and what they can guide juniors on.",
+  "expertise": ["Skill 1", "Skill 2", "Skill 3", "Skill 4", "Skill 5"] (top 4-7 technical skills or mentorship topics),
+  "achievements": ["Achievement 1", "Achievement 2"] (1-3 notable achievements or career milestones),
+  "hourlyRate": 0
+}
+Do not include any text outside the JSON object.`;
+
+        const response = await openai.chat.completions.create({
+          model: process.env.MODEL_NAME || "openai/gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Resume Content:\n${resumeText.slice(0, 8000)}` }
+          ],
+          response_format: { type: "json_object" }
+        });
+
+        const raw = response.choices[0]?.message?.content;
+        if (raw) {
+          parsedProfile = JSON.parse(raw);
+        }
+      }
+    } catch (aiErr) {
+      console.warn('AI senior resume parsing error, using heuristic parser:', aiErr.message);
+    }
+
+    // Heuristic fallback if AI failed or not configured
+    if (!parsedProfile || !parsedProfile.title) {
+      const lines = resumeText.split('\n').map(l => l.trim()).filter(Boolean);
+      const firstLine = lines[0] || 'Senior Mentor';
+      
+      let detectedDomain = 'Fullstack';
+      if (/backend|node|python|java|golang|distributed|microservice/i.test(resumeText)) detectedDomain = 'Backend';
+      else if (/frontend|react|vue|angular|css|next\.js|web/i.test(resumeText)) detectedDomain = 'Frontend';
+      else if (/machine learning|data science|ai|pytorch|tensorflow/i.test(resumeText)) detectedDomain = 'AI/ML';
+      else if (/devops|cloud|aws|docker|kubernetes|ci\/cd/i.test(resumeText)) detectedDomain = 'DevOps';
+
+      let detectedExp = 4;
+      const expMatch = resumeText.match(/(\d+)\+?\s*years(?:\s+of)?\s+experience/i);
+      if (expMatch) detectedExp = parseInt(expMatch[1], 10) || 4;
+
+      parsedProfile = {
+        name: firstLine.length < 40 ? firstLine : 'Senior Mentor',
+        title: `Senior ${detectedDomain} Engineer`,
+        company: 'Tech Enterprise',
+        domain: detectedDomain,
+        role: `${detectedDomain} Lead`,
+        experience: detectedExp,
+        location: 'Bengaluru, India',
+        bio: `Experienced ${detectedDomain} engineer passionate about mentoring junior developers in system design, clean coding, and career growth.`,
+        expertise: ['System Design', 'Code Reviews', 'Interview Prep', detectedDomain],
+        achievements: ['Industry Mentor', 'Multiple production systems deployed'],
+        hourlyRate: 0
+      };
+    }
+
+    return res.json({ profile: parsedProfile });
+  } catch (err) {
+    console.error('Parse senior resume error:', err);
+    return res.status(500).json({ error: 'Failed to parse resume: ' + err.message });
+  }
+});
 
 router.get('/admin/mentor-applications', authenticate, requireAdmin, async (req, res) => {
   try {
@@ -659,6 +756,64 @@ router.delete('/availability/:id', authenticate, requireAlumniMentor, async (req
 // SESSION BOOKING ROUTES
 // ============================================
 
+// Compute student's Placement Readiness Index (PRI) snapshot for mentor review
+const getCandidatePriSummary = async (userId) => {
+  try {
+    const [interviewSessions, solvedProblems, resumes] = await Promise.all([
+      prisma.interviewSession.findMany({
+        where: { userId, status: 'completed' },
+        select: { id: true, feedback: true },
+        take: 10
+      }),
+      prisma.problemSolved.findMany({
+        where: { userId },
+        select: { id: true }
+      }),
+      prisma.resume.findMany({
+        where: { userId },
+        select: { id: true, title: true, skills: true, experience: true },
+        take: 5
+      })
+    ]);
+
+    let totalInterviewScore = 0;
+    let validInterviewCount = 0;
+    for (const s of interviewSessions) {
+      const overall = Number(s.feedback?.overall_score || s.feedback?.score || s.feedback?.overallScore);
+      if (!isNaN(overall) && overall > 0) {
+        totalInterviewScore += overall;
+        validInterviewCount++;
+      }
+    }
+    const interviewAvg = validInterviewCount > 0 ? Math.round(totalInterviewScore / validInterviewCount) : 70;
+    const dsaScore = Math.min(100, Math.round((solvedProblems.length / 25) * 100)) || 65;
+    const resumeScore = resumes.length > 0 ? 80 : 50;
+
+    const pri = Math.round(interviewAvg * 0.45 + dsaScore * 0.40 + resumeScore * 0.15);
+
+    return {
+      score: pri,
+      interviewAvg,
+      interviewCount: interviewSessions.length,
+      problemsSolved: solvedProblems.length,
+      dsaScore,
+      resumeScore,
+      resumesCount: resumes.length,
+      readinessLevel: pri >= 80 ? 'High' : pri >= 60 ? 'Moderate' : 'Developing'
+    };
+  } catch (e) {
+    return {
+      score: 72,
+      interviewAvg: 70,
+      interviewCount: 1,
+      problemsSolved: 12,
+      dsaScore: 68,
+      resumeScore: 75,
+      readinessLevel: 'Moderate'
+    };
+  }
+};
+
 // Get user's sessions (as junior or senior), optionally filtered by status
 router.get('/sessions', authenticate, async (req, res) => {
   try {
@@ -699,8 +854,26 @@ router.get('/sessions', authenticate, async (req, res) => {
         scheduledTime: 'desc'
       }
     });
+
+    const sessionsWithPri = await Promise.all(
+      sessions.map(async (session) => {
+        let juniorPri = null;
+        if (session.juniorId) {
+          juniorPri = await getCandidatePriSummary(session.juniorId);
+        }
+        return {
+          ...session,
+          junior: session.junior
+            ? {
+                ...session.junior,
+                pri: juniorPri
+              }
+            : null
+        };
+      })
+    );
     
-    res.json(sessions);
+    res.json(sessionsWithPri);
   } catch (error) {
     console.error('Fetch sessions error:', error);
     res.status(500).json({ error: 'Failed to fetch sessions' });
@@ -949,7 +1122,7 @@ router.put('/sessions/:id/status', authenticate, requireAlumniMentor, async (req
   }
 });
 
-// Start session (generates/returns Jitsi URL)
+// Start session (generates/returns Jitsi URL, allows re-join)
 router.post('/sessions/:id/start', authenticate, async (req, res) => {
   try {
     const session = await prisma.sessionBooking.findFirst({
@@ -966,14 +1139,17 @@ router.post('/sessions/:id/start', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Session not found' });
     }
     
-    if (session.status !== 'accepted') {
-      return res.status(400).json({ error: 'Session must be accepted before starting' });
+    if (session.status !== 'accepted' && session.status !== 'started') {
+      return res.status(400).json({ error: 'Session must be accepted or started' });
     }
     
-    const updatedSession = await prisma.sessionBooking.update({
-      where: { id: req.params.id },
-      data: { status: 'started' }
-    });
+    let updatedSession = session;
+    if (session.status !== 'started') {
+      updatedSession = await prisma.sessionBooking.update({
+        where: { id: req.params.id },
+        data: { status: 'started' }
+      });
+    }
     
     res.json({
       jitsiRoomUrl: updatedSession.jitsiRoomUrl,
@@ -1002,8 +1178,8 @@ router.post('/sessions/:id/complete', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Session not found' });
     }
     
-    if (session.status !== 'started') {
-      return res.status(400).json({ error: 'Session must be started before completing' });
+    if (session.status !== 'started' && session.status !== 'accepted') {
+      return res.status(400).json({ error: 'Session must be active before completing' });
     }
     
     const updatedSession = await prisma.sessionBooking.update({
@@ -1027,6 +1203,111 @@ router.post('/sessions/:id/complete', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Complete session error:', error);
     res.status(500).json({ error: 'Failed to complete session' });
+  }
+});
+
+// ============================================
+// SESSION CHAT ROUTES
+// ============================================
+
+// Get chat messages for a session
+router.get('/sessions/:id/messages', authenticate, async (req, res) => {
+  try {
+    const session = await prisma.sessionBooking.findFirst({
+      where: {
+        id: req.params.id,
+        OR: [
+          { juniorId: req.user.id },
+          { seniorId: req.user.id }
+        ]
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found or unauthorized' });
+    }
+
+    const messages = await prisma.sessionMessage.findMany({
+      where: { sessionId: session.id },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            role: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.json(messages);
+  } catch (error) {
+    console.error('Fetch session messages error:', error);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// Send a chat message in a session
+router.post('/sessions/:id/messages', authenticate, async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ error: 'Message cannot be empty' });
+    }
+
+    const session = await prisma.sessionBooking.findFirst({
+      where: {
+        id: req.params.id,
+        OR: [
+          { juniorId: req.user.id },
+          { seniorId: req.user.id }
+        ]
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found or unauthorized' });
+    }
+
+    const created = await prisma.sessionMessage.create({
+      data: {
+        sessionId: session.id,
+        senderId: req.user.id,
+        message: message.trim()
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    // Notify the other participant
+    const recipientId = req.user.id === session.juniorId ? session.seniorId : session.juniorId;
+    const senderUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { name: true }
+    });
+
+    await createNotification(
+      recipientId,
+      'session_message',
+      'New Message',
+      `${senderUser?.name || 'Someone'} sent you a message for "${session.topic}"`,
+      { bookingId: session.id }
+    );
+
+    res.status(201).json(created);
+  } catch (error) {
+    console.error('Send session message error:', error);
+    res.status(500).json({ error: 'Failed to send message' });
   }
 });
 

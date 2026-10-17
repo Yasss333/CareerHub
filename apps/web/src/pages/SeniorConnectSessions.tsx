@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Clock, Video, Star, MessageSquare, CheckCircle, XCircle, X, Trash2, List, TrendingUp, Calendar as CalendarIcon, Edit3, Save } from 'lucide-react'
+import { Calendar, Clock, Video, Star, MessageSquare, CheckCircle, XCircle, X, Trash2, List, TrendingUp, Calendar as CalendarIcon, Edit3, Save, Sparkles, Award } from 'lucide-react'
 import SessionCalendar from '../components/SessionCalendar'
 import SessionAnalytics from '../components/SessionAnalytics'
 import RescheduleModal from '../components/RescheduleModal'
+import VideoMeetingModal from '../components/VideoMeetingModal'
+import SessionChatModal from '../components/SessionChatModal'
 
 interface Session {
   id: string
@@ -19,6 +21,15 @@ interface Session {
     name: string
     avatar: string
     university: string
+    pri?: {
+      score: number
+      interviewAvg: number
+      interviewCount: number
+      problemsSolved: number
+      dsaScore: number
+      resumeScore: number
+      readinessLevel: string
+    }
   }
   senior: {
     id: string
@@ -165,6 +176,8 @@ export default function SeniorConnectSessions() {
   const [rescheduleSession, setRescheduleSession] = useState<Session | null>(null)
   const [editingNotesSession, setEditingNotesSession] = useState<Session | null>(null)
   const [editingNotes, setEditingNotes] = useState('')
+  const [activeMeetingSession, setActiveMeetingSession] = useState<Session | null>(null)
+  const [activeChatSession, setActiveChatSession] = useState<Session | null>(null)
 
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
 
@@ -241,16 +254,27 @@ export default function SeniorConnectSessions() {
     }
   }
 
-  const handleStartSession = async (sessionId: string) => {
-    setActing(`${sessionId}:start`)
+  const handleJoinCall = async (session: Session) => {
+    setActing(`${session.id}:start`)
     setActionError('')
     try {
-      const data = await apiCall('POST', `/api/connect/sessions/${sessionId}/start`)
-      window.open(data.jitsiRoomUrl, '_blank')
+      if (session.status === 'accepted') {
+        await apiCall('POST', `/api/connect/sessions/${session.id}/start`)
+        fetchSessions()
+      }
+      setActiveMeetingSession(session)
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to start session')
+      // If error occurs, still open meeting modal if we have room url
+      setActiveMeetingSession(session)
     } finally {
       setActing('')
+    }
+  }
+
+  const handleStartSession = async (sessionId: string) => {
+    const session = sessions.find((s) => s.id === sessionId)
+    if (session) {
+      await handleJoinCall(session)
     }
   }
 
@@ -260,6 +284,9 @@ export default function SeniorConnectSessions() {
     try {
       await apiCall('POST', `/api/connect/sessions/${sessionId}/complete`)
       await fetchSessions()
+      if (activeMeetingSession?.id === sessionId) {
+        setActiveMeetingSession(null)
+      }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to complete session')
     } finally {
@@ -547,56 +574,113 @@ export default function SeniorConnectSessions() {
                   </>
                 )}
 
-                <div className="flex flex-wrap gap-2">
+                {/* Candidate Placement Readiness Card (for Seniors reviewing bookings) */}
+                {role === 'Senior' && session.junior?.pri && (
+                  <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-primary flex items-center gap-1">
+                          <Award className="w-3.5 h-3.5" /> Candidate Readiness (PRI)
+                        </span>
+                        <span
+                          className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                            session.junior.pri.score >= 80
+                              ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                              : session.junior.pri.score >= 60
+                              ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30'
+                              : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                          }`}
+                        >
+                          {session.junior.pri.score}% PRI ({session.junior.pri.readinessLevel} Readiness)
+                        </span>
+                      </div>
+                      {session.junior.university && (
+                        <span className="text-xs text-muted-foreground">{session.junior.university}</span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="p-2 rounded-lg bg-card border border-border">
+                        <div className="text-muted-foreground">Mock Interview</div>
+                        <div className="font-semibold text-foreground text-sm">{session.junior.pri.interviewAvg}%</div>
+                        <div className="text-[10px] text-muted-foreground">{session.junior.pri.interviewCount} sessions</div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-card border border-border">
+                        <div className="text-muted-foreground">AlgoRank DSA</div>
+                        <div className="font-semibold text-foreground text-sm">{session.junior.pri.dsaScore}%</div>
+                        <div className="text-[10px] text-muted-foreground">{session.junior.pri.problemsSolved} solved</div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-card border border-border">
+                        <div className="text-muted-foreground">Resume Quality</div>
+                        <div className="font-semibold text-foreground text-sm">{session.junior.pri.resumeScore}%</div>
+                        <div className="text-[10px] text-muted-foreground">{session.junior.pri.resumesCount || 1} resumes</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/60">
+                  {/* Topmate Direct Accept / Decline for Senior */}
                   {role === 'Senior' && session.status === 'pending' && (
                     <>
                       <button
                         onClick={() => handleStatus(session.id, 'accepted')}
                         disabled={isBusy(session.id, 'accepted')}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium shadow-xs"
                       >
                         <CheckCircle className="w-4 h-4" />
-                        Accept
+                        Accept Session
                       </button>
                       <button
                         onClick={() => handleStatus(session.id, 'rejected')}
                         disabled={isBusy(session.id, 'rejected')}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium"
                       >
                         <XCircle className="w-4 h-4" />
-                        Reject
+                        Decline
                       </button>
                     </>
                   )}
 
-                  {session.status === 'accepted' && (
+                  {/* Guaranteed Working Video Call Button (for both Mentor & Mentee) */}
+                  {['accepted', 'started'].includes(session.status) && (
                     <button
-                      onClick={() => handleStartSession(session.id)}
+                      onClick={() => handleJoinCall(session)}
                       disabled={isBusy(session.id, 'start')}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium shadow-xs"
                     >
                       <Video className="w-4 h-4" />
-                      Start Meeting
+                      Join Video Call
                     </button>
                   )}
 
-                  {session.status === 'started' && (
+                  {/* Complete Session for Senior */}
+                  {role === 'Senior' && session.status === 'started' && (
                     <button
                       onClick={() => handleCompleteSession(session.id)}
                       disabled={isBusy(session.id, 'complete')}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium"
                     >
                       <CheckCircle className="w-4 h-4" />
                       Complete Session
                     </button>
                   )}
 
+                  {/* Guaranteed Working Chat Button (for both Mentor & Mentee) */}
+                  <button
+                    onClick={() => setActiveChatSession(session)}
+                    className="flex items-center gap-2 px-4 py-2 border border-border bg-card hover:bg-muted text-foreground rounded-lg transition-colors text-sm font-medium"
+                  >
+                    <MessageSquare className="w-4 h-4 text-primary" />
+                    Chat
+                  </button>
+
                   {role === 'Junior' && session.status === 'completed' && !session.feedback && (
                     <button
                       onClick={() => setFeedbackSession(session)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors text-sm"
                     >
-                      <MessageSquare className="w-4 h-4" />
+                      <Star className="w-4 h-4 text-amber-500" />
                       Leave Feedback
                     </button>
                   )}
@@ -604,7 +688,7 @@ export default function SeniorConnectSessions() {
                   {['pending', 'accepted'].includes(session.status) && (
                     <button
                       onClick={() => setRescheduleSession(session)}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/15 transition-colors"
+                      className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/15 transition-colors text-sm"
                     >
                       <CalendarIcon className="w-4 h-4" />
                       Reschedule
@@ -615,7 +699,7 @@ export default function SeniorConnectSessions() {
                     <button
                       onClick={() => handleCancel(session.id)}
                       disabled={isBusy(session.id, 'cancel')}
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50 text-sm"
                     >
                       <Trash2 className="w-4 h-4" />
                       Cancel
@@ -627,6 +711,33 @@ export default function SeniorConnectSessions() {
           })}
         </div>
       ) : null}
+
+      {/* Video Call Modal */}
+      {activeMeetingSession && (
+        <VideoMeetingModal
+          isOpen={Boolean(activeMeetingSession)}
+          onClose={() => setActiveMeetingSession(null)}
+          jitsiRoomUrl={activeMeetingSession.jitsiRoomUrl}
+          sessionTopic={activeMeetingSession.topic}
+          peerName={otherPerson(activeMeetingSession)?.name || 'Mentorship Partner'}
+          peerRole={getRoleLabel(activeMeetingSession) === 'Junior' ? 'Mentor' : 'Mentee'}
+          isMentor={getRoleLabel(activeMeetingSession) === 'Senior'}
+          onCompleteSession={() => handleCompleteSession(activeMeetingSession.id)}
+        />
+      )}
+
+      {/* Real-time Session Chat Modal */}
+      {activeChatSession && (
+        <SessionChatModal
+          isOpen={Boolean(activeChatSession)}
+          onClose={() => setActiveChatSession(null)}
+          sessionId={activeChatSession.id}
+          sessionTopic={activeChatSession.topic}
+          peerName={otherPerson(activeChatSession)?.name || 'User'}
+          peerAvatar={otherPerson(activeChatSession)?.avatar}
+          peerRole={getRoleLabel(activeChatSession) === 'Junior' ? 'Senior Mentor' : 'Junior Mentee'}
+        />
+      )}
 
       {feedbackSession && (
         <FeedbackModal

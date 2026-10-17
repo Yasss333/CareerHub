@@ -6,6 +6,7 @@
 - [x] Add a PRI history chart and component score summary
 - [x] Clearly mark sample PRI values and use saved history when present
 - [x] Persist one authenticated PRI snapshot per user per day and calculate its weighted score on the server
+- [x] Integrate real AI Mock Interview results directly into Placement Readiness Index (45% weight) with live session count and score breakdown
 - [x] Allow users to enter today's assessment scores while module score integrations are unavailable
 - [x] Retain API-backed progress charts, recent activity, quick actions, and widget preferences
 - [x] Verify TypeScript, Prisma schema, API syntax, and production web build

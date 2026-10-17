@@ -2,7 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import roadmapTemplates from '../templates/roadmap-templates.js';
-import { generatePersonalizedRoadmap, generateResources, customizeRoadmap } from '../libs/roadmap-ai.js';
+import { generatePersonalizedRoadmap, generateResources, customizeRoadmap, generateCustomRoadmap } from '../libs/roadmap-ai.js';
 import { getFreeResourcesForTopics } from '../libs/roadmap-resources.js';
 
 const router = express.Router();
@@ -383,6 +383,43 @@ router.put('/:id/milestones/:milestoneId/complete', authenticate, async (req, re
 // ============================================
 
 // Generate roadmap from template with AI personalization
+router.post('/generate-custom', authenticate, async (req, res) => {
+  try {
+    const field = typeof req.body.field === 'string' ? req.body.field.trim().slice(0, 120) : '';
+    const goals = typeof req.body.goals === 'string' ? req.body.goals.trim().slice(0, 1200) : '';
+    const skillLevel = ['beginner', 'intermediate', 'advanced'].includes(req.body.skillLevel) ? req.body.skillLevel : 'beginner';
+    if (!field || !goals) return res.status(400).json({ error: 'Field and learning goals are required' });
+
+    const personalized = await generateCustomRoadmap({ field, goals, skillLevel });
+    const roadmap = await prisma.roadmap.create({ data: {
+      userId: req.user.id,
+      title: personalized.title,
+      description: personalized.description,
+      roleType: 'custom',
+      skillLevel,
+      topics: personalized,
+      resources: [],
+      progress: 0
+    } });
+    for (const milestone of personalized.milestones) {
+      await prisma.roadmapMilestone.create({ data: {
+        roadmapId: roadmap.id,
+        title: milestone.title,
+        description: milestone.description,
+        order: milestone.order,
+        topics: milestone.topics,
+        resources: getFreeResourcesForTopics(milestone.topics.length ? milestone.topics : [milestone.title])
+      } });
+    }
+    const createdRoadmap = await prisma.roadmap.findUnique({ where: { id: roadmap.id }, include: { milestones: { orderBy: { order: 'asc' } } } });
+    return res.status(201).json({ success: true, roadmap: createdRoadmap });
+  } catch (error) {
+    console.error('Error generating custom roadmap:', error);
+    const notConfigured = error.message?.includes('not configured');
+    return res.status(notConfigured ? 503 : 502).json({ error: notConfigured ? error.message : 'Could not generate a custom roadmap. Please try again.' });
+  }
+});
+
 router.post('/generate', authenticate, async (req, res) => {
   try {
     const { roleType, skillLevel, userGoals } = req.body;

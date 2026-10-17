@@ -7,7 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed broken learning links button on roadmap stage cards in `RoadmapDetail.tsx` by turning it into an interactive modal with categorized resources (documentation, courses, practice, videos) and direct links
+- Removed legacy resume test feature from `ResumeBuilder.tsx` as requested, focusing the workspace on content editing and live preview
+
 ### Added
+- Created complete production deployment guide (`DEPLOYMENT_GUIDE.md`) and updated `docs/deployment.md`:
+  - Step-by-step instructions for Hugging Face Spaces Docker deployment for the AI multimodal proctoring service (16 GB free RAM tier).
+  - Neon PostgreSQL serverless database setup instructions with pooled connection string and Prisma direct URL configuration.
+  - Render API blueprint deployment guide with full environment variable reference and `/health/ready` check.
+  - Vercel frontend deployment with edge rewrites proxying `/api/*` requests to Render.
+  - Production Dockerfiles for backend API (`apps/api/Dockerfile`) and React web frontend with Nginx (`apps/web/Dockerfile`, `apps/web/nginx.conf`).
+  - Full-stack production orchestration configuration (`docker-compose.prod.yml`).
+  - 1-Click Hugging Face Space deployment scripts for PowerShell (`scripts/deploy-hf-space.ps1`) and Bash (`scripts/deploy-hf-space.sh`).
+  - Root `.dockerignore` and ML service `.dockerignore` to streamline container builds.
+- Streamlined Senior Connect mentor onboarding and session management (Topmate-style flow):
+  - Added dedicated Candidate vs Senior/Mentor role selection to the Sign-Up page (`Register.tsx`) with automatic mentor profile initialization and instant routing to `/mentor/profile`.
+  - Added AI senior resume parser endpoint `POST /api/connect/parse-senior-resume` and frontend upload interface in `SeniorConnectProfile.tsx` supporting PDF and text auto-fill for title, company, domain, role, experience, location, bio, and skills.
+  - Eliminated admin approval bottleneck for mentor profiles and meetings; mentors are auto-approved on profile creation and directly accept/decline candidate requests.
+  - Added student Placement Readiness Index (PRI) inspection card on session requests, giving mentors instant visibility into candidate mock interview scores, AlgoRank accuracy, and resume quality.
+  - Added in-page encrypted video conferencing modal (`VideoMeetingModal.tsx`) with Jitsi Meet embedding, fullscreen mode, and new tab launcher.
+  - Added interactive session chat (`SessionChatModal.tsx`) backed by `GET/POST /api/connect/sessions/:id/messages` and `SessionMessage` Prisma model with real-time polling.
+  - Added 1-click slot presets ("Today 6-7 PM", "Tomorrow 6-7 PM", "Weekend 11 AM-12 PM") and simple slot management.
+  - Enforced focused mentor-only layout hiding candidate tools (Resume Builder, AlgoRank, Roadmaps) for `MENTOR` accounts.
+- Overhauled Resume Builder UI semantics matching reference design:
+  - Added dedicated dashed action cards for "Create Resume" and "Upload Existing" on `ResumeList.tsx`
+  - Added profile category filter dropdown and public resumes discovery section with distinct color-bordered cards
+  - Added AI resume upload & parser supporting PDF, TXT, DOCX, and pasted text via `pdfToText` and OpenRouter AI
+  - Redesigned `ResumeBuilder.tsx` with header action pills (Private/Public, ATS Score, Cover Letter, Download), top progress indicator line, template dropdown selector (classic, modern, minimal-image, minimal), 10-color accent palette, step forms with AI enhancement, and sticky A4 live document preview
+- Integrated real AI Mock Interview results directly into Dashboard Placement Readiness Index (PRI):
+  - Added `GET /api/dashboard/pri/live` calculating 45% interview weight directly from candidate's completed AI mock interview scores
+  - Dynamically displays completed interview sessions count and live score breakdown in Dashboard readiness widget
+- Fixed unhandled empty question state in `InterviewSession.tsx` by auto-triggering AI question generation on session mount with interactive retry UI
+- Fixed `TypeError: Cannot read properties of undefined (reading 'length')` in interview question generation route by eager loading session questions in `requireOwned`
+- Fixed module hoisting issue in `roadmap-ai.js` and `config/ai.js` where `OPENROUTER_API_KEY` was captured before `.env` was loaded
+- Fixed premature interruption and auto-stopping during question speech by eliminating microphone self-interruption echo, adding hardware echo cancellation, human vocal bandpass filter, 2.5s initial grace period, and synthesis keep-alive
+- Fixed Prisma `hasSome` validation error in `recommendation.service.js` by filtering topics to strings only
+
+### Added
+- Real-time AudioContext Voice Activity Detection (VAD) and speech recognition barge-in interruption allowing candidate to interrupt the AI interviewer at any point by speaking or clicking
+- Dynamic neural voice selection with live voice switcher dropdown and asynchronous voice loader
+- Human-like conversational question framing ("Welcome to your interview...", "Thank you for your answer...")
+- Multi-bar reactive voice equalizer in `AIInterviewerAvatar.tsx` mimicking Vapi/Siri waveform dynamics
+- Dedicated Multimodal Affect & Emotion Coaching Dashboard in `InterviewResults.tsx` displaying Facial Affect, Vocal Tone, Answer Sentiment, and Proctoring verification metrics
+- Resilient ML service fallback and emotion persistence in `interview.routes.js` ensuring facial, voice, and text emotions are always saved and visualized
+- Interactive two-way video call interface for AI Mock Interview (`InterviewSession.tsx` and `AIInterviewerAvatar.tsx`):
+  - Concentric animated pulsing AI avatar with dynamic state transitions (`speaking`, `listening`, `idle`)
+  - Browser Text-to-Speech (TTS) reading questions aloud automatically with replay audio capability
+  - Continuous hands-free Speech-to-Text (STT) transcribing answers in real time into live captions
+  - Dual-grid video conferencing room layout (Candidate live webcam feed with identity verification + AI Interviewer)
+  - Bottom video call control dock with microphone mute, camera toggle, question replay, answer editor drawer, and call completion controls
+  - Real-time facial and voice emotion coaching feedback HUD
+- Configured production-ready Hugging Face Spaces and Docker deployment for AI Interview ML service (`services/proctoring`)
+- Migrated ML models to auto-downloading Hugging Face pretrained models (`trpakov/vit-face-expression`, `j-hartmann/emotion-english-distilroberta-base`, `ehcalabres/wav2vec2`) with 7-class emotion normalization
+- Added shared `INTERVIEW_ML_TOKEN` authentication and `INTERVIEW_ML_URL` proxy configuration between Express API and FastAPI ML service
+- Added Dockerfile with CPU-optimized PyTorch and Hugging Face non-root user 1000 configuration
+- Added proctoring service definition to `docker-compose.yml` for unified local container execution
+- Achievement and badge system with 25+ unlockable achievements across all modules
+- Achievement tracking for AlgoRank (first solve, streaks, problem counts, leaderboard)
+- Achievement tracking for Resume Builder (created, published, AI-enhanced)
+- Achievement tracking for Senior Connect (sessions completed, mentor approval, ratings)
+- Achievement tracking for AI Interview (completed, perfect score, multiple interviews)
+- Achievement tracking for Roadmap Generator (created, milestones, completion)
+- Achievements badge component with modal view and progress tracking
+- Cross-module recommendation engine (recommendation.service.js)
+- Problem recommendations based on roadmap topics and skills
+- Resume skill suggestions derived from learning roadmaps
+- Mentor recommendations matching user's learning goals
+- Learning path suggestions based on user activity and strengths
+- Cross-module insights for dashboard combining stats from all modules
+- AI Interview module with complete migration from Supabase to CareerHub (all phases complete)
+- AI Interview database schema extension with EmotionResult and ProctoringEvent models
+- AI Interview Express API routes with OpenRouter integration for question generation and evaluation
+- AI Interview ML service proxy with secure authentication (INTERVIEW_ML_TOKEN)
+- AI Interview frontend pages: Interview, InterviewSetup, InterviewSession, InterviewResults
+- AI Interview camera capture and audio recording components with WebRTC integration
+- AI Interview real-time emotion display and face verification UI
+- AI Interview privacy-compliant implementation (raw media not persisted, only derived results)
+- AI Interview face verification with per-session ephemeral state in ML service memory
+- AI Interview graceful modality fallback when camera/microphone unavailable
+- Added Electronics Engineer and Robotics Engineer roadmap templates, plus AI-generated custom roadmaps from a learner's field and goals using the server-configured OpenRouter key
 - Made Resume Builder AI enhancement context-aware for work experience and projects, with a two-bullet, fact-grounded output limit
 - Unified resume and roadmap AI calls on the verified OpenRouter model ID, corrected the local model setting, and added a local `DIRECT_URL` matching the Docker database URL
 - Added accessible loading, recoverable error and retry states across AlgoRank, Roadmaps, and Senior Connect, with consistent page framing on core screens
@@ -179,11 +258,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Limitations
 - Resume Builder ImageKit integration requires API keys in environment variables
 - Resume Builder AI features require OpenRouter API key in environment variables
-- Senior Connect availability system is basic (advanced system available in legacy)
-- AlgoRank module assessment complete but not implemented (complete functional code available in legacy)
-- AI Interview module assessment complete but not implemented (deferred to end - most complex)
+- AI Interview module requires OpenRouter API key for question generation and INTERVIEW_ML_TOKEN for ML service authentication
+- AI Interview ML service (FastAPI) must be running on localhost:8000 for multimodal emotion analysis
+- AI Interview behavioral metrics (eye contact, speaking patterns) are experimental and not yet implemented
 - Database switched from SQLite to PostgreSQL during development
-- Dashboard not yet implemented (highest priority)
 
 ### Legacy Code Availability
 - Resume Builder: Complete functional code with ImageKit, AI generation, PDF export, templates
@@ -193,8 +271,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Implementation Priorities
 1. ~~Resume Builder~~ (COMPLETED - all advanced features migrated from legacy)
-2. Senior Connect (copy + adapt from legacy)
-3. AlgoRank (copy + adapt from legacy)
-4. Landing Page (integration when provided)
-5. Dashboard (second-last priority - requires all other modules)
-6. AI Interview (deferred to end - most complex)
+2. ~~Senior Connect~~ (COMPLETED - full migration from legacy with advanced features)
+3. ~~AlgoRank~~ (COMPLETED - full migration from legacy with Piston integration)
+4. ~~Landing Page~~ (COMPLETED - integrated with public home page)
+5. ~~Dashboard~~ (COMPLETED - unified stats from all modules)
+6. ~~AI Interview~~ (COMPLETED - full migration from Supabase to CareerHub with ML service integration)

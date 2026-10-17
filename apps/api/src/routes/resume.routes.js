@@ -78,6 +78,27 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// Get public resumes
+router.get('/public-resumes', async (req, res) => {
+  try {
+    const resumes = await prisma.resume.findMany({
+      where: { public: true },
+      include: {
+        user: {
+          select: { name: true, avatar: true }
+        }
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 30
+    });
+    
+    res.json({ resumes });
+  } catch (error) {
+    console.error('Fetch public resumes error:', error);
+    res.status(500).json({ error: 'Failed to fetch public resumes' });
+  }
+});
+
 // Get single resume by ID
 router.get('/:id', authenticate, async (req, res) => {
   try {

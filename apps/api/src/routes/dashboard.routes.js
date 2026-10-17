@@ -38,6 +38,75 @@ router.get('/pri/history', authenticate, async (req, res) => {
   }
 });
 
+// Dynamic live PRI computed from actual AI Mock Interviews, AlgoRank, and Resumes
+router.get('/pri/live', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Real AI Mock Interview Score (weight: 45%)
+    const completedInterviews = await prisma.interviewSession.findMany({
+      where: { userId, status: 'completed' },
+      orderBy: { endedAt: 'desc' },
+      take: 10,
+    });
+
+    const interviewScores = completedInterviews
+      .map((s) => {
+        const score = s.feedback?.overallScore;
+        return typeof score === 'number' && Number.isFinite(score) ? score : null;
+      })
+      .filter((s) => s !== null);
+
+    const hasRealInterview = interviewScores.length > 0;
+    const interviewScore = hasRealInterview
+      ? Math.round(interviewScores.reduce((a, b) => a + b, 0) / interviewScores.length)
+      : 70; // baseline if candidate hasn't taken mock interview yet
+
+    // 2. Real AlgoRank Score (weight: 40%)
+    const userStats = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { totalProblemsSolved: true, rankingScore: true },
+    });
+    const totalProblems = await prisma.problem.count();
+    const algoRankScore = totalProblems > 0
+      ? Math.min(100, Math.round(((userStats?.totalProblemsSolved || 0) / Math.max(1, Math.min(totalProblems, 25))) * 100))
+      : 0;
+
+    // 3. Real Resume Quality Score (weight: 15%)
+    const resumes = await prisma.resume.findMany({
+      where: { userId },
+      select: { professionSummary: true, skills: true, experience: true, education: true, projects: true, personalInfo: true },
+    });
+    let resumeScore = 0;
+    if (resumes.length > 0) {
+      for (const r of resumes) {
+        let currentScore = 30;
+        if (r.professionSummary && r.professionSummary.length > 20) currentScore += 15;
+        if (r.skills && r.skills.length >= 3) currentScore += 15;
+        if (Array.isArray(r.experience) && r.experience.length > 0) currentScore += 20;
+        if (Array.isArray(r.education) && r.education.length > 0) currentScore += 10;
+        if (Array.isArray(r.projects) && r.projects.length > 0) currentScore += 10;
+        if (currentScore > resumeScore) resumeScore = Math.min(100, currentScore);
+      }
+    }
+
+    const score = Number((0.45 * interviewScore + 0.40 * algoRankScore + 0.15 * resumeScore).toFixed(2));
+
+    return res.json({
+      score,
+      interviewScore,
+      algoRankScore,
+      resumeScore,
+      hasRealInterview,
+      interviewCount: completedInterviews.length,
+      latestInterviewScore: interviewScores[0] ?? null,
+    });
+  } catch (error) {
+    console.error('Failed to compute live PRI:', error);
+    return res.status(500).json({ error: 'Failed to compute live PRI' });
+  }
+});
+
 router.put('/pri/today', authenticate, async (req, res) => {
   try {
     const { interviewScore, algoRankScore, resumeScore } = req.body ?? {};

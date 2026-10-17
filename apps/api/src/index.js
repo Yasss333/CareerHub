@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './load-env.js';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -12,6 +12,9 @@ import pdfRoutes from './routes/pdf.routes.js';
 import algorankRoutes from './routes/algorank.routes.js';
 import roadmapRoutes from './routes/roadmap.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
+import interviewRoutes from './routes/interview.routes.js';
+import achievementRoutes from './routes/achievement.routes.js';
+import recommendationRoutes from './routes/recommendation.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -102,7 +105,7 @@ app.get('/health/ready', async (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use(['/api/resume', '/api/ai', '/api/pdf', '/api/algorank', '/api/roadmaps', '/api/dashboard'], denyMentorPlatformAccess);
+app.use(['/api/resume', '/api/ai', '/api/pdf', '/api/algorank', '/api/roadmaps', '/api/dashboard', '/api/interview'], denyMentorPlatformAccess);
 app.use('/api/resume', resumeRoutes);
 app.use('/api/connect', connectRoutes);
 app.use('/api/ai', aiRoutes);
@@ -110,7 +113,9 @@ app.use('/api/pdf', pdfRoutes);
 app.use('/api/algorank', algorankRoutes);
 app.use('/api/roadmaps', roadmapRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-// app.use('/api/interview', interviewRoutes);
+app.use('/api/interview', interviewRoutes);
+app.use('/api/achievements', achievementRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {

@@ -6,6 +6,14 @@ This document tracks the implementation progress of the Resume Builder module mi
 ## Status: COMPLETED
 Resume Builder module has been fully migrated from the legacy codebase with all advanced features implemented.
 
+
+## Phase 7: Reference UI Overhaul & Resume Upload AI Parser
+- [x] Create Resume and Upload Existing action cards on Resume List page matching reference design
+- [x] Filter by profile category dropdown and public resumes gallery with color-bordered cards
+- [x] AI-powered resume parser extracting structured resume JSON from PDF, TXT, DOCX, and pasted text
+- [x] Refactor ResumeBuilder to match reference UI: header action pills, top progress indicator line, template dropdown, 10-color accent picker, and live document preview
+- [x] Remove legacy resume test question feature as requested
+
 ## Phase 1: Foundation Migration
 - [x] Create Prisma schema for Resume model
 - [x] Set up Express API routes for resume CRUD operations

@@ -1,68 +1,65 @@
+# ============================================================
+# TEXT EMOTION INFERENCE
+# DistilRoBERTa model for speech transcript and text analysis
+# Model: j-hartmann/emotion-english-distilroberta-base (Hugging Face)
+# ============================================================
+
 import os
-import json
 import torch
+from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
+HF_MODEL_NAME = "j-hartmann/emotion-english-distilroberta-base"
 
-MODEL_DIR = os.path.join(
-    os.path.dirname(__file__),
-    "models",
-    "text"
-)
+TARGET_CLASSES = [
+    "anger",
+    "disgust",
+    "fear",
+    "happiness",
+    "sadness",
+    "surprise",
+    "neutral",
+]
+
+ALIAS_MAP = {
+    "joy": "happiness",
+    "happy": "happiness",
+    "sad": "sadness",
+    "angry": "anger",
+}
 
 
 class TextEmotionPredictor:
-
-    def __init__(self, model_dir=MODEL_DIR):
-
+    def __init__(self, model_dir: str = None):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"\n[TextEmotion] Loading text emotion model on: {self.device}")
 
-        print(f"Loading text emotion model on: {self.device}")
-
-        self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
-
-        self.model = AutoModelForSequenceClassification.from_pretrained(
-            model_dir
-        ).to(self.device)
-
-        self.model.eval()
-
-        # Load emotion metadata
-        meta_path = os.path.join(
-            model_dir,
-            "emotion_model_metadata.json"
-        )
-
-        if os.path.exists(meta_path):
-
-            with open(meta_path, "r") as f:
-                meta = json.load(f)
-
-            self.id2label = {
-                int(k): v
-                for k, v in meta["id2label"].items()
-            }
-
-            self.classes = meta["target_emotions"]
-
+        source = HF_MODEL_NAME
+        # Check if local model_dir has actual model weight files
+        if model_dir and Path(model_dir).exists():
+            weights_found = list(Path(model_dir).glob("*.safetensors")) + list(Path(model_dir).glob("*.bin"))
+            # Don't consider training_args.bin as model weights
+            weights_found = [p for p in weights_found if "training_args" not in p.name]
+            if weights_found:
+                source = model_dir
+                print(f"  Using local weights found in: {model_dir}")
+            else:
+                print(f"  No local model weights in {model_dir}. Using Hugging Face model: {HF_MODEL_NAME}")
         else:
+            print(f"  Loading directly from Hugging Face: {HF_MODEL_NAME}")
 
-            self.id2label = {
-                0: "anger",
-                1: "disgust",
-                2: "fear",
-                3: "happiness",
-                4: "sadness",
-                5: "surprise",
-                6: "neutral"
-            }
-
-            self.classes = list(self.id2label.values())
-
-        print("Text emotion model loaded successfully!")
-
+        self.tokenizer = AutoTokenizer.from_pretrained(source)
+        self.model = AutoModelForSequenceClassification.from_pretrained(source).to(self.device)
+        self.model.eval()
+        self.classes = TARGET_CLASSES
+        print("  Text emotion model loaded successfully!")
 
     def predict(self, text: str):
+        if not text or not text.strip():
+            return {
+                "success": False,
+                "error": "No text provided"
+            }
 
         inputs = self.tokenizer(
             text,
@@ -70,40 +67,36 @@ class TextEmotionPredictor:
             truncation=True,
             max_length=128
         )
-
-        inputs = {
-            key: value.to(self.device)
-            for key, value in inputs.items()
-        }
+        inputs = {key: value.to(self.device) for key, value in inputs.items()}
 
         with torch.no_grad():
-
             outputs = self.model(**inputs)
+            probabilities = torch.softmax(outputs.logits, dim=-1).squeeze(0).cpu().numpy()
 
-            probabilities = torch.softmax(
-                outputs.logits,
-                dim=-1
-            ).squeeze(0).cpu().numpy()
+        id2label = getattr(self.model.config, "id2label", {})
+        raw_predictions = {}
+        for idx, prob in enumerate(probabilities):
+            raw_label = str(id2label.get(idx, f"emotion_{idx}")).lower()
+            canonical = ALIAS_MAP.get(raw_label, raw_label)
+            raw_predictions[canonical] = float(prob)
 
-        top_idx = int(probabilities.argmax())
+        # Normalize across the 7 target classes
+        output_predictions = {}
+        total = 0.0
+        for emotion in self.classes:
+            val = raw_predictions.get(emotion, 0.0)
+            output_predictions[emotion] = val
+            total += val
 
-        top_emotion = self.id2label[top_idx]
+        if total > 0:
+            output_predictions = {k: round(v / total, 4) for k, v in output_predictions.items()}
 
-        confidence = float(probabilities[top_idx])
+        top_emotion = max(output_predictions, key=output_predictions.get)
+        confidence = float(output_predictions[top_emotion])
 
-        results = {
+        return {
             "success": True,
-            "text": text,
             "emotion": top_emotion,
             "confidence": confidence,
-            "predictions": {
-                self.id2label[i]: float(probabilities[i])
-                for i in range(len(self.classes))
-            }
+            "predictions": output_predictions,
         }
-
-        return results
-
-
-# Create one model instance
-text_predictor = TextEmotionPredictor()

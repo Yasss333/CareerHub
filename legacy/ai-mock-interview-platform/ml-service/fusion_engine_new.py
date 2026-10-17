@@ -51,9 +51,18 @@ class FusionEngine:
             return None
 
         cleaned = {}
+        aliases = {
+            "joy": "happiness",
+            "happy": "happiness",
+            "angry": "anger",
+            "sad": "sadness",
+        }
+        normalized = {}
+        for label, score in predictions.items():
+            normalized[aliases.get(str(label).strip().lower(), str(label).strip().lower())] = score
 
         for emotion in self.EMOTIONS:
-            value = predictions.get(emotion, 0.0)
+            value = normalized.get(emotion, 0.0)
 
             try:
                 value = float(value)
@@ -356,6 +365,15 @@ class FusionEngine:
             voice_clean,
             text_clean,
         )
+
+        if not any(weights.values()):
+            return {
+                "success": False,
+                "error": "No valid emotion modalities were provided.",
+                "weights": weights,
+                "emotions": {},
+                "behavioral_metrics": {},
+            }
 
         # Multimodal emotion fusion
         fused_emotions = self._fuse_emotions(

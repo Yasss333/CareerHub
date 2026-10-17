@@ -476,6 +476,30 @@ const roadmapTemplates = {
         ]
       }
     ]
+  },
+  electronics_engineer: {
+    title: "Electronics Engineer",
+    description: "Learn electronics, circuit design, embedded systems, and hardware prototyping",
+    milestones: [
+      { title: "Electrical and Circuit Foundations", order: 1, description: "Build a strong foundation in circuits and electrical measurements", topics: ["Voltage, Current, Resistance, and Power", "Ohm's and Kirchhoff's Laws", "Series and Parallel Circuits", "Using a Multimeter and Oscilloscope", "Circuit Simulation with LTspice"] },
+      { title: "Analog Electronics", order: 2, description: "Understand the components used in practical analog circuits", topics: ["Diodes and Rectifiers", "BJT and MOSFET Fundamentals", "Operational Amplifiers", "Filters and Signal Conditioning", "Power Supplies and Voltage Regulation"] },
+      { title: "Digital Logic and HDL", order: 3, description: "Design and reason about digital hardware", topics: ["Binary and Number Systems", "Boolean Algebra and Logic Gates", "Combinational and Sequential Logic", "Finite State Machines", "Verilog or VHDL Fundamentals"] },
+      { title: "Microcontrollers and Embedded C", order: 4, description: "Connect firmware to real electronic hardware", topics: ["C for Embedded Systems", "GPIO, Timers, and Interrupts", "ADC and PWM", "UART, I2C, and SPI", "Arduino and ESP32 Prototyping"] },
+      { title: "PCB Design and Prototyping", order: 5, description: "Turn a circuit into a reliable physical board", topics: ["Schematic Capture", "PCB Layout with KiCad", "Grounding and Power Integrity", "Component Selection and Datasheets", "Board Assembly and Bring-up"] },
+      { title: "Capstone and Test Engineering", order: 6, description: "Build, measure, and document a complete electronics project", topics: ["Design Verification and Test Plans", "EMI and ESD Basics", "Debugging with Bench Instruments", "Hardware Documentation", "Capstone: Sensor or IoT Device"] }
+    ]
+  },
+  robotics_engineer: {
+    title: "Robotics Engineer",
+    description: "Build autonomous robots by combining mechanics, electronics, control, and software",
+    milestones: [
+      { title: "Math, Physics, and Programming", order: 1, description: "Learn the foundations behind robot motion and computation", topics: ["Python and C++ Fundamentals", "Linear Algebra and Coordinate Frames", "Mechanics and Dynamics", "Vectors, Trigonometry, and Calculus", "Linux and Git"] },
+      { title: "Electronics and Microcontrollers", order: 2, description: "Interface sensors and actuators with embedded hardware", topics: ["Voltage, Current, and Circuit Safety", "Microcontrollers and GPIO", "Motor Drivers and Encoders", "I2C, SPI, and UART", "Power and Battery Management"] },
+      { title: "Robot Mechanics and CAD", order: 3, description: "Design structures and select mechanical components", topics: ["Robot Frames and Degrees of Freedom", "Gears, Belts, and Bearings", "3D CAD and Mechanical Drawings", "Actuator Selection", "Rapid Prototyping and Assembly"] },
+      { title: "Control Systems and Motion", order: 4, description: "Make robots move accurately and safely", topics: ["Feedback Control", "PID Controllers", "Motor and Servo Control", "Odometry and Sensor Fusion", "Trajectory Planning"] },
+      { title: "Robot Software and ROS 2", order: 5, description: "Build modular software that connects robot components", topics: ["ROS 2 Nodes, Topics, and Services", "Robot Description with URDF", "Navigation and Mapping", "Simulation with Gazebo", "Debugging and Logging"] },
+      { title: "Autonomy and Capstone", order: 6, description: "Combine perception, planning, and control into an autonomous robot", topics: ["Computer Vision and Camera Calibration", "Localization and SLAM", "Path Planning and Obstacle Avoidance", "Safety and Failure Recovery", "Capstone: Autonomous Mobile Robot"] }
+    ]
   }
 };
 

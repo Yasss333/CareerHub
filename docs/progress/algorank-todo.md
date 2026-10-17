@@ -176,8 +176,6 @@ The following tasks are optional enhancements for future iterations:
 - User management interface
 - System statistics and monitoring
 - Content moderation tools
-- Problem recommendation system
-- Achievement/badge system
 - Skill tree or learning path
 - Streak tracking system enhancement
 - Leaderboard advanced filtering and sorting

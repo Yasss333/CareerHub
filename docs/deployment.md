@@ -57,9 +57,39 @@ Piston must be reachable from Render over HTTPS. Test the deployed API at `/heal
 
 Local Vite development continues to proxy `/api` requests to `http://localhost:5000`. Keep production secrets only in Render's environment settings and never commit `.env` files.
 
+## 5. Deploy the AI Interview ML service (Hugging Face Spaces)
+
+The multimodal ML proctoring service requires 2-4GB RAM (running ViT, Wav2Vec2, and FaceNet), which exceeds free web app limits (e.g. 512MB on Render). Deploy it to a free 16GB RAM Hugging Face Space using Docker:
+
+1. Create a new Space on [Hugging Face Spaces](https://huggingface.co/new-space).
+2. Set Space SDK to **Docker** (Blank template) and Hardware to **CPU basic (16GB RAM Free)**.
+3. Push or upload the `services/proctoring` folder to the Space repository:
+   - Use the 1-click helper script: `.\scripts\deploy-hf-space.ps1 -SpaceRepoUrl "<your-space-git-url>"` (or `./scripts/deploy-hf-space.sh` on Linux/Mac).
+   - Or upload files via Hugging Face Web UI Files tab (`Dockerfile`, `README.md`, `requirements.txt`, `server.py`, etc.).
+4. In Space **Settings > Variables and secrets**, add a secret:
+   - `INTERVIEW_ML_TOKEN`: A private secret shared with the Express backend.
+5. In your Render API service environment variables, configure:
+   - `INTERVIEW_ML_URL`: `https://<your-username>-<space-name>.hf.space`
+   - `INTERVIEW_ML_TOKEN`: The same private token configured in step 4.
+
+The backend will automatically proxy candidate video frames, audio clips, and transcripts to this Hugging Face endpoint while preserving ephemeral, owner-scoped proctoring state.
+
+## 6. Complete Guide and Docker Alternatives
+
+For full step-by-step instructions with troubleshooting and smoke-testing checklists, see [DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md).
+
+If deploying to a single server or VPS using Docker:
+- Full-stack production orchestration: `docker compose -f docker-compose.prod.yml up -d --build`
+- Backend API Dockerfile: `apps/api/Dockerfile`
+- Frontend Web Dockerfile & Nginx: `apps/web/Dockerfile`, `apps/web/nginx.conf`
+- ML Service Dockerfile: `services/proctoring/Dockerfile`
+
 ## Deployment references
 
+- [Comprehensive CareerHub Deployment Guide](../DEPLOYMENT_GUIDE.md)
 - [Vercel external rewrites](https://vercel.com/docs/routing/rewrites)
 - [Render Blueprints](https://render.com/docs/blueprint-spec)
 - [Render health checks](https://render.com/docs/health-checks)
 - [Neon with Prisma](https://neon.com/docs/guides/prisma)
+- [Hugging Face Spaces Docker SDK](https://huggingface.co/docs/hub/spaces-sdks-docker)
+

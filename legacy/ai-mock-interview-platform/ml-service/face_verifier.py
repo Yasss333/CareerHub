@@ -7,6 +7,8 @@ and returns exact integrity states: VERIFIED, NO_FACE, MULTIPLE_FACES, UNAUTHORI
 import base64
 import io
 import os
+import time
+import threading
 from typing import Union, Optional, Dict, Any, List
 import numpy as np
 from PIL import Image
@@ -64,7 +66,22 @@ class FaceVerifier:
         ).eval().to(self.device)
 
         # Registered candidate embedding cache (512-D float array)
-        self.registered_embedding: Optional[np.ndarray] = None
+        self._sessions: Dict[str, tuple[np.ndarray, float]] = {}
+        self._sessions_lock = threading.Lock()
+        self.session_ttl_seconds = 900
+
+    def clear_session(self, session_id: str) -> None:
+        with self._sessions_lock:
+            self._sessions.pop(session_id, None)
+
+    def _get_session_embedding(self, session_id: str) -> Optional[np.ndarray]:
+        now = time.time()
+        with self._sessions_lock:
+            expired = [key for key, (_, expires_at) in self._sessions.items() if expires_at <= now]
+            for key in expired:
+                self._sessions.pop(key, None)
+            value = self._sessions.get(session_id)
+            return value[0] if value else None
 
     def _load_image(self, image_input: Union[str, bytes, np.ndarray, Image.Image]) -> Image.Image:
         """
@@ -134,14 +151,15 @@ class FaceVerifier:
 
     def register(
         self,
-        image_input: Union[str, bytes, np.ndarray, Image.Image]
+        image_input: Union[str, bytes, np.ndarray, Image.Image],
+        session_id: str
     ) -> Dict[str, Any]:
         """
         Registers the candidate from an initial photo or browser webcam snapshot.
         Enforces that exactly 1 face is present.
         
         Returns:
-            Dict with "success", "status", "message", and "embedding" (512-D vector as list).
+            Dict with registration status. The embedding stays in process memory.
         """
         img_pil = self._load_image(image_input)
         embeddings = self._extract_embeddings(img_pil)
@@ -161,18 +179,20 @@ class FaceVerifier:
                 "embedding": None
             }
         else:
-            self.registered_embedding = embeddings[0]
+            with self._sessions_lock:
+                self._sessions[session_id] = (embeddings[0], time.time() + self.session_ttl_seconds)
             return {
                 "success": True,
                 "status": self.VERIFIED,
                 "message": "Candidate face successfully registered.",
-                "embedding": self.registered_embedding.tolist()
+                "embedding": None
             }
 
     def verify(
         self,
         image_input: Union[str, bytes, np.ndarray, Image.Image],
-        registered_embedding: Optional[Union[np.ndarray, List[float]]] = None
+        registered_embedding: Optional[Union[np.ndarray, List[float]]] = None,
+        session_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Verifies an incoming frame from the browser webcam against the registered candidate.
@@ -191,7 +211,9 @@ class FaceVerifier:
               - "message": Human-readable description
         """
         # Determine reference embedding
-        ref = registered_embedding if registered_embedding is not None else self.registered_embedding
+        ref = registered_embedding
+        if ref is None and session_id:
+            ref = self._get_session_embedding(session_id)
         if ref is None:
             raise ValueError("No registered candidate embedding found. Please call register() first or supply registered_embedding.")
 

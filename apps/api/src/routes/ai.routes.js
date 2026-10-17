@@ -322,7 +322,7 @@ router.post('/interview/evaluate', authenticate, async (req, res) => {
 router.post('/upload-resume', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { resumeText, title } = req.body;
+    const { resumeText, title, profile } = req.body;
     
     if (!resumeText || !title) {
       return res.status(400).json({ message: "Missing fields: resumeText and title are required" });
@@ -430,7 +430,8 @@ ${resumeText}
     const newResume = await prisma.resume.create({
       data: {
         userId,
-        title,
+        title: title || 'Imported Resume',
+        profile: profile || 'General',
         professionSummary: parsedData.professionSummary || '',
         skills: parsedData.skills || [],
         personalInfo: parsedData.personalInfo || {},

@@ -23,6 +23,10 @@ const PlaylistDetail = lazy(() => import('./pages/PlaylistDetail'))
 const RoadmapList = lazy(() => import('./pages/RoadmapList'))
 const RoadmapBuilder = lazy(() => import('./pages/RoadmapBuilder'))
 const RoadmapDetail = lazy(() => import('./pages/RoadmapDetail'))
+const Interview = lazy(() => import('./pages/Interview'))
+const InterviewSetup = lazy(() => import('./pages/InterviewSetup'))
+const InterviewSession = lazy(() => import('./pages/InterviewSession'))
+const InterviewResults = lazy(() => import('./pages/InterviewResults'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const AdminMentorApplications = lazy(() => import('./pages/AdminMentorApplications'))
@@ -90,6 +94,10 @@ function App() {
           <Route path="roadmaps" element={<RoadmapList />} />
           <Route path="roadmaps/builder" element={<RoadmapBuilder />} />
           <Route path="roadmaps/:id" element={<RoadmapDetail />} />
+          <Route path="interview" element={<Interview />} />
+          <Route path="interview/setup" element={<InterviewSetup />} />
+          <Route path="interview/session/:id" element={<InterviewSession />} />
+          <Route path="interview/results/:id" element={<InterviewResults />} />
           {/* Add more routes as we implement other modules */}
         </Route>
         <Route path="*" element={<Navigate to="/landing" replace />} />

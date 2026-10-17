@@ -232,6 +232,16 @@ function EmptyState({
   )
 }
 
+interface LivePriData {
+  score: number
+  interviewScore: number
+  algoRankScore: number
+  resumeScore: number
+  hasRealInterview: boolean
+  interviewCount: number
+  latestInterviewScore: number | null
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>(initialStats)
   const [sessions, setSessions] = useState<MentorshipSession[]>([])
@@ -239,6 +249,7 @@ export default function Dashboard() {
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([])
   const [recentResumes, setRecentResumes] = useState<ResumeRecord[]>([])
   const [priSnapshots, setPriSnapshots] = useState<PriSnapshot[]>([])
+  const [livePri, setLivePri] = useState<LivePriData | null>(null)
   const [priInput, setPriInput] = useState({ interviewScore: '', algoRankScore: '', resumeScore: '' })
   const [savingPri, setSavingPri] = useState(false)
   const [priSaveError, setPriSaveError] = useState('')
@@ -257,7 +268,7 @@ export default function Dashboard() {
         throw new Error('Your session has expired. Please sign in again.')
       }
 
-      const [resumes, sessions, rankingResponse, problemsResponse, submissionsResponse, priHistory] =
+      const [resumes, sessions, rankingResponse, problemsResponse, submissionsResponse, priHistory, livePriResponse] =
         await Promise.all([
           fetchJson<ResumeRecord[]>('/api/resume', token),
           fetchJson<MentorshipSession[]>('/api/connect/sessions', token),
@@ -265,7 +276,12 @@ export default function Dashboard() {
           fetchJson<{ pagination?: { totalProblems?: number } }>('/api/algorank/problems?limit=1', token),
           fetchJson<{ submissions?: Submission[] }>('/api/algorank/submissions?limit=5', token),
           fetchJson<{ snapshots: PriSnapshot[] }>('/api/dashboard/pri/history?days=30', token),
+          fetchJson<LivePriData>('/api/dashboard/pri/live', token).catch(() => null),
         ])
+
+      if (livePriResponse) {
+        setLivePri(livePriResponse)
+      }
 
       const userStats = rankingResponse.user
       const totalProblems = problemsResponse.pagination?.totalProblems ?? 0
@@ -404,7 +420,7 @@ export default function Dashboard() {
     { title: 'Ranking score', value: stats.rankingScore.toFixed(0), icon: Trophy },
   ]
 
-  const isPriSample = priSnapshots.length === 0
+  const isPriSample = priSnapshots.length === 0 && !livePri?.hasRealInterview
   const priTrendData = useMemo(() => {
     if (priSnapshots.length > 0) {
       return priSnapshots.map((snapshot) => ({
@@ -413,7 +429,16 @@ export default function Dashboard() {
       }))
     }
 
-    const sampleScores = [62, 64, 63, 66, 67, 69, samplePriComponents.score]
+    const baselineScore = livePri ? livePri.score : samplePriComponents.score
+    const sampleScores = [
+      Math.max(40, baselineScore - 8),
+      Math.max(42, baselineScore - 6),
+      Math.max(41, baselineScore - 7),
+      Math.max(44, baselineScore - 4),
+      Math.max(45, baselineScore - 3),
+      Math.max(46, baselineScore - 1),
+      baselineScore,
+    ]
     return sampleScores.map((score, index) => {
       const date = new Date()
       date.setDate(date.getDate() - (sampleScores.length - 1 - index))
@@ -422,9 +447,24 @@ export default function Dashboard() {
         score,
       }
     })
-  }, [priSnapshots])
+  }, [priSnapshots, livePri])
 
-  const currentPri = priSnapshots.at(-1) ?? samplePriComponents
+  const currentPri = useMemo(() => {
+    if (priSnapshots.length > 0) {
+      return priSnapshots.at(-1)!
+    }
+    if (livePri) {
+      return {
+        id: 'live',
+        score: livePri.score,
+        interviewScore: livePri.interviewScore,
+        algoRankScore: livePri.algoRankScore,
+        resumeScore: livePri.resumeScore,
+        snapshotDate: new Date().toISOString(),
+      }
+    }
+    return samplePriComponents
+  }, [priSnapshots, livePri])
 
   const savePriSnapshot = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -588,11 +628,21 @@ export default function Dashboard() {
           <CardHeader className="relative">
             <div className="flex items-center justify-between gap-2">
               <CardTitle>Placement readiness</CardTitle>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${isPriSample ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>
-                {isPriSample ? 'Demo data' : 'Updated today'}
+              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                priSnapshots.length > 0
+                  ? 'bg-success/10 text-success'
+                  : livePri?.hasRealInterview
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'bg-warning/10 text-warning'
+              }`}>
+                {priSnapshots.length > 0
+                  ? 'Updated today'
+                  : livePri?.hasRealInterview
+                    ? `Live AI Interview (${livePri.interviewCount} sessions)`
+                    : 'Demo data'}
               </span>
             </div>
-            <CardDescription>One score across interview, coding, and resume preparation.</CardDescription>
+            <CardDescription>One score across AI interview, coding, and resume preparation.</CardDescription>
           </CardHeader>
           <CardContent className="relative">
             <div className="flex items-center gap-5">
@@ -611,13 +661,21 @@ export default function Dashboard() {
               </div>
               <div className="min-w-0 flex-1 space-y-3">
                 {[
-                  { label: 'Interview', value: currentPri.interviewScore, weight: '45%' },
+                  {
+                    label: 'AI Interview',
+                    value: currentPri.interviewScore,
+                    weight: '45%',
+                    note: livePri?.hasRealInterview ? `${livePri.interviewCount} sessions` : undefined,
+                  },
                   { label: 'AlgoRank', value: currentPri.algoRankScore, weight: '40%' },
                   { label: 'Resume', value: currentPri.resumeScore, weight: '15%' },
                 ].map((component) => (
                   <div key={component.label}>
                     <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                      <span className="text-muted-foreground">{component.label} <span className="text-primary">{component.weight}</span></span>
+                      <span className="text-muted-foreground">
+                        {component.label} <span className="text-primary font-medium">{component.weight}</span>
+                        {component.note && <span className="ml-1 text-[10px] text-muted-foreground/75">({component.note})</span>}
+                      </span>
                       <span className="font-semibold tabular-nums">{component.value}</span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -628,7 +686,11 @@ export default function Dashboard() {
               </div>
             </div>
             <p className="mt-5 rounded-lg bg-muted/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-              {isPriSample ? 'Preview only. These sample values are not your assessment.' : 'Manually entered component scores · PRI = 0.45 × interview + 0.40 × AlgoRank + 0.15 × resume.'}
+              {isPriSample
+                ? 'Preview only. Complete an AI Mock Interview and practice on AlgoRank to automatically calculate your Placement Readiness Index.'
+                : livePri?.hasRealInterview
+                  ? `Calculated from your live AI Mock Interview sessions (${livePri.interviewCount} completed), AlgoRank coding accuracy, and Resume quality.`
+                  : 'Component scores · PRI = 0.45 × AI Interview + 0.40 × AlgoRank + 0.15 × Resume.'}
             </p>
             <details className="group mt-4 rounded-lg border border-border bg-background/70 p-3">
               <summary className="cursor-pointer list-none text-sm font-medium text-primary">

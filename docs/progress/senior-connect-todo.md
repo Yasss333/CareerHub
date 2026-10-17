@@ -56,9 +56,12 @@ This document tracks the implementation progress of the Senior Connect module mi
 - [ ] Implement real-time availability updates
 - [ ] Add mentor profile search and filters
 - [ ] Implement session booking wizard
-- [ ] Add video call interface improvements
-- [ ] Implement chat during video sessions
-- [ ] Add screen sharing capability
+- [x] Add video call interface improvements (In-page VideoMeetingModal with Jitsi Meet integration)
+- [x] Implement chat during mentorship sessions (SessionChatModal with real-time polling and message persistence)
+- [x] Add auto-fill mentor profile from senior resume (AI PDF/text parsing endpoint and UI)
+- [x] Display candidate Placement Readiness Index (PRI) breakdown on session cards for senior mentors
+- [x] Streamline Topmate-style instant mentor approval and remove admin gate on bookings
+- [x] Provide 1-click slot presets and simplified availability management
 
 ## Phase 7: Testing & Validation
 - [x] Gate mentor publishing on an admin-approved application status

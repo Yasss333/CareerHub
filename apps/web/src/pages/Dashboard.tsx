@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText, MessageSquare, Code, Users, Calendar, TrendingUp, Award, Target, ChevronRight } from 'lucide-react'
+import AchievementsBadge from '../components/AchievementsBadge'
 
 interface DashboardStats {
   resumesCount: number
@@ -99,7 +100,10 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <AchievementsBadge />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statItems.map((stat) => {
