@@ -23,6 +23,7 @@ import RoadmapBuilder from './pages/RoadmapBuilder'
 import RoadmapDetail from './pages/RoadmapDetail'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import AdminMentorApplications from './pages/AdminMentorApplications'
 
 function App() {
   return (
@@ -31,8 +32,16 @@ function App() {
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/mentor" element={
+          <ProtectedRoute allowedRoles={['MENTOR']}>
+            <Layout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<SeniorConnectSessions />} />
+          <Route path="profile" element={<SeniorConnectProfile />} />
+        </Route>
         <Route path="/" element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
             <Layout />
           </ProtectedRoute>
         }>
@@ -43,6 +52,11 @@ function App() {
           <Route path="connect/booking/:seniorId" element={<SeniorConnectBooking />} />
           <Route path="connect/sessions" element={<SeniorConnectSessions />} />
           <Route path="connect/profile" element={<SeniorConnectProfile />} />
+          <Route path="admin/mentor-applications" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <AdminMentorApplications />
+            </ProtectedRoute>
+          } />
           <Route path="algorank" element={<AlgoRank />} />
           <Route path="algorank/problems/:id" element={<ProblemDetail />} />
           <Route path="algorank/problems/:id/solve" element={<ProblemEditor />} />

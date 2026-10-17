@@ -9,7 +9,7 @@ Senior Connect is a mentorship platform connecting junior developers with alumni
 - **Framework**: Express.js with JWT authentication
 - **Database**: PostgreSQL via Prisma ORM
 - **Video Conferencing**: Jitsi Meet (public URLs, no API key)
-- **Authentication**: Shared CareerHub JWT system with alumni mentor capability
+- **Authentication**: Shared CareerHub JWT system with USER, ADMIN, and MENTOR account roles; mentor role is granted only after administrator approval
 
 ### Frontend
 - **Framework**: React 18 + TypeScript
@@ -131,6 +131,8 @@ model SessionFeedback {
 - `GET /api/connect/seniors/:id` - Get specific senior profile
 - `POST /api/connect/profile` - Create/update senior profile
 - `PUT /api/connect/profile` - Update senior profile
+- `GET /api/connect/admin/mentor-applications` - List pending applications (ADMIN only)
+- `PATCH /api/connect/admin/mentor-applications/:userId` - Approve or reject an application (ADMIN only)
 
 ### Availability Management
 - `GET /api/connect/availability/:seniorId` - Get senior's availability slots
@@ -159,10 +161,24 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 - `500 Internal Server Error` - Database or server error
 
 ## Frontend Routes
-- `/senior-connect` - Main Senior Connect page (mentor discovery)
-- `/senior-connect/booking/:seniorId` - Session booking page
-- `/senior-connect/sessions` - User's session management page
+- `/connect` - Main Senior Connect page (mentor discovery)
+- `/connect/booking/:seniorId` - Session booking page
+- `/connect/sessions` - User's session management page
+- `/connect/profile` - Create or manage a mentor application/profile
+- `/admin/mentor-applications` - Administrator review queue
+- `/mentor` - MENTOR-only session management
+- `/mentor/profile` - MENTOR-only profile and availability management
 - All routes are protected and require authentication
+
+### Mentor approval and permissions
+- New registrations receive the `USER` role; submitting a profile does not elevate the account or make the profile public.
+- New applications have `mentorApprovalStatus = PENDING` and `isAlumniMentor = false`.
+- Only an administrator can transition a pending application to `APPROVED` or `REJECTED`; approval promotes non-admin applicants to `MENTOR`.
+- Rejected applications remain `USER`; removing an approved mentor profile returns a `MENTOR` account to `USER`.
+- The MENTOR login selection accepts only approved MENTOR accounts. MENTOR accounts receive a Senior Connect-only layout and are denied access to other platform APIs.
+- Availability writes and mentor session-status actions require both `isAlumniMentor = true` and `mentorApprovalStatus = APPROVED`.
+- Mentor discovery and booking resolve only approved profiles.
+- Existing approved mentor accounts are promoted to `MENTOR` by migration; administrator accounts retain the `ADMIN` role.
 
 ## External Integrations
 
@@ -296,7 +312,7 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 ### Shared Authentication
 - Uses `packages/shared/src/auth/jwt.js` for token operations
 - Uses `apps/api/src/middleware/auth.middleware.js` for route protection
-- Follows shared User model with `isAlumniMentor` capability
+- Follows the shared User model with `USER`, `ADMIN`, and approved `MENTOR` account roles
 - Distinguishes between mentors (seniors) and mentees (juniors)
 
 ### Dashboard Integration
@@ -306,7 +322,7 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 
 ### User Model
 - Senior profiles are linked to User model via `userId`
-- `isAlumniMentor` field in User model determines mentor status
+- `isAlumniMentor` and `mentorApprovalStatus` fields record approved mentor capability and application state
 - Session bookings reference both senior and junior users
 
 ## Performance Considerations
@@ -346,7 +362,7 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 
 ### From Legacy Senior Connect
 - **Original**: MongoDB/Mongoose with junior/senior role enum
-- **Target**: PostgreSQL/Prisma with User model + isAlumniMentor
+- **Target**: PostgreSQL/Prisma with a shared User model, USER/ADMIN/MENTOR roles, and mentor approval state
 - **Key Changes**:
   - Role enum → User model with alumni mentor capability
   - Document structure → relational model with proper relations

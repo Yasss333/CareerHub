@@ -8,6 +8,7 @@ interface ProfessionalSummaryFormProps {
 
 const ProfessionalSummaryForm = ({ value, onChange }: ProfessionalSummaryFormProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState('');
 
   const generateSummary = async () => {
     if (!value.trim()) {
@@ -16,9 +17,10 @@ const ProfessionalSummaryForm = ({ value, onChange }: ProfessionalSummaryFormPro
     }
 
     setIsGenerating(true);
+    setError('');
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/ai/enhance-pro-sum', {
+      const response = await fetch('/api/ai/enhance-pro-sum', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,15 +29,15 @@ const ProfessionalSummaryForm = ({ value, onChange }: ProfessionalSummaryFormPro
         body: JSON.stringify({ userContent: value })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        onChange(result.enhancedSolution);
-      } else {
-        alert('Failed to generate AI summary');
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.message || result?.error || 'AI enhancement failed. Please try again.');
+      if (typeof result?.enhancedSolution !== 'string' || !result.enhancedSolution.trim()) {
+        throw new Error('AI returned an empty summary. Please try again.');
       }
+      onChange(result.enhancedSolution.trim());
     } catch (error) {
       console.error('AI generation error:', error);
-      alert('Error generating AI summary');
+      setError(error instanceof Error ? error.message : 'AI enhancement failed. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -43,6 +45,7 @@ const ProfessionalSummaryForm = ({ value, onChange }: ProfessionalSummaryFormPro
 
   return (
     <div className="space-y-4">
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <div className="flex justify-between items-center">
         <h3 className="text-sm font-medium text-gray-700">Professional Summary</h3>
         <button

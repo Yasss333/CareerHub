@@ -3,12 +3,10 @@ import { Trophy, Medal, TrendingUp, Award, Target } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface LeaderboardEntry {
+  id: string;
+  name: string | null;
+  image?: string | null;
   rank: number;
-  user: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
   totalProblemsSolved: number;
   acceptanceRate: number;
   currentStreak: number;
@@ -24,11 +22,14 @@ export default function Leaderboard() {
 
   const fetchLeaderboard = async () => {
     try {
-      const data = await api<{ leaderboard: LeaderboardEntry[]; userRank?: LeaderboardEntry }>(
+      const [data, ranking] = await Promise.all([
+        api<{ leaderboard: LeaderboardEntry[] }>(
         `/algorank/leaderboard?timeFilter=${timeFilter}`
-      );
+        ),
+        api<{ user: LeaderboardEntry }>('/algorank/ranking/me')
+      ])
       setLeaderboard(data.leaderboard);
-      setUserRank(data.userRank || null);
+      setUserRank(ranking.user || null);
     } catch (err) {
       console.error('Failed to fetch leaderboard:', err);
     } finally {
@@ -109,7 +110,7 @@ export default function Leaderboard() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Your Rank</p>
-                <p className="text-lg font-bold text-gray-900">{userRank.user.name}</p>
+                <p className="text-lg font-bold text-gray-900">{userRank.name || 'CareerHub User'}</p>
               </div>
             </div>
             <div className="flex gap-6 text-sm">
@@ -135,12 +136,10 @@ export default function Leaderboard() {
         <div className="flex items-end justify-center gap-4 mb-8 h-48">
           {/* 2nd Place */}
           <div className="flex flex-col items-center">
-            <img
-              src={leaderboard[1].user.avatar || '/default-avatar.png'}
-              alt={leaderboard[1].user.name}
-              className="w-16 h-16 rounded-full border-4 border-gray-300 mb-2"
-            />
-            <p className="font-semibold text-gray-900 text-sm">{leaderboard[1].user.name}</p>
+            <div className="w-16 h-16 rounded-full border-4 border-gray-300 mb-2 flex items-center justify-center bg-gray-100 text-xl font-bold text-gray-600">
+              {(leaderboard[1].name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <p className="font-semibold text-gray-900 text-sm">{leaderboard[1].name || 'CareerHub User'}</p>
             <p className="text-xs text-gray-600">{leaderboard[1].totalProblemsSolved} solved</p>
             <div className="w-20 h-24 bg-gray-200 rounded-t-lg mt-2 flex items-start justify-center pt-2">
               <Medal className="w-8 h-8 text-gray-400" />
@@ -149,12 +148,10 @@ export default function Leaderboard() {
 
           {/* 1st Place */}
           <div className="flex flex-col items-center">
-            <img
-              src={leaderboard[0].user.avatar || '/default-avatar.png'}
-              alt={leaderboard[0].user.name}
-              className="w-20 h-20 rounded-full border-4 border-yellow-400 mb-2"
-            />
-            <p className="font-bold text-gray-900">{leaderboard[0].user.name}</p>
+            <div className="w-20 h-20 rounded-full border-4 border-yellow-400 mb-2 flex items-center justify-center bg-yellow-50 text-2xl font-bold text-gray-600">
+              {(leaderboard[0].name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <p className="font-bold text-gray-900">{leaderboard[0].name || 'CareerHub User'}</p>
             <p className="text-sm text-gray-600">{leaderboard[0].totalProblemsSolved} solved</p>
             <div className="w-24 h-32 bg-yellow-100 rounded-t-lg mt-2 flex items-start justify-center pt-2">
               <Trophy className="w-10 h-10 text-yellow-500" />
@@ -163,12 +160,10 @@ export default function Leaderboard() {
 
           {/* 3rd Place */}
           <div className="flex flex-col items-center">
-            <img
-              src={leaderboard[2].user.avatar || '/default-avatar.png'}
-              alt={leaderboard[2].user.name}
-              className="w-16 h-16 rounded-full border-4 border-amber-600 mb-2"
-            />
-            <p className="font-semibold text-gray-900 text-sm">{leaderboard[2].user.name}</p>
+            <div className="w-16 h-16 rounded-full border-4 border-amber-600 mb-2 flex items-center justify-center bg-amber-50 text-xl font-bold text-gray-600">
+              {(leaderboard[2].name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <p className="font-semibold text-gray-900 text-sm">{leaderboard[2].name || 'CareerHub User'}</p>
             <p className="text-xs text-gray-600">{leaderboard[2].totalProblemsSolved} solved</p>
             <div className="w-20 h-20 bg-amber-100 rounded-t-lg mt-2 flex items-start justify-center pt-2">
               <Medal className="w-8 h-8 text-amber-600" />
@@ -192,7 +187,7 @@ export default function Leaderboard() {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {leaderboard.map((entry) => (
-              <tr key={entry.user.id} className={`hover:bg-gray-50 ${getRankColor(entry.rank)}`}>
+              <tr key={entry.id} className={`hover:bg-gray-50 ${getRankColor(entry.rank)}`}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     {getRankIcon(entry.rank)}
@@ -200,12 +195,10 @@ export default function Leaderboard() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={entry.user.avatar || '/default-avatar.png'}
-                      alt={entry.user.name}
-                      className="w-8 h-8 rounded-full"
-                    />
-                    <span className="font-medium text-gray-900">{entry.user.name}</span>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-sm font-semibold text-gray-600">
+                      {(entry.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <span className="font-medium text-gray-900">{entry.name || 'CareerHub User'}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">

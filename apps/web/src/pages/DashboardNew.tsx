@@ -1,463 +1,752 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Home, FileText, Code, Users, MessageSquare, Trophy, Settings, LogOut, Bell, Sun, Moon, ChevronRight, ArrowUpRight, Plus, TrendingUp, DollarSign, Users as UsersIcon, Target, Activity, CheckCircle } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { useDarkMode } from '../contexts/DarkModeContext';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  CalendarClock,
+  CheckCircle2,
+  Code2,
+  FileText,
+  Flame,
+  LoaderCircle,
+  Plus,
+  RotateCcw,
+  Settings2,
+  Target,
+  Trophy,
+  UsersRound,
+} from 'lucide-react'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card'
+
+const DashboardDonutChart = lazy(() => import('../components/dashboard/DashboardDonutChart'))
+
+interface ResumeRecord {
+  id: string
+  title: string
+  template: string
+  createdAt: string
+  personalInfo?: {
+    fullName?: string
+    email?: string
+  } | null
+  professionSummary?: string
+  skills?: string[]
+  experience?: unknown[]
+  education?: unknown[]
+  projects?: unknown[]
+}
+
+interface MentorshipSession {
+  id: string
+  topic: string
+  scheduledTime: string
+  status: string
+}
+
+interface Submission {
+  id: string
+  status: string
+  createdAt: string
+  problem?: {
+    title: string
+  } | null
+}
+
+interface RankingStats {
+  totalProblemsSolved: number
+  acceptanceRate: number
+  currentStreak: number
+  rankingScore: number
+  rank: number
+}
+
+interface DashboardStats {
+  resumesCount: number
+  resumesCompleted: number
+  problemsSolved: number
+  totalProblems: number
+  acceptanceRate: number
+  currentStreak: number
+  rankingScore: number
+  userRank: number
+  connectSessions: number
+  upcomingSessions: number
+  completedSessions: number
+}
+
+interface ProblemChartEntry {
+  name: string
+  value: number
+  fill: string
+}
+
+interface SessionChartEntry {
+  name: string
+  value: number
+  fill: string
+}
+
+const initialStats: DashboardStats = {
+  resumesCount: 0,
+  resumesCompleted: 0,
+  problemsSolved: 0,
+  totalProblems: 0,
+  acceptanceRate: 0,
+  currentStreak: 0,
+  rankingScore: 0,
+  userRank: 0,
+  connectSessions: 0,
+  upcomingSessions: 0,
+  completedSessions: 0,
+}
+
+const chartColors = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+]
+
+const widgetOptions = [
+  { key: 'metrics', label: 'Career statistics' },
+  { key: 'problemProgress', label: 'AlgoRank progress' },
+  { key: 'mentorship', label: 'Mentorship activity' },
+  { key: 'performance', label: 'AlgoRank performance' },
+  { key: 'sessions', label: 'Recent sessions' },
+  { key: 'submissions', label: 'Recent submissions' },
+  { key: 'resumes', label: 'Recent resumes' },
+  { key: 'quickActions', label: 'Quick actions' },
+] as const
+
+type WidgetKey = (typeof widgetOptions)[number]['key']
+type WidgetVisibility = Record<WidgetKey, boolean>
+
+const defaultWidgetVisibility: WidgetVisibility = {
+  metrics: true,
+  problemProgress: true,
+  mentorship: true,
+  performance: true,
+  sessions: true,
+  submissions: true,
+  resumes: true,
+  quickActions: true,
+}
+
+async function fetchJson<T>(path: string, token: string): Promise<T> {
+  const response = await fetch(path, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Dashboard request failed (${response.status}): ${path}`)
+  }
+
+  return response.json() as Promise<T>
+}
+
+function isResumeComplete(resume: ResumeRecord) {
+  const hasContactInfo = Boolean(resume.personalInfo?.fullName && resume.personalInfo.email)
+  const hasResumeContent = Boolean(
+    resume.professionSummary?.trim() ||
+    resume.skills?.length ||
+    resume.experience?.length ||
+    resume.education?.length ||
+    resume.projects?.length
+  )
+
+  return hasContactInfo && hasResumeContent
+}
+
+function formatDate(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? 'Date unavailable'
+    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const normalizedStatus = status.toLowerCase()
+  const statusClass =
+    normalizedStatus === 'completed' || normalizedStatus === 'accepted'
+      ? 'bg-success/10 text-success'
+      : normalizedStatus === 'pending'
+        ? 'bg-warning/10 text-warning'
+        : normalizedStatus === 'wrong answer' || normalizedStatus === 'rejected'
+          ? 'bg-destructive/10 text-destructive'
+          : 'bg-muted text-muted-foreground'
+
+  return (
+    <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusClass}`}>
+      {status}
+    </span>
+  )
+}
+
+function EmptyState({
+  icon: Icon,
+  message,
+  link,
+  linkLabel,
+}: {
+  icon: typeof FileText
+  message: string
+  link: string
+  linkLabel: string
+}) {
+  return (
+    <div className="flex min-h-36 flex-col items-center justify-center text-center">
+      <Icon className="mb-3 size-8 text-muted-foreground/60" aria-hidden="true" />
+      <p className="text-sm text-muted-foreground">{message}</p>
+      <Link to={link} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+        {linkLabel}
+        <ArrowRight className="size-4" aria-hidden="true" />
+      </Link>
+    </div>
+  )
+}
 
 export default function Dashboard() {
-  const { darkMode, toggleDarkMode } = useDarkMode();
-  const [stats, setStats] = useState({
-    resumesCount: 0,
-    resumesCompleted: 0,
-    problemsSolved: 0,
-    totalProblems: 0,
-    acceptanceRate: 0,
-    currentStreak: 0,
-    rankingScore: 0,
-    userRank: 0,
-    connectSessions: 0,
-    upcomingSessions: 0,
-    completedSessions: 0,
-    mentorRating: 0,
-  });
-  const [recentSessions, setRecentSessions] = useState<any[]>([]);
-  const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
-  const [recentResumes, setRecentResumes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>(initialStats)
+  const [sessions, setSessions] = useState<MentorshipSession[]>([])
+  const [recentSessions, setRecentSessions] = useState<MentorshipSession[]>([])
+  const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([])
+  const [recentResumes, setRecentResumes] = useState<ResumeRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [widgetVisibility, setWidgetVisibility] = useState(defaultWidgetVisibility)
+  const [widgetPreferencesLoaded, setWidgetPreferencesLoaded] = useState(false)
 
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
+  const fetchDashboardStats = useCallback(async () => {
+    setLoading(true)
+    setError('')
 
-  const fetchDashboardStats = async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      // Resume Builder stats
-      const resumesResponse = await fetch('/api/resume', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const resumesData = await resumesResponse.json();
-      const resumes = Array.isArray(resumesData) ? resumesData : [];
-      const resumesCount = resumes.length;
-      const resumesCompleted = resumes.filter((r: any) => r.template && r.sections).length;
-
-      // Senior Connect stats
-      const connectResponse = await fetch('/api/connect/sessions', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const connectData = await connectResponse.json();
-      const connectSessions = Array.isArray(connectData) ? connectData : [];
-      const upcomingSessions = connectSessions.filter((s: any) =>
-        ['pending', 'accepted'].includes(s.status) && new Date(s.scheduledTime) > new Date()
-      ).length;
-      const completedSessions = connectSessions.filter((s: any) => s.status === 'completed').length;
-
-      // User stats (includes AlgoRank data)
-      const userResponse = await fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const userData = await userResponse.json();
-
-      // AlgoRank stats
-      const problemsResponse = await fetch('/api/algorank/problems?limit=1');
-      const problemsData = await problemsResponse.json();
-      const totalProblems = problemsData.pagination?.totalProblems || 0;
-
-      // User rank
-      let userRank = 0;
-      try {
-        const rankResponse = await fetch('/api/algorank/ranking/user/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (rankResponse.ok) {
-          const rankData = await rankResponse.json();
-          userRank = rankData.rank || 0;
-        }
-      } catch (e) {
-        // Ignore rank fetch errors
+      const token = localStorage.getItem('token')
+      if (!token) {
+        throw new Error('Your session has expired. Please sign in again.')
       }
 
-      // Recent submissions
-      try {
-        const submissionsResponse = await fetch('/api/algorank/submissions?limit=5', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (submissionsResponse.ok) {
-          const submissionsData = await submissionsResponse.json();
-          setRecentSubmissions(Array.isArray(submissionsData.submissions) ? submissionsData.submissions : []);
-        }
-      } catch (e) {
-        // Ignore submission fetch errors
-      }
+      const [resumes, sessions, rankingResponse, problemsResponse, submissionsResponse] =
+        await Promise.all([
+          fetchJson<ResumeRecord[]>('/api/resume', token),
+          fetchJson<MentorshipSession[]>('/api/connect/sessions', token),
+          fetchJson<{ user: RankingStats }>('/api/algorank/ranking/me', token),
+          fetchJson<{ pagination?: { totalProblems?: number } }>('/api/algorank/problems?limit=1', token),
+          fetchJson<{ submissions?: Submission[] }>('/api/algorank/submissions?limit=5', token),
+        ])
+
+      const userStats = rankingResponse.user
+      const totalProblems = problemsResponse.pagination?.totalProblems ?? 0
+      const now = Date.now()
+      const upcomingSessions = sessions.filter((session) =>
+        ['pending', 'accepted'].includes(session.status.toLowerCase()) &&
+        new Date(session.scheduledTime).getTime() > now
+      ).length
+      const completedSessions = sessions.filter(
+        (session) => session.status.toLowerCase() === 'completed'
+      ).length
 
       setStats({
-        resumesCount,
-        resumesCompleted,
-        problemsSolved: userData.totalProblemsSolved || 0,
+        resumesCount: resumes.length,
+        resumesCompleted: resumes.filter(isResumeComplete).length,
+        problemsSolved: userStats.totalProblemsSolved,
         totalProblems,
-        acceptanceRate: userData.acceptanceRate || 0,
-        currentStreak: userData.currentStreak || 0,
-        rankingScore: userData.rankingScore || 0,
-        userRank,
-        connectSessions: connectSessions.length,
+        acceptanceRate: userStats.acceptanceRate,
+        currentStreak: userStats.currentStreak,
+        rankingScore: userStats.rankingScore,
+        userRank: userStats.rank,
+        connectSessions: sessions.length,
         upcomingSessions,
         completedSessions,
-        mentorRating: userData.rating || 0,
-      });
-
-      setRecentSessions(connectSessions.slice(0, 5));
-      setRecentResumes(resumes.slice(0, 3));
-    } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error);
+      })
+      setSessions(sessions)
+      setRecentSessions(sessions.slice(0, 5))
+      setRecentSubmissions(submissionsResponse.submissions ?? [])
+      setRecentResumes(resumes.slice(0, 5))
+    } catch (fetchError) {
+      console.error('Failed to fetch dashboard data:', fetchError)
+      setError(fetchError instanceof Error ? fetchError.message : 'Unable to load dashboard data.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }, [])
 
-  const statCards = [
+  useEffect(() => {
+    void fetchDashboardStats()
+  }, [fetchDashboardStats])
+
+  useEffect(() => {
+    try {
+      const savedPreferences = localStorage.getItem('careerhub.dashboard.widgets')
+      if (savedPreferences) {
+        const parsed = JSON.parse(savedPreferences) as Partial<WidgetVisibility>
+        setWidgetVisibility({
+          ...defaultWidgetVisibility,
+          ...Object.fromEntries(
+            widgetOptions.map(({ key }) => [key, typeof parsed[key] === 'boolean' ? parsed[key] : true])
+          ),
+        })
+      }
+    } catch (preferencesError) {
+      console.error('Failed to load dashboard widget preferences:', preferencesError)
+    } finally {
+      setWidgetPreferencesLoaded(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!widgetPreferencesLoaded) return
+
+    try {
+      localStorage.setItem('careerhub.dashboard.widgets', JSON.stringify(widgetVisibility))
+    } catch (preferencesError) {
+      console.error('Failed to save dashboard widget preferences:', preferencesError)
+    }
+  }, [widgetPreferencesLoaded, widgetVisibility])
+
+  const visibleActivityWidgets = widgetVisibility.sessions || widgetVisibility.submissions || widgetVisibility.resumes
+
+  const problemChartData = useMemo<ProblemChartEntry[]>(() => {
+    if (stats.totalProblems <= 0) return []
+
+    const solved = Math.min(stats.problemsSolved, stats.totalProblems)
+    return [
+      { name: 'Solved', value: solved, fill: chartColors[0] },
+      { name: 'Available', value: Math.max(stats.totalProblems - solved, 0), fill: chartColors[1] },
+    ].filter((entry) => entry.value > 0)
+  }, [stats.problemsSolved, stats.totalProblems])
+
+  const sessionChartData = useMemo<SessionChartEntry[]>(() => {
+    const counts = sessions.reduce<Record<string, number>>((result, session) => {
+      const status = session.status.toLowerCase()
+      result[status] = (result[status] ?? 0) + 1
+      return result
+    }, {})
+
+    return Object.entries(counts).map(([name, value], index) => ({
+      name,
+      value,
+      fill: chartColors[index % chartColors.length],
+    }))
+  }, [sessions])
+
+  const metricCards = [
     {
-      title: 'Resumes Created',
+      title: 'Resumes created',
       value: stats.resumesCount,
-      subtitle: `${stats.resumesCompleted} completed`,
+      detail: `${stats.resumesCompleted} with profile details`,
       icon: FileText,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-      link: '/resume',
+      iconClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+      href: '/resume',
     },
     {
-      title: 'Problems Solved',
+      title: 'Problems solved',
       value: stats.problemsSolved,
-      subtitle: `Rank #${stats.userRank}`,
-      icon: Code,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
-      link: '/algorank',
+      detail: `Rank ${stats.userRank > 0 ? `#${stats.userRank}` : 'not ranked yet'}`,
+      icon: Code2,
+      iconClass: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+      href: '/algorank',
     },
     {
-      title: 'Mentorship Sessions',
+      title: 'Mentorship sessions',
       value: stats.connectSessions,
-      subtitle: `${stats.completedSessions} completed`,
-      icon: Users,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
-      link: '/connect/sessions',
+      detail: `${stats.completedSessions} completed`,
+      icon: UsersRound,
+      iconClass: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+      href: '/connect/sessions',
     },
     {
-      title: 'Upcoming Sessions',
+      title: 'Upcoming sessions',
       value: stats.upcomingSessions,
-      subtitle: 'Scheduled',
-      icon: Bell,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
-      link: '/connect/sessions',
+      detail: 'Pending or accepted',
+      icon: CalendarClock,
+      iconClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+      href: '/connect/sessions',
     },
-  ];
+  ]
 
-  const performanceCards = [
-    {
-      title: 'Acceptance Rate',
-      value: `${stats.acceptanceRate.toFixed(1)}%`,
-      icon: Target,
-      color: 'text-cyan-500',
-      bgColor: 'bg-cyan-500/10',
-    },
-    {
-      title: 'Current Streak',
-      value: `${stats.currentStreak} days`,
-      icon: TrendingUp,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10',
-    },
-    {
-      title: 'Ranking Score',
-      value: stats.rankingScore.toFixed(0),
-      icon: Trophy,
-      color: 'text-pink-500',
-      bgColor: 'bg-pink-500/10',
-    },
-  ];
-
-  const navItems = [
-    { icon: Home, label: 'Overview', href: '/' },
-    { icon: FileText, label: 'Resumes', href: '/resume' },
-    { icon: Code, label: 'AlgoRank', href: '/algorank' },
-    { icon: Users, label: 'Senior Connect', href: '/connect' },
-    { icon: MessageSquare, label: 'AI Interview', href: '/interview' },
-    { icon: Trophy, label: 'Leaderboard', href: '/algorank/leaderboard' },
-    { icon: Settings, label: 'Settings', href: '/settings' },
-  ];
-
-  const quickActions = [
-    { icon: FileText, label: 'Create Resume', href: '/resume', color: 'bg-blue-500' },
-    { icon: Code, label: 'Solve Problem', href: '/algorank', color: 'bg-purple-500' },
-    { icon: Users, label: 'Find Mentor', href: '/connect', color: 'bg-orange-500' },
-    { icon: Plus, label: 'New Session', href: '/connect/sessions', color: 'bg-green-500' },
-  ];
+  const performanceMetrics = [
+    { title: 'Acceptance rate', value: `${stats.acceptanceRate.toFixed(1)}%`, icon: Target },
+    { title: 'Current streak', value: `${stats.currentStreak} days`, icon: Flame },
+    { title: 'Ranking score', value: stats.rankingScore.toFixed(0), icon: Trophy },
+  ]
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-gray-500">Loading dashboard...</div>
+      <div className="flex min-h-[50vh] items-center justify-center gap-3 text-muted-foreground">
+        <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
+        <span>Loading your dashboard...</span>
       </div>
-    );
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="mx-auto mt-8 max-w-xl">
+        <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+          <div role="alert" className="text-sm text-destructive">{error}</div>
+          <button
+            type="button"
+            onClick={() => void fetchDashboardStats()}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Try again
+          </button>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-900 border-r border-gray-800 p-4">
-        <div className="flex items-center gap-2 mb-8 px-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">CH</span>
-          </div>
-          <span className="text-xl font-bold">CareerHub</span>
+    <div className="mx-auto w-full max-w-screen-2xl space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-2 text-sm font-medium text-primary">Career overview</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="mt-2 text-muted-foreground">
+            Your progress across resumes, problem solving, and mentorship.
+          </p>
         </div>
-
-        <nav className="space-y-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+        <div className="flex flex-wrap gap-2">
+          <details className="relative">
+            <summary className="inline-flex h-9 cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-muted">
+              <Settings2 className="size-4" aria-hidden="true" />
+              Customize
+            </summary>
+            <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-border bg-card p-3 shadow-lg">
+              <p className="px-2 pb-2 text-sm font-semibold">Dashboard widgets</p>
+              <div className="space-y-1">
+                {widgetOptions.map(({ key, label }) => (
+                  <label key={key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted">
+                    <input
+                      type="checkbox"
+                      checked={widgetVisibility[key]}
+                      onChange={(event) => setWidgetVisibility((current) => ({
+                        ...current,
+                        [key]: event.target.checked,
+                      }))}
+                      className="size-4 accent-primary"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setWidgetVisibility(defaultWidgetVisibility)}
+                className="mt-2 inline-flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="absolute bottom-4 left-4 right-4">
-          <button
-            onClick={() => {
-              localStorage.removeItem('token');
-              localStorage.removeItem('user');
-              window.location.href = '/login';
-            }}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-red-400 hover:bg-gray-800 transition-colors w-full"
+                <RotateCcw className="size-4" aria-hidden="true" />
+                Restore defaults
+              </button>
+            </div>
+          </details>
+          <Link
+            to="/resume"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </button>
+            <Plus className="size-4" aria-hidden="true" />
+            Create resume
+          </Link>
+          <Link
+            to="/algorank"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-muted"
+          >
+            Explore AlgoRank
+            <ArrowUpRight className="size-4" aria-hidden="true" />
+          </Link>
         </div>
-      </aside>
+      </header>
 
-      {/* Main Content */}
-      <main className="ml-64 p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-gray-400 mt-1">Welcome back! Here's what's happening with your career.</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
-            >
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-            <button className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
-            </button>
-          </div>
-        </div>
-
-        {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {statCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Link key={card.title} to={card.link}>
-                <Card className="bg-gray-900 border-gray-800 hover:border-gray-700 transition-colors cursor-pointer">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-400 mb-1">{card.title}</p>
-                        <p className="text-2xl font-bold">{card.value}</p>
-                        {card.subtitle && (
-                          <p className="text-xs text-gray-500 mt-1">{card.subtitle}</p>
-                        )}
-                      </div>
-                      <div className={`p-3 rounded-lg ${card.bgColor}`}>
-                        <Icon className={`w-6 h-6 ${card.color}`} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Performance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {performanceCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Card key={card.title} className="bg-gray-900 border-gray-800">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400 mb-1">{card.title}</p>
-                      <p className="text-2xl font-bold">{card.value}</p>
-                    </div>
-                    <div className={`p-3 rounded-lg ${card.bgColor}`}>
-                      <Icon className={`w-6 h-6 ${card.color}`} />
-                    </div>
+      {widgetVisibility.metrics && <section aria-label="Career statistics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {metricCards.map((metric) => {
+          const Icon = metric.icon
+          return (
+            <Link key={metric.title} to={metric.href} className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:shadow-md">
+                <CardContent className="flex items-start justify-between gap-4 p-5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
+                    <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{metric.value}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p>
                   </div>
+                  <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${metric.iconClass}`}>
+                    <Icon className="size-5" aria-hidden="true" />
+                  </span>
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            </Link>
+          )
+        })}
+      </section>}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Sessions */}
-          <Card className="bg-gray-900 border-gray-800">
-            <CardHeader>
-              <CardTitle>Recent Sessions</CardTitle>
-              <CardDescription>Your latest mentorship sessions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {recentSessions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No sessions yet</p>
-                  <Link to="/connect" className="text-blue-400 hover:text-blue-300 mt-2 inline-block">
-                    Find mentors →
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {recentSessions.slice(0, 5).map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
-                      <div>
-                        <p className="font-medium">{session.topic}</p>
-                        <p className="text-sm text-gray-400">
-                          {new Date(session.scheduledTime).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        session.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                        session.status === 'accepted' ? 'bg-blue-500/20 text-blue-400' :
-                        session.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {session.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent Submissions */}
-          <Card className="bg-gray-900 border-gray-800">
-            <CardHeader>
-              <CardTitle>Recent Submissions</CardTitle>
-              <CardDescription>Your latest AlgoRank submissions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {recentSubmissions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Code className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No submissions yet</p>
-                  <Link to="/algorank" className="text-blue-400 hover:text-blue-300 mt-2 inline-block">
-                    Start solving →
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {recentSubmissions.slice(0, 5).map((sub: any) => (
-                    <div key={sub.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
-                      <div>
-                        <p className="font-medium text-sm">{sub.problem?.title || 'Unknown Problem'}</p>
-                        <p className="text-sm text-gray-400">
-                          {new Date(sub.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        sub.status === 'Accepted' ? 'bg-green-500/20 text-green-400' :
-                        sub.status === 'Wrong Answer' ? 'bg-red-500/20 text-red-400' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {sub.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent Resumes */}
-          <Card className="bg-gray-900 border-gray-800">
-            <CardHeader>
-              <CardTitle>Recent Resumes</CardTitle>
-              <CardDescription>Your latest resume drafts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {recentResumes.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No resumes yet</p>
-                  <Link to="/resume" className="text-blue-400 hover:text-blue-300 mt-2 inline-block">
-                    Create resume →
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {recentResumes.slice(0, 5).map((resume: any) => (
-                    <div key={resume.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
-                      <div>
-                        <p className="font-medium text-sm">{resume.template || 'Untitled'}</p>
-                        <p className="text-sm text-gray-400">
-                          {new Date(resume.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      {resume.sections && Object.keys(resume.sections).length > 0 && (
-                        <CheckCircle className="w-4 h-4 text-green-400" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <Card className="bg-gray-900 border-gray-800">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Get started with these common tasks</CardDescription>
+      {(widgetVisibility.problemProgress || widgetVisibility.mentorship) && <section aria-label="Progress and activity" className="grid gap-4 xl:grid-cols-3">
+        {widgetVisibility.problemProgress && <Card className="xl:col-span-2">
+          <CardHeader className="flex-row items-start justify-between space-y-0">
+            <div>
+              <CardTitle>AlgoRank progress</CardTitle>
+              <CardDescription className="mt-1">
+                Your solved problems compared with the available library.
+              </CardDescription>
+            </div>
+            <Link to="/algorank" className="text-sm font-medium text-primary hover:underline">
+              Practice
+            </Link>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Link key={action.label} to={action.href}>
-                    <div className="flex flex-col items-center justify-center p-6 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer">
-                      <div className={`p-3 rounded-full ${action.color} mb-3`}>
-                        <Icon className="w-6 h-6 text-white" />
-                      </div>
-                      <span className="text-sm font-medium">{action.label}</span>
+            {problemChartData.length === 0 ? (
+              <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground">
+                Problem library data is not available yet.
+              </div>
+            ) : (
+              <div className="grid items-center gap-6 sm:grid-cols-[minmax(0,1fr)_minmax(160px,0.8fr)]">
+                <Suspense fallback={<div className="h-52 animate-pulse rounded-lg bg-muted/50" />}>
+                  <DashboardDonutChart
+                    data={problemChartData}
+                    centerValue={stats.problemsSolved}
+                    centerLabel="solved"
+                    valueLabel="Problems"
+                    className="h-52 min-w-0"
+                  />
+                </Suspense>
+                <div className="space-y-5">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Library completion</span>
+                      <span className="font-medium tabular-nums">
+                        {Math.min((stats.problemsSolved / stats.totalProblems) * 100, 100).toFixed(1)}%
+                      </span>
                     </div>
-                  </Link>
-                );
-              })}
-            </div>
+                    <div
+                      className="h-2 overflow-hidden rounded-full bg-muted"
+                      role="progressbar"
+                      aria-label="Problem library completion"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.min((stats.problemsSolved / stats.totalProblems) * 100, 100)}
+                    >
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${Math.min((stats.problemsSolved / stats.totalProblems) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {problemChartData.map((item) => (
+                      <div key={item.name} className="rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="size-2 rounded-full" style={{ backgroundColor: item.fill }} />
+                          {item.name}
+                        </div>
+                        <p className="mt-2 text-lg font-semibold tabular-nums">{item.value.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
-        </Card>
-      </main>
+        </Card>}
+
+        {widgetVisibility.mentorship && <Card>
+          <CardHeader>
+            <CardTitle>Mentorship activity</CardTitle>
+            <CardDescription>Session status across your bookings.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {sessionChartData.length === 0 ? (
+              <EmptyState
+                icon={UsersRound}
+                message="No mentorship sessions yet."
+                link="/connect"
+                linkLabel="Find a mentor"
+              />
+            ) : (
+              <>
+                <Suspense fallback={<div className="h-44 animate-pulse rounded-lg bg-muted/50" />}>
+                  <DashboardDonutChart
+                    data={sessionChartData}
+                    centerValue={stats.connectSessions}
+                    centerLabel="total"
+                    valueLabel="Sessions"
+                    className="h-44"
+                    innerRadius={48}
+                    outerRadius={72}
+                  />
+                </Suspense>
+                <div className="mt-3 space-y-2">
+                  {sessionChartData.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 capitalize text-muted-foreground">
+                        <span className="size-2 rounded-full" style={{ backgroundColor: item.fill }} />
+                        {item.name}
+                      </span>
+                      <span className="font-medium tabular-nums">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>}
+      </section>}
+
+      {widgetVisibility.performance && <section aria-label="AlgoRank performance" className="grid gap-4 sm:grid-cols-3">
+        {performanceMetrics.map((metric) => {
+          const Icon = metric.icon
+          return (
+            <Card key={metric.title}>
+              <CardContent className="flex items-center justify-between p-5">
+                <div>
+                  <p className="text-sm text-muted-foreground">{metric.title}</p>
+                  <p className="mt-2 text-2xl font-semibold tabular-nums">{metric.value}</p>
+                </div>
+                <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </section>}
+
+      {visibleActivityWidgets && <section aria-label="Recent activity" className="grid gap-4 xl:grid-cols-3">
+        {widgetVisibility.sessions && <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Recent sessions</CardTitle>
+              <CardDescription className="mt-1">Your latest mentorship activity.</CardDescription>
+            </div>
+            <Link to="/connect/sessions" aria-label="View all sessions" className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <ArrowUpRight className="size-4" aria-hidden="true" />
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentSessions.length === 0 ? (
+              <EmptyState icon={UsersRound} message="No sessions to show." link="/connect" linkLabel="Find mentors" />
+            ) : (
+              <div className="space-y-1">
+                {recentSessions.slice(0, 4).map((session) => (
+                  <div key={session.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{session.topic || 'Mentorship session'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{formatDate(session.scheduledTime)}</p>
+                    </div>
+                    <StatusBadge status={session.status} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>}
+
+        {widgetVisibility.submissions && <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Recent submissions</CardTitle>
+              <CardDescription className="mt-1">Your latest AlgoRank attempts.</CardDescription>
+            </div>
+            <Link to="/algorank/submissions" aria-label="View all submissions" className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <ArrowUpRight className="size-4" aria-hidden="true" />
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentSubmissions.length === 0 ? (
+              <EmptyState icon={Code2} message="No submissions to show." link="/algorank" linkLabel="Solve a problem" />
+            ) : (
+              <div className="space-y-1">
+                {recentSubmissions.slice(0, 4).map((submission) => (
+                  <div key={submission.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{submission.problem?.title || 'Untitled problem'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{formatDate(submission.createdAt)}</p>
+                    </div>
+                    <StatusBadge status={submission.status} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>}
+
+        {widgetVisibility.resumes && <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Recent resumes</CardTitle>
+              <CardDescription className="mt-1">Keep your career materials current.</CardDescription>
+            </div>
+            <Link to="/resume" aria-label="View all resumes" className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <ArrowUpRight className="size-4" aria-hidden="true" />
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentResumes.length === 0 ? (
+              <EmptyState icon={FileText} message="No resumes to show." link="/resume" linkLabel="Create a resume" />
+            ) : (
+              <div className="space-y-1">
+                {recentResumes.slice(0, 4).map((resume) => (
+                  <Link
+                    key={resume.id}
+                    to={`/resume-builder/${resume.id}`}
+                    className="flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{resume.title || 'Untitled resume'}</p>
+                      <p className="mt-1 text-xs capitalize text-muted-foreground">
+                        {resume.template} · {formatDate(resume.createdAt)}
+                      </p>
+                    </div>
+                    {isResumeComplete(resume) && (
+                      <CheckCircle2 className="size-4 shrink-0 text-success" aria-label="Resume has profile details" />
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>}
+      </section>}
+
+      {widgetVisibility.quickActions && <Card>
+        <CardHeader>
+          <CardTitle>Quick actions</CardTitle>
+          <CardDescription>Pick up where you want to make progress.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { icon: FileText, label: 'Create a resume', description: 'Build or update your profile', href: '/resume' },
+            { icon: BookOpen, label: 'Practice problems', description: 'Continue with AlgoRank', href: '/algorank' },
+            { icon: UsersRound, label: 'Find a mentor', description: 'Get guidance from alumni', href: '/connect' },
+            { icon: CalendarClock, label: 'View sessions', description: 'Manage your mentorships', href: '/connect/sessions' },
+          ].map((action) => {
+            const Icon = action.icon
+            return (
+              <Link
+                key={action.label}
+                to={action.href}
+                className="group flex items-center gap-3 rounded-xl border border-border p-4 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{action.label}</span>
+                  <span className="mt-1 block truncate text-xs text-muted-foreground">{action.description}</span>
+                </span>
+                <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </Link>
+            )
+          })}
+        </CardContent>
+      </Card>}
     </div>
-  );
+  )
 }

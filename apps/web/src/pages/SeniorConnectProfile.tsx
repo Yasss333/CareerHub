@@ -24,6 +24,7 @@ interface SeniorProfile {
     email: string
     avatar: string
     isAlumniMentor: boolean
+    mentorApprovalStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'
   }
 }
 
@@ -92,6 +93,7 @@ export default function SeniorConnectProfile() {
   })
 
   const [newSlot, setNewSlot] = useState({ date: '', startTime: '', endTime: '' })
+  const isApprovedMentor = profile?.user.isAlumniMentor && profile.user.mentorApprovalStatus === 'APPROVED'
 
   const fetchProfile = async () => {
     try {
@@ -152,8 +154,8 @@ export default function SeniorConnectProfile() {
   }, [])
 
   useEffect(() => {
-    if (hasProfile) fetchSlots()
-  }, [hasProfile])
+    if (hasProfile && isApprovedMentor) fetchSlots()
+  }, [hasProfile, isApprovedMentor])
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -174,11 +176,13 @@ export default function SeniorConnectProfile() {
           name: form.name || undefined
         })
       })
+      const result = await response.json().catch(() => null)
       if (!response.ok) {
-        const data = await response.json().catch(() => null)
-        throw new Error(data?.error || 'Failed to save profile')
+        throw new Error(result?.error || 'Failed to save profile')
       }
-      setSuccess('Mentor profile saved successfully')
+      setSuccess(result?.mentorApprovalStatus === 'PENDING'
+        ? 'Mentor application submitted. Your profile will be visible after admin approval.'
+        : 'Mentor profile saved successfully')
       await fetchProfile()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile')
@@ -291,15 +295,15 @@ export default function SeniorConnectProfile() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            {hasProfile ? 'Mentor Profile' : 'Become a Mentor'}
+            {isApprovedMentor ? 'Mentor Profile' : 'Become a Mentor'}
           </h1>
           <p className="text-gray-600 mt-2">
-            {hasProfile
+            {isApprovedMentor
               ? 'Manage your public profile and availability'
-              : 'Create your profile to start accepting mentorship sessions'}
+              : 'Submit your profile for admin review before accepting mentorship sessions'}
           </p>
         </div>
-        {hasProfile && (
+        {isApprovedMentor && (
           <div className="flex items-center gap-4 text-sm text-gray-600 bg-white rounded-lg border border-gray-200 px-4 py-3">
             <div>
               <span className="font-semibold text-gray-900">{profile?.rating?.toFixed(1) ?? '0.0'}</span> rating
@@ -326,6 +330,17 @@ export default function SeniorConnectProfile() {
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6">
           {success}
+        </div>
+      )}
+
+      {profile?.user.mentorApprovalStatus === 'PENDING' && (
+        <div role="status" className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+          Your mentor application is waiting for administrator approval. You cannot publish availability or accept sessions until it is approved.
+        </div>
+      )}
+      {profile?.user.mentorApprovalStatus === 'REJECTED' && (
+        <div role="status" className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800">
+          Your previous mentor application was not approved. Update your profile and submit it again for review.
         </div>
       )}
 
@@ -456,7 +471,7 @@ export default function SeniorConnectProfile() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Availability Status</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Availability</label>
           <select
             value={form.availability}
             onChange={(e) => setForm({ ...form, availability: e.target.value })}
@@ -480,7 +495,7 @@ export default function SeniorConnectProfile() {
         </div>
       </form>
 
-      {hasProfile && (
+      {isApprovedMentor && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">

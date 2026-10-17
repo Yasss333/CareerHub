@@ -61,6 +61,10 @@ This document tracks the implementation progress of the Senior Connect module mi
 - [ ] Add screen sharing capability
 
 ## Phase 7: Testing & Validation
+- [x] Gate mentor publishing on an admin-approved application status
+- [x] Add administrator review controls and test unauthorized approval attempts
+- [x] Run authenticated end-to-end regression checks across core user flows
+- [x] Add role-selected USER/ADMIN/MENTOR login and enforce the Senior Connect-only MENTOR interface
 - [ ] Test mentor profile creation and updates
 - [ ] Test availability slot CRUD operations
 - [ ] Test session booking with conflict detection
@@ -107,6 +111,10 @@ This document tracks the implementation progress of the Senior Connect module mi
 - Bulk availability editing with recurring pattern generation
 - Session notes and preparation materials editing
 - End-to-end mentorship flow tested
+- Mentor applications start pending and remain private until admin approval
+- Administrator mentor application review with approve/reject actions
+- Mentor discovery, availability writes, and session status actions require approved status
+- Approved mentor accounts use the MENTOR role and a Senior Connect-only interface
 
 ### In Progress
 - None
@@ -139,7 +147,7 @@ This document tracks the implementation progress of the Senior Connect module mi
 - Legacy frontend needs adaptation to React 18 + TypeScript
 - Jitsi integration uses public URLs (enhanced features available in legacy)
 - Timezone handling needs careful implementation
-- `availabilitySlotId` migration (`20260923120000_add_availability_slot_booking`) still needs to be applied to the dev database
+- Mentor approval migrations are applied to the development database; existing active mentors were backfilled to APPROVED
 
 ## Dependencies
 - Jitsi Meet service (public integration)
@@ -147,7 +155,7 @@ This document tracks the implementation progress of the Senior Connect module mi
 
 ## Notes
 - Legacy Senior Connect used MongoDB/Mongoose with junior/senior role enum
-- Role system unified with CareerHub User model + isAlumniMentor
+- Account roles are USER, ADMIN, and MENTOR; only admin-approved mentor applicants are promoted to MENTOR
 - Jitsi integration preserved but could be enhanced with API key
 - Payment system deferred to future phase
 - Timezone support needs careful implementation

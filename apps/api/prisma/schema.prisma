@@ -17,6 +17,7 @@ datasource db {
 enum Role {
   ADMIN
   USER
+  MENTOR
 }
 
 model User {
@@ -25,6 +26,7 @@ model User {
   passwordHash   String
   role           Role     @default(USER)
   isAlumniMentor Boolean  @default(false)
+  mentorApprovalStatus String @default("NONE")
   
   // Profile fields (merged from all systems)
   name           String?

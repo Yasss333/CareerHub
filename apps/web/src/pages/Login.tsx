@@ -5,7 +5,7 @@ interface User {
   id: string
   email: string
   name: string
-  role: string
+  role: 'USER' | 'ADMIN' | 'MENTOR'
   isAlumniMentor: boolean
   createdAt: string
 }
@@ -13,9 +13,11 @@ interface User {
 interface AuthResponse {
   user: User
   token: string
+  error?: string
 }
 
 export default function Login() {
+  const [accountType, setAccountType] = useState<User['role']>('USER')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -33,7 +35,7 @@ export default function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, accountType }),
       })
 
       const data: AuthResponse = await response.json()
@@ -47,7 +49,7 @@ export default function Login() {
       localStorage.setItem('user', JSON.stringify(data.user))
 
       // Navigate to dashboard
-      navigate('/', { replace: true })
+      navigate(data.user.role === 'MENTOR' ? '/mentor' : '/', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -74,6 +76,41 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            <fieldset>
+              <legend className="block text-sm font-medium text-gray-700 mb-2">
+                Sign in as
+              </legend>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  ['USER', 'User'],
+                  ['ADMIN', 'Admin'],
+                  ['MENTOR', 'Mentor'],
+                ] as const).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className={`cursor-pointer rounded-lg border px-3 py-2 text-center text-sm font-medium ${
+                      accountType === value
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="accountType"
+                      value={value}
+                      checked={accountType === value}
+                      onChange={() => setAccountType(value)}
+                      className="sr-only"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Mentor access is available after administrator approval.
+              </p>
+            </fieldset>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email

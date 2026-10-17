@@ -18,7 +18,7 @@ interface Session {
 
 interface SessionCalendarProps {
   sessions: Session[];
-  onSessionClick?: (session: Session) => void;
+  onSessionClick?: (sessionId: string) => void;
 }
 
 const SessionCalendar = ({ sessions, onSessionClick }: SessionCalendarProps) => {
@@ -163,7 +163,7 @@ const SessionCalendar = ({ sessions, onSessionClick }: SessionCalendarProps) => 
               {selectedDateSessions.map((session) => (
                 <div
                   key={session.id}
-                  onClick={() => onSessionClick?.(session)}
+                  onClick={() => onSessionClick?.(session.id)}
                   className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${getStatusColor(session.status)}`}
                 >
                   <div className="flex items-start justify-between">

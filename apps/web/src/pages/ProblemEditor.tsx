@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Play, Send, ChevronLeft, Loader2, CheckCircle2, XCircle, Settings } from 'lucide-react'
 import { api } from '../lib/api'
 import { DifficultyBadge, SubmissionStatusBadge, languageLabel, type Difficulty } from '../components/ProblemBadges'
-import Editor from '@monaco-editor/react'
+import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 
 interface Example {
@@ -168,13 +168,13 @@ export default function ProblemEditor() {
     setCode(snippets[key] || CODE_TEMPLATES[key] || CODE_TEMPLATES['JAVASCRIPT'])
   }
 
-  const handleEditorMount = (editor: editor.IStandaloneCodeEditor) => {
-    editor.addCommand(editor.KeyMod.CtrlCmd | editor.KeyCode.KeyS, () => {
+  const handleEditorMount: OnMount = (editor, monaco) => {
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       // Auto-save logic could be added here
       console.log('Code saved to local state')
     })
 
-    editor.addCommand(editor.KeyMod.CtrlCmd | editor.KeyCode.KeyF, () => {
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyF, () => {
       editor.getAction('editor.action.formatDocument')?.run()
     })
   }

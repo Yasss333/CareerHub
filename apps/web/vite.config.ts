@@ -9,7 +9,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
       '@careerhub/shared': path.resolve(import.meta.dirname, '../../packages/shared/src')
-    }
+    },
+    dedupe: ['react', 'react-dom']
   },
   server: {
     port: 5173,

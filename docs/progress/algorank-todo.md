@@ -85,6 +85,7 @@ This document tracks the implementation progress of the AlgoRank module migratio
 - [ ] Optimize code editor performance
 
 ## Phase 10: Testing & Validation
+- [x] Run authenticated end-to-end regression checks across core user flows
 - [x] Test problem CRUD operations (admin create/delete verified live)
 - [x] Test code submission and execution via Piston (live E2E vs real Piston container)
 - [x] Test submission status tracking (Accepted / Wrong Answer verified live)

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Dashboard widget customization with persisted hide/show preferences and a restore-defaults action
+- Guided six-step Resume Builder with save-and-continue navigation, live desktop preview, and mobile editor/preview tabs
+- Administrator review queue for mentor applications, with explicit approve/reject decisions
 - Initial project setup with monorepo structure using npm workspaces
 - PostgreSQL database with Docker container
 - Unified JWT authentication system with bcrypt password hashing
@@ -72,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared AlgoRank frontend helpers (lib/api.ts token-bearing fetch, components/ProblemBadges.tsx)
 - AlgoRank problem data set seeded: apps/api/prisma/seed.js ported from legacy (500 problems: 47 curated + 453 auto-generated; 56 tags) with idempotent demo accounts admin@algorank.com/admin123 (ADMIN) and recruiter@algorank.com/recruiter123, 3 demo solved problems + flagged sample; wired via prisma:seed script + prisma.seed config (re-running resets demo password/role and skips existing problems)
 - Verified full live Piston grading flow end-to-end (22/22 checks: admin problem create, execute dry-run, correct JS Accepted with per-testcase Testcases rows, wrong JS Wrong Answer, correct PYTHON Accepted, ranking stats + leaderboard updates, problem deletion)
+- LANDING_PAGE_SPEC.md: paste-ready landing page build spec for external generators (Google AI Studio/Replit/bolt.ai) with exact palette, section copy, tags/classes, configs, and merge steps
 - Senior Connect session calendar view with month navigation and session indicators (react-calendar integration)
 - Senior Connect timezone support for availability slots (timezone field added to User and AvailabilitySlot models)
 - Senior Connect notification system for session lifecycle events (request, accepted, rejected)
@@ -80,6 +84,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Senior Connect SessionAnalytics component with overview stats, metrics, monthly trends, and recent sessions
 
 ### Changed
+- Mentor profiles remain private until approved; approved status is required for discovery, availability management, and mentor session actions
+- Added a dedicated MENTOR account role, role-selected login, and Senior Connect-only interface and API access
+- Resume AI enhancement now uses the Vite same-origin API proxy, a consistent model fallback, input validation, and safe actionable provider-configuration errors
+- Refreshed the CareerHub dashboard with theme-aware metric cards, data-driven progress charts, and activity panels; made shared navigation responsive on small screens
+- Resume Builder editor and live preview now sit side by side at medium and wider screen sizes
 - Extend Senior Connect SessionBooking model with optional availabilitySlotId (Prisma migration required)
 - Enhanced Senior Connect booking to accept either User id or SeniorProfile id
 - Ported AlgoRank backend from legacy into unified API (apps/api/src/routes/algorank.routes.js)
@@ -116,6 +125,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prisma SQLite to PostgreSQL migration
 - Senior Connect booking passed SeniorProfile id where User id was expected (resolved via profile lookup)
 - Senior Connect feedback endpoint now rejects duplicate feedback and recomputes senior rating from all reviews
+- Resolved duplicate React instances that caused an invalid hook call in the web app
+- Roadmap and milestone creation now supplies required resource arrays
+- Senior Connect mentor authorization now checks the current database flag instead of a stale JWT claim
+- AlgoRank leaderboard now consumes the flat API response shape and loads the current user's rank
+- Fixed frontend TypeScript errors in resume templates, auth forms, the code editor, session calendar, and mobile sidebar
 
 ### Security
 - Added JWT secret management with environment variables

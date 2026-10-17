@@ -116,7 +116,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create new roadmap
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { title, description, roleType, skillLevel, topics, isPublic } = req.body;
+    const { title, description, roleType, skillLevel, topics, resources, isPublic } = req.body;
 
     if (!title || !roleType) {
       return res.status(400).json({ error: 'Title and role type are required' });
@@ -130,6 +130,7 @@ router.post('/', authenticate, async (req, res) => {
         roleType,
         skillLevel: skillLevel || 'beginner',
         topics: topics || {},
+        resources: resources || [],
         isPublic: isPublic || false,
         progress: 0
       }
@@ -211,7 +212,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 // Add milestone
 router.post('/:id/milestones', authenticate, async (req, res) => {
   try {
-    const { title, description, order, topics, dueDate } = req.body;
+    const { title, description, order, topics, resources, dueDate } = req.body;
 
     if (!title || !order) {
       return res.status(400).json({ error: 'Title and order are required' });
@@ -236,6 +237,7 @@ router.post('/:id/milestones', authenticate, async (req, res) => {
         description: description || '',
         order,
         topics: topics || [],
+        resources: resources || [],
         dueDate: dueDate ? new Date(dueDate) : null
       }
     });
@@ -389,6 +391,7 @@ router.post('/generate', authenticate, async (req, res) => {
         roleType,
         skillLevel: skillLevel || 'beginner',
         topics: personalized,
+        resources: personalized.resources || [],
         progress: 0
       }
     });
@@ -401,7 +404,8 @@ router.post('/generate', authenticate, async (req, res) => {
           title: milestone.title,
           description: milestone.description || '',
           order: milestone.order,
-          topics: milestone.topics || []
+          topics: milestone.topics || [],
+          resources: milestone.resources || []
         }
       });
     }
@@ -502,7 +506,8 @@ router.post('/:id/customize', authenticate, async (req, res) => {
             title: milestone.title,
             description: milestone.description || '',
             order: milestone.order,
-            topics: milestone.topics || []
+            topics: milestone.topics || [],
+            resources: milestone.resources || []
           }
         });
       }

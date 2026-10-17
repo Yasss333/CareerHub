@@ -86,6 +86,7 @@ Track the implementation progress of the Roadmap Generator feature - a hybrid AI
 - [x] Check bundle size warning (expected >500KB)
 
 ### End-to-End Testing
+- [x] Run authenticated end-to-end regression checks across core user flows
 - [ ] Test roadmap creation from template
 - [ ] Test AI personalization with different skill levels
 - [ ] Test resource generation

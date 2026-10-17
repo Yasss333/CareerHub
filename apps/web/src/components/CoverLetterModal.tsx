@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { X, LoaderCircle, Copy, Download, RefreshCw } from "lucide-react";
 
 interface CoverLetterModalProps {
@@ -264,10 +264,10 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
             <div className="bg-gray-50 rounded-xl p-6 mb-4 border border-gray-200">
               <div className="font-serif text-gray-800 whitespace-pre-wrap leading-relaxed">
                 {coverLetter.split("\n").map((line, i) => (
-                  <React.Fragment key={i}>
+                  <Fragment key={i}>
                     {line}
                     <br />
-                  </React.Fragment>
+                  </Fragment>
                 ))}
               </div>
             </div>
