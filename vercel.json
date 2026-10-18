@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://careerhub-api.onrender.com/api/:path*"
+      "destination": "https://careerhub-bdjp.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",

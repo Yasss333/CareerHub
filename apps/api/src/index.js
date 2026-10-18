@@ -105,6 +105,17 @@ app.use(cors({
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 
+// Root status
+app.get('/', (req, res) => {
+  res.json({
+    name: 'CareerHub API',
+    status: 'online',
+    version: '1.0.0',
+    health: '/health',
+    ready: '/health/ready'
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'CareerHub API is running' });
