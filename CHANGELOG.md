@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed legacy resume test feature from `ResumeBuilder.tsx` as requested, focusing the workspace on content editing and live preview
 
 ### Added
+- Automated database seeding for deployed AlgoRank:
+  - Added programmatic `seedDatabase(client)` export in `apps/api/prisma/seed.js` creating 500+ curated and categorized DSA problems, demo admin (`admin@algorank.com`), and recruiter accounts.
+  - Added self-healing database auto-seeding check in `apps/api/src/index.js` on API startup when `problem.count() === 0`.
+  - Added manual seed endpoint `POST /api/algorank/seed` protected by admin authorization or `x-seed-key` header.
+  - Updated Render build command in `render.yaml` and added `"seed:api"` command in root `package.json`.
 - Added real-time mentor meeting start alerts and direct "Start Meet" notification flows:
   - Added in-app notification dispatch in `POST /api/connect/sessions/:id/start` notifying candidates when mentors launch a video session.
   - Added real-time silent session polling (every 4s) and Web Audio API soft chime in `SeniorConnectSessions.tsx`.

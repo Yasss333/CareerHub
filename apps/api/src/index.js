@@ -151,8 +151,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+const ensureDatabaseSeeded = async () => {
+  try {
+    const problemCount = await prisma.problem.count();
+    if (problemCount === 0) {
+      console.log('🌱 No problems found in database. Automatically running seedDatabase...');
+      const { seedDatabase } = await import('../prisma/seed.js');
+      const result = await seedDatabase(prisma);
+      console.log('✅ Auto-seed completed successfully:', result);
+    } else {
+      console.log(`📊 AlgoRank database contains ${problemCount} problems.`);
+    }
+  } catch (error) {
+    console.error('⚠️ Database auto-seed check encountered an issue:', error.message);
+  }
+};
+
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`CareerHub API running on port ${PORT}`);
+  ensureDatabaseSeeded();
 });
 
 const shutdown = (signal) => {

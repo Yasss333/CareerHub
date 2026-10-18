@@ -212,6 +212,38 @@ const problemListQuery = async (req, res) => {
   }
 };
 
+// Manual seed trigger (admin or x-seed-key)
+router.post('/seed', optionalAuth, async (req, res) => {
+  try {
+    const seedKey = req.headers['x-seed-key'] || req.query.seedKey;
+    const expectedKey = process.env.SEED_SECRET || 'careerhub-seed-now';
+    const isKeyAuthorized = Boolean(seedKey && (seedKey === expectedKey || seedKey === JWT_SECRET));
+    const isAdmin = Boolean(req.user && req.user.role === 'ADMIN');
+
+    if (!isAdmin && !isKeyAuthorized) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden. Provide valid admin authorization or x-seed-key header.'
+      });
+    }
+
+    const { seedDatabase } = await import('../../prisma/seed.js');
+    const result = await seedDatabase(prisma);
+    return res.json({
+      success: true,
+      message: 'Database seeded successfully',
+      result
+    });
+  } catch (error) {
+    console.error('Error during manual seed trigger:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Seeding failed',
+      details: error.message
+    });
+  }
+});
+
 // Public: list problems with pagination/filtering/search
 router.get('/problems', optionalAuth, problemListQuery);
 

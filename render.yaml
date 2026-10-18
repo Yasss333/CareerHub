@@ -3,7 +3,7 @@ services:
     name: careerhub-api
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build:api && npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+    buildCommand: npm ci && npm run build:api && npx prisma migrate deploy --schema apps/api/prisma/schema.prisma && node apps/api/prisma/seed.js
     startCommand: npm run start --workspace=@careerhub/api
     healthCheckPath: /health/ready
     autoDeployTrigger: commit

@@ -15,6 +15,7 @@
     "build": "npm run build --workspaces",
     "build:api": "npm run build --workspace=apps/api",
     "build:web": "npm run build --workspace=apps/web",
+    "seed:api": "npm run prisma:seed --workspace=apps/api",
     "test": "npm run test --workspaces",
     "lint": "npm run lint --workspaces",
     "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules services/*/node_modules"

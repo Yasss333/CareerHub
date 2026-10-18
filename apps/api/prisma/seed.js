@@ -1547,222 +1547,216 @@ public class Solution {
   console.log(`🔧 Auto-generated ${TARGET_PROBLEMS - (start - 1)} problems to reach ${TARGET_PROBLEMS}`);
 }
 
-async function main() {
-  try {
-    console.log("🌱 Starting database seeding...");
+export async function seedDatabase(client = prisma) {
+  console.log("🌱 Starting database seeding...");
 
-    // Create admin user if it doesn't exist
-    const hashedPassword = await bcryptjs.hash("admin123", 12);
-    const adminUser = await prisma.user.upsert({
-      where: { email: "admin@algorank.com" },
-      update: { passwordHash: hashedPassword, role: "ADMIN" },
-      create: {
-        email: "admin@algorank.com",
-        name: "Admin Demo",
-        passwordHash: hashedPassword,
-        role: "ADMIN",
-        image: "https://randomuser.me/api/portraits/lego/1.jpg"
+  // Create admin user if it doesn't exist
+  const hashedPassword = await bcryptjs.hash("admin123", 12);
+  const adminUser = await client.user.upsert({
+    where: { email: "admin@algorank.com" },
+    update: { passwordHash: hashedPassword, role: "ADMIN" },
+    create: {
+      email: "admin@algorank.com",
+      name: "Admin Demo",
+      passwordHash: hashedPassword,
+      role: "ADMIN",
+      image: "https://randomuser.me/api/portraits/lego/1.jpg"
+    },
+  });
+
+  console.log("✅ Demo account ready:");
+  console.log("   📧 Email: admin@algorank.com");
+  console.log("   🔑 Password: admin123");
+
+  // Create a recruiter demo account
+  const hashedRecruiter = await bcryptjs.hash("recruiter123", 12);
+  await client.user.upsert({
+    where: { email: "recruiter@algorank.com" },
+    update: { passwordHash: hashedRecruiter, role: "USER" },
+    create: {
+      email: "recruiter@algorank.com",
+      name: "Recruiter Demo",
+      passwordHash: hashedRecruiter,
+      role: "USER",
+      image: "https://randomuser.me/api/portraits/lego/2.jpg",
+    },
+  });
+
+  console.log("✅ Recruiter demo account ready:");
+  console.log("   📧 Email: recruiter@algorank.com");
+  console.log("   🔑 Password: recruiter123");
+
+  // Seed problems
+  let createdCount = 0;
+  let skippedCount = 0;
+
+  for (const problem of problems) {
+    const existingProblem = await client.problem.findFirst({
+      where: { title: problem.title },
+    });
+
+    if (existingProblem) {
+      skippedCount++;
+      continue;
+    }
+
+    await client.problem.create({
+      data: {
+        title: problem.title,
+        description: problem.description,
+        difficulty: problem.difficulty,
+        tags: problem.tags,
+        examples: problem.examples,
+        constraints: problem.constraints,
+        hints: problem.hints,
+        testcases: problem.testcases,
+        codeSnippets: problem.codeSnippets,
+        userID: adminUser.id,
       },
     });
 
-    console.log("✅ Demo account ready:");
-    console.log("   📧 Email: admin@algorank.com");
-    console.log("   🔑 Password: admin123");
+    createdCount++;
+  }
 
-    // Create a recruiter demo account
-    const hashedRecruiter = await bcryptjs.hash("recruiter123", 12);
-    const recruiterUser = await prisma.user.upsert({
-      where: { email: "recruiter@algorank.com" },
-      update: { passwordHash: hashedRecruiter, role: "USER" },
-      create: {
-        email: "recruiter@algorank.com",
-        name: "Recruiter Demo",
-        passwordHash: hashedRecruiter,
-        role: "USER",
-        image: "https://randomuser.me/api/portraits/lego/2.jpg",
+  // Create demo submissions for recruiter account
+  console.log("\n📝 Creating demo submissions for recruiter...");
+  const easyProblems = await client.problem.findMany({
+    where: { difficulty: "EASY" },
+    take: 3,
+  });
+
+  for (const problem of easyProblems) {
+    const existingSubmission = await client.submission.findFirst({
+      where: {
+        userID: adminUser.id,
+        problemID: problem.id,
       },
     });
 
-    console.log("✅ Recruiter demo account ready:");
-    console.log("   📧 Email: recruiter@algorank.com");
-    console.log("   🔑 Password: recruiter123");
-
-    // Seed problems
-    let createdCount = 0;
-    let skippedCount = 0;
-
-    for (const problem of problems) {
-      const existingProblem = await prisma.problem.findFirst({
-        where: { title: problem.title },
-      });
-
-      if (existingProblem) {
-        skippedCount++;
-        continue;
-      }
-
-      await prisma.problem.create({
+    if (!existingSubmission) {
+      await client.submission.create({
         data: {
-          title: problem.title,
-          description: problem.description,
-          difficulty: problem.difficulty,
-          tags: problem.tags,
-          examples: problem.examples,
-          constraints: problem.constraints,
-          hints: problem.hints,
-          testcases: problem.testcases,
-          codeSnippets: problem.codeSnippets,
           userID: adminUser.id,
+          problemID: problem.id,
+          sourceCode: "// Solution code",
+          language: "JAVASCRIPT",
+          stdin: "",
+          stdout: "All test cases passed! ✅",
+          status: "Accepted",
         },
       });
 
-      createdCount++;
-    }
-
-    // Create demo submissions for recruiter account
-    console.log("\n📝 Creating demo submissions for recruiter...");
-    const easyProblems = await prisma.problem.findMany({
-      where: { difficulty: "EASY" },
-      take: 3,
-    });
-
-    for (const problem of easyProblems) {
-      const existingSubmission = await prisma.submission.findFirst({
+      // Mark problem as solved
+      await client.problemSolved.upsert({
         where: {
+          userID_problemID: {
+            userID: adminUser.id,
+            problemID: problem.id,
+          },
+        },
+        update: {},
+        create: {
           userID: adminUser.id,
           problemID: problem.id,
         },
       });
-
-      if (!existingSubmission) {
-        await prisma.submission.create({
-          data: {
-            userID: adminUser.id,
-            problemID: problem.id,
-            sourceCode: "// Solution code",
-            language: "JAVASCRIPT",
-            stdin: "",
-            stdout: "All test cases passed! ✅",
-            status: "Accepted",
-          },
-        });
-
-        // Mark problem as solved
-        await prisma.problemSolved.upsert({
-          where: {
-            userID_problemID: {
-              userID: adminUser.id,
-              problemID: problem.id,
-            },
-          },
-          update: {},
-          create: {
-            userID: adminUser.id,
-            problemID: problem.id,
-          },
-        });
-      }
     }
+  }
 
-    console.log(`✅ Added ${Math.min(3, easyProblems.length)} solved problems to recruiter profile`);
+  console.log(`✅ Added ${Math.min(3, easyProblems.length)} solved problems to recruiter profile`);
 
-    console.log("\n✅ Seeding completed!");
-    console.log(`📝 Created: ${createdCount} new problems`);
-    console.log(`⏭️  Skipped: ${skippedCount} existing problems`);
-    console.log(`📊 Total problems in database: ${createdCount + skippedCount}`);
-    console.log(`🎯 Target: 500 problems (curated + auto-generated)`);
-
-    // Print problem statistics
-    const problemsByDifficulty = await prisma.problem.groupBy({
-      by: ["difficulty"],
-      _count: true,
+  // Create a flagged sample problem with a ready solution and a recruiter submission
+  const flaggedTitle = "Flagged Sample Problem - Recruiter Submit";
+  let flagged = await client.problem.findFirst({ where: { title: flaggedTitle } });
+  if (!flagged) {
+    flagged = await client.problem.create({
+      data: {
+        title: flaggedTitle,
+        description: "This is a flagged sample problem prefilled for recruiters. Submit to mark as accepted.",
+        difficulty: "EASY",
+        tags: ["Sample", "Flagged", "Recruiter"],
+        examples: {
+          example1: { input: "1", output: "1", explanation: "Returns same number" },
+        },
+        constraints: "1 <= n <= 10",
+        testcases: [{ input: "1", output: "1" }],
+        codeSnippets: {
+          JAVASCRIPT: "function sample(n){ return n; }",
+          PYTHON: "def sample(n): return n",
+          JAVA: "public class Main { public static int sample(int n){ return n; } }",
+        },
+        refrenceSolutions: {
+          JAVASCRIPT: "function sample(n){ return n; }",
+          PYTHON: "def sample(n): return n",
+          JAVA: "public class Main { public static int sample(int n){ return n; } }",
+        },
+        userID: adminUser.id,
+      },
     });
 
-    console.log("\n📈 Problems by difficulty:");
-    problemsByDifficulty.forEach((group) => {
-      console.log(`   ${group.difficulty}: ${group._count}`);
-    });
-
-    // Get all unique tags
-    const allProblems = await prisma.problem.findMany({
-      select: { tags: true },
-    });
-
-    const uniqueTags = new Set();
-    allProblems.forEach((p) => {
-      p.tags?.forEach((tag) => uniqueTags.add(tag));
-    });
-
-    console.log(`\n🏷️  Unique tags: ${uniqueTags.size}`);
-    console.log("Tags:", Array.from(uniqueTags).sort().join(", "));
-
-    // Create a flagged sample problem with a ready solution and a recruiter submission
-    const flaggedTitle = "Flagged Sample Problem - Recruiter Submit";
-    let flagged = await prisma.problem.findFirst({ where: { title: flaggedTitle } });
-    if (!flagged) {
-      flagged = await prisma.problem.create({
+    // create a submission by recruiter marked accepted
+    const recruiter = await client.user.findUnique({ where: { email: "recruiter@algorank.com" } });
+    if (recruiter) {
+      await client.submission.create({
         data: {
-          title: flaggedTitle,
-          description: "This is a flagged sample problem prefilled for recruiters. Submit to mark as accepted.",
-          difficulty: "EASY",
-          tags: ["Sample", "Flagged", "Recruiter"],
-          examples: {
-            example1: { input: "1", output: "1", explanation: "Returns same number" },
-          },
-          constraints: "1 <= n <= 10",
-          testcases: [{ input: "1", output: "1" }],
-          codeSnippets: {
-            JAVASCRIPT: "function sample(n){ return n; }",
-            PYTHON: "def sample(n): return n",
-            JAVA: "public class Main { public static int sample(int n){ return n; } }",
-          },
-          refrenceSolutions: {
-            JAVASCRIPT: "function sample(n){ return n; }",
-            PYTHON: "def sample(n): return n",
-            JAVA: "public class Main { public static int sample(int n){ return n; } }",
-          },
-          userID: adminUser.id,
+          userID: recruiter.id,
+          problemID: flagged.id,
+          sourceCode: flagged.refrenceSolutions?.JAVASCRIPT || "",
+          language: "JAVASCRIPT",
+          stdin: "1",
+          stdout: "1",
+          stderr: null,
+          status: "Accepted",
         },
       });
 
-      // create a submission by recruiter marked accepted
-      const recruiter = await prisma.user.findUnique({ where: { email: "recruiter@algorank.com" } });
-      if (recruiter) {
-        await prisma.submission.create({
-          data: {
-            userID: recruiter.id,
-            problemID: flagged.id,
-            sourceCode: flagged.refrenceSolutions?.JAVASCRIPT || "",
-            language: "JAVASCRIPT",
-            stdin: "1",
-            stdout: "1",
-            stderr: null,
-            status: "Accepted",
-          },
-        });
-
-        await prisma.problemSolved.upsert({
-          where: {
-            userID_problemID: {
-              userID: recruiter.id,
-              problemID: flagged.id,
-            },
-          },
-          update: {},
-          create: {
+      await client.problemSolved.upsert({
+        where: {
+          userID_problemID: {
             userID: recruiter.id,
             problemID: flagged.id,
           },
-        });
-      }
+        },
+        update: {},
+        create: {
+          userID: recruiter.id,
+          problemID: flagged.id,
+        },
+      });
     }
-
-  } catch (error) {
-    console.error("❌ Error seeding database:", error);
-    process.exit(1);
-  } finally {
-    await prisma.$disconnect();
   }
+
+  console.log("\n✅ Seeding completed!");
+  console.log(`📝 Created: ${createdCount} new problems`);
+  console.log(`⏭️  Skipped: ${skippedCount} existing problems`);
+  console.log(`📊 Total problems in database: ${createdCount + skippedCount}`);
+  console.log(`🎯 Target: 500 problems (curated + auto-generated)`);
+
+  return {
+    success: true,
+    createdCount,
+    skippedCount,
+    totalProblems: createdCount + skippedCount,
+  };
 }
 
-main();
+const isCLI = Boolean(
+  process.argv[1] &&
+    (process.argv[1].endsWith("seed.js") || process.argv[1].includes("seed"))
+);
+
+if (isCLI) {
+  seedDatabase()
+    .then((res) => {
+      console.log("Seeding summary:", res);
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error("❌ Error seeding database:", error);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
+
