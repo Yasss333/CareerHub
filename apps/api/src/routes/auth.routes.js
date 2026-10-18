@@ -285,33 +285,57 @@ router.post('/me/photo', authenticate, (req, res, next) => {
     next();
   });
 }, async (req, res) => {
-  const configuredImageKit = getImageKit();
-  if (!configuredImageKit) {
-    if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
-    return res.status(503).json({ error: 'Profile photo uploads are unavailable because ImageKit is not configured' });
-  }
   if (!req.file) return res.status(400).json({ error: 'Choose a photo to upload' });
 
+  let photoUrl = null;
+  const configuredImageKit = getImageKit();
+
+  if (configuredImageKit) {
+    try {
+      const uploaded = await configuredImageKit.files.upload({
+        file: fs.createReadStream(req.file.path),
+        fileName: `profile-${req.userId}-${Date.now()}`,
+        folder: 'user-profiles'
+      });
+      photoUrl = uploaded.url;
+    } catch (ikError) {
+      console.warn('ImageKit upload encountered an error, falling back to embedded photo storage:', ikError.message);
+    }
+  }
+
+  // Graceful fallback: convert to base64 Data URL so upload ALWAYS succeeds even without ImageKit
+  if (!photoUrl && req.file?.path) {
+    try {
+      const fileBuffer = await fs.promises.readFile(req.file.path);
+      const mimeType = req.file.mimetype || 'image/jpeg';
+      photoUrl = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+    } catch (readError) {
+      console.error('Failed to read uploaded photo fallback:', readError);
+    }
+  }
+
+  if (!photoUrl) {
+    if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
+    return res.status(500).json({ error: 'Failed to process uploaded photo' });
+  }
+
   try {
-    const uploaded = await configuredImageKit.files.upload({
-      file: fs.createReadStream(req.file.path),
-      fileName: `profile-${req.userId}-${Date.now()}`,
-      folder: 'user-profiles'
-    });
     const user = await prisma.user.update({
       where: { id: req.userId },
-      data: { image: uploaded.url, avatar: uploaded.url },
+      data: { image: photoUrl, avatar: photoUrl },
       select: {
         id: true, email: true, name: true, role: true, isAlumniMentor: true,
         mentorApprovalStatus: true, image: true, avatar: true, createdAt: true
       }
     });
-    res.json({ user });
+    res.json({ user, photoUrl });
   } catch (error) {
     console.error('Profile photo upload error:', error);
     res.status(500).json({ error: 'Failed to upload profile photo' });
   } finally {
-    fs.promises.unlink(req.file.path).catch(() => {});
+    if (req.file?.path) {
+      fs.promises.unlink(req.file.path).catch(() => {});
+    }
   }
 });
 

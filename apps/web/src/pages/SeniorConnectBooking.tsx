@@ -188,11 +188,14 @@ export default function SeniorConnectBooking() {
         </Link>
       </div>
 
-      <div className="flex items-center gap-4 p-5 bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+      <div className="flex items-center gap-4 p-5 bg-card text-card-foreground rounded-2xl shadow-sm border border-border mb-6">
         <img
-          src={senior.user.avatar || '/default-avatar.png'}
+          src={senior.user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(senior.user.name)}&backgroundColor=4f46e5`}
           alt={senior.user.name}
-          className="h-16 w-16 rounded-full object-cover"
+          onError={(e) => {
+            e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(senior.user.name)}&backgroundColor=4f46e5`
+          }}
+          className="h-16 w-16 rounded-2xl object-cover border border-border shadow-sm"
         />
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-gray-900">{senior.user.name}</h1>

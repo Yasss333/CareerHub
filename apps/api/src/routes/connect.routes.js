@@ -294,7 +294,10 @@ const upsertProfile = async (req, res) => {
 
     const userData = {};
     if (name !== undefined) userData.name = name;
-    if (avatar !== undefined) userData.avatar = avatar;
+    if (avatar !== undefined) {
+      userData.avatar = avatar;
+      userData.image = avatar;
+    }
     if (title !== undefined) userData.title = title;
     if (company !== undefined) userData.company = company;
     if (location !== undefined) userData.location = location;

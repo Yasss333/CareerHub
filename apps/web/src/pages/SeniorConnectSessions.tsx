@@ -481,9 +481,12 @@ export default function SeniorConnectSessions() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-4">
                     <img
-                      src={peer?.avatar || '/default-avatar.png'}
+                      src={peer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(peer?.name || 'User')}&backgroundColor=4f46e5`}
                       alt={peer?.name}
-                      className="h-12 w-12 rounded-full"
+                      onError={(e) => {
+                        e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(peer?.name || 'User')}&backgroundColor=4f46e5`
+                      }}
+                      className="h-12 w-12 rounded-full object-cover border border-border shadow-sm"
                     />
                     <div>
                       <h3 className="font-semibold text-gray-900">{session.topic}</h3>
