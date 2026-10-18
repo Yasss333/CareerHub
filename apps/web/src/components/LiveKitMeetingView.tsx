@@ -57,15 +57,14 @@ export default function LiveKitMeetingView({
 
       const data: TokenResponse = await response.json()
       if (!data.available || !data.token) {
-        // LiveKit is not configured; fallback immediately to direct video call
-        onSwitchToJitsi()
-        return
+        setTokenData(data)
+        setError(data.message || 'LiveKit server is not configured on this environment.')
       } else {
         setTokenData(data)
       }
     } catch (err: any) {
-      console.warn('LiveKit meeting token fetch failed, switching directly to Jitsi:', err)
-      onSwitchToJitsi()
+      console.warn('LiveKit meeting token fetch failed:', err)
+      setError(err.message || 'Unable to connect to LiveKit server')
     } finally {
       setLoading(false)
     }
@@ -83,12 +82,12 @@ export default function LiveKitMeetingView({
             <Radio className="w-8 h-8 animate-pulse" />
           </div>
         </div>
-        <h4 className="text-lg font-semibold text-gray-200">Connecting to Video Session...</h4>
+        <h4 className="text-lg font-semibold text-gray-200">Connecting to In-House LiveKit Room...</h4>
         <p className="text-sm text-gray-400 max-w-md text-center mt-2">
-          Setting up encrypted media room for you and <strong className="text-gray-300">{peerName}</strong>.
+          Generating cryptographic room credentials for an encrypted session with <strong className="text-gray-300">{peerName}</strong>.
         </p>
         <div className="mt-6 flex items-center gap-2 text-xs text-gray-500">
-          <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" /> Initializing media channels...
+          <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" /> Connecting to LiveKit SFU media router...
         </div>
       </div>
     )
@@ -97,19 +96,42 @@ export default function LiveKitMeetingView({
   if (error || !tokenData?.token || !tokenData.serverUrl) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-gray-950 text-white p-6 min-h-[400px]">
-        <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4">
-          <RefreshCw className="w-8 h-8 animate-spin" />
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-4">
+          <AlertCircle className="w-8 h-8" />
         </div>
-        <h4 className="text-lg font-semibold text-gray-200">Connecting to Video Call...</h4>
+        <h4 className="text-lg font-semibold text-gray-200">LiveKit Server Not Connected</h4>
         <p className="text-sm text-gray-400 max-w-md text-center mt-2">
-          Directing you straight into the video call room.
+          {error || 'The in-house LiveKit server is currently unconfigured or offline on this environment.'}
         </p>
-        <button
-          onClick={onSwitchToJitsi}
-          className="mt-5 flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-colors shadow-lg shadow-indigo-600/20"
-        >
-          <ExternalLink className="w-4 h-4" /> Start Video Call Now
-        </button>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 my-4 max-w-lg w-full text-xs text-gray-300 space-y-2">
+          <p className="text-gray-300 font-medium">
+            To use in-house LiveKit video in production (Vercel + Render), add your LiveKit credentials to Render:
+          </p>
+          <div className="font-mono text-[11px] bg-black/60 p-2.5 rounded-lg text-emerald-400 space-y-1 select-all">
+            <div>LIVEKIT_URL=wss://your-project.livekit.cloud</div>
+            <div>LIVEKIT_API_KEY=your_api_key</div>
+            <div>LIVEKIT_API_SECRET=your_api_secret</div>
+          </div>
+          <p className="text-gray-400 text-[11px]">
+            Free forever tier at <a href="https://cloud.livekit.io" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline font-medium">cloud.livekit.io</a> (50 GB/mo free bandwidth, no credit card required).
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={fetchToken}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-lg border border-gray-700 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Retry LiveKit
+          </button>
+          <button
+            onClick={onSwitchToJitsi}
+            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors shadow-lg shadow-emerald-600/20"
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> Continue with Backup (Jitsi)
+          </button>
+        </div>
       </div>
     )
   }
