@@ -1136,6 +1136,10 @@ router.post('/sessions/:id/start', authenticate, async (req, res) => {
           { juniorId: req.user.id },
           { seniorId: req.user.id }
         ]
+      },
+      include: {
+        junior: { select: { id: true, name: true } },
+        senior: { select: { id: true, name: true } }
       }
     });
     
@@ -1153,11 +1157,34 @@ router.post('/sessions/:id/start', authenticate, async (req, res) => {
         where: { id: req.params.id },
         data: { status: 'started' }
       });
+
+      // Dispatch in-app notification to the other participant (candidate or mentor)
+      const targetUserId = req.user.id === session.seniorId ? session.juniorId : session.seniorId;
+      const callerName = req.user.name || (req.user.id === session.seniorId ? 'Mentor' : 'Candidate');
+      
+      try {
+        await prisma.notification.create({
+          data: {
+            userId: targetUserId,
+            type: 'session_started',
+            title: 'Meeting Started - Please Join Now!',
+            message: `${callerName} has started the video meeting for "${session.topic}". Click to join immediately.`,
+            data: {
+              sessionId: session.id,
+              jitsiRoomUrl: updatedSession.jitsiRoomUrl,
+              topic: session.topic
+            }
+          }
+        });
+      } catch (notifErr) {
+        console.warn('Failed to create session_started notification:', notifErr.message);
+      }
     }
     
     res.json({
       jitsiRoomUrl: updatedSession.jitsiRoomUrl,
-      jitsiRoomName: updatedSession.jitsiRoomName
+      jitsiRoomName: updatedSession.jitsiRoomName,
+      status: 'started'
     });
   } catch (error) {
     console.error('Start session error:', error);

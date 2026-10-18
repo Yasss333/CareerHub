@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Calendar, Clock, Video, Star, MessageSquare, CheckCircle, XCircle, X, Trash2, List, TrendingUp, Calendar as CalendarIcon, Edit3, Save, Sparkles, Award } from 'lucide-react'
 import SessionCalendar from '../components/SessionCalendar'
 import SessionAnalytics from '../components/SessionAnalytics'
@@ -178,8 +178,32 @@ export default function SeniorConnectSessions() {
   const [editingNotes, setEditingNotes] = useState('')
   const [activeMeetingSession, setActiveMeetingSession] = useState<Session | null>(null)
   const [activeChatSession, setActiveChatSession] = useState<Session | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const joinParam = searchParams.get('join')
 
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+
+  // Soft notification audio chime when meeting starts
+  const playMeetingStartedChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = new AudioCtx()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime) // D5
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15) // A5
+      gain.gain.setValueAtTime(0.15, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.4)
+    } catch {
+      // Audio autoplay policy
+    }
+  }
 
   const fetchSessions = async () => {
     setLoading(true)
@@ -207,9 +231,54 @@ export default function SeniorConnectSessions() {
     }
   }
 
+  // Real-time background polling every 4 seconds without re-triggering loading spinner
+  const fetchSessionsSilently = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+      const params = statusFilter ? `?status=${statusFilter}` : ''
+      const response = await fetch(`/api/connect/sessions${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (!response.ok) return
+      const data: Session[] = await response.json()
+      
+      setSessions((prevSessions) => {
+        const newlyStarted = data.find(
+          (newS) => newS.status === 'started' && prevSessions.some((oldS) => oldS.id === newS.id && oldS.status !== 'started')
+        )
+        if (newlyStarted) {
+          playMeetingStartedChime()
+        }
+        return data
+      })
+    } catch {
+      // ignore silent poll failure
+    }
+  }
+
   useEffect(() => {
     fetchSessions()
   }, [statusFilter])
+
+  useEffect(() => {
+    const pollInterval = setInterval(fetchSessionsSilently, 4000)
+    return () => clearInterval(pollInterval)
+  }, [statusFilter])
+
+  // Handle direct join link (e.g. from global banner notification)
+  useEffect(() => {
+    if (joinParam && sessions.length > 0) {
+      const matched = sessions.find((s) => s.id === joinParam)
+      if (matched) {
+        handleJoinCall(matched)
+        searchParams.delete('join')
+        setSearchParams(searchParams, { replace: true })
+      }
+    }
+  }, [joinParam, sessions])
 
   const apiCall = async (method: string, url: string, body?: object) => {
     const token = localStorage.getItem('token')
@@ -335,12 +404,20 @@ export default function SeniorConnectSessions() {
     return session.junior?.id === currentUser.id ? 'Junior' : 'Senior'
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, role?: 'Junior' | 'Senior') => {
+    if (status === 'started') {
+      return (
+        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 animate-pulse">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          {role === 'Junior' ? '🔴 Live: Mentor Waiting' : '🔴 Live in Progress'}
+        </span>
+      )
+    }
+
     const statusConfig: Record<string, { color: string; icon: typeof Clock }> = {
       pending: { color: 'bg-yellow-50 text-yellow-700', icon: Clock },
       accepted: { color: 'bg-primary/5 text-primary', icon: CheckCircle },
       rejected: { color: 'bg-red-50 text-red-700', icon: XCircle },
-      started: { color: 'bg-primary/5 text-primary', icon: Video },
       completed: { color: 'bg-gray-50 text-gray-700', icon: CheckCircle },
       cancelled: { color: 'bg-red-50 text-red-700', icon: XCircle }
     }
@@ -388,6 +465,8 @@ export default function SeniorConnectSessions() {
     status: session.status,
     jitsiRoomUrl: session.jitsiRoomUrl
   }))
+
+  const liveStartedSession = sessions.find((s) => s.status === 'started')
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-10">
@@ -447,6 +526,53 @@ export default function SeniorConnectSessions() {
         </div>
       )}
 
+      {/* Real-time Meeting Started Notification Alert Banner */}
+      {liveStartedSession && activeMeetingSession?.id !== liveStartedSession.id && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 text-white p-5 shadow-xl border border-emerald-400/40 animate-pulse">
+          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
+                <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 shadow-inner">
+                  <Video className="w-7 h-7 animate-bounce" />
+                </div>
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-400 border-2 border-white"></span>
+                </span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-white text-emerald-800 uppercase tracking-wider shadow-xs">
+                    Live Call Started
+                  </span>
+                  <span className="text-xs text-emerald-100 font-medium">
+                    {getRoleLabel(liveStartedSession) === 'Junior'
+                      ? 'Your mentor is waiting in the video room!'
+                      : 'Candidate is waiting for you in the call room!'}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold mt-1 text-white flex items-center gap-2">
+                  {liveStartedSession.topic}
+                </h3>
+                <p className="text-xs text-emerald-100 mt-0.5">
+                  Meeting with <strong className="text-white">{otherPerson(liveStartedSession)?.name}</strong> • Scheduled at {new Date(liveStartedSession.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <button
+                onClick={() => handleJoinCall(liveStartedSession)}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-3.5 bg-white text-emerald-700 hover:bg-emerald-50 text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 cursor-pointer"
+              >
+                <Video className="w-5 h-5 text-emerald-600 animate-pulse" />
+                Start Meet / Join Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!loading && !error && viewMode === 'calendar' ? (
         <SessionCalendar
           sessions={calendarSessions}
@@ -476,7 +602,11 @@ export default function SeniorConnectSessions() {
             return (
               <div
                 key={session.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+                className={`rounded-2xl shadow-sm border p-6 transition-all ${
+                  session.status === 'started'
+                    ? 'bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-card border-emerald-500/40 ring-2 ring-emerald-500/30 shadow-md'
+                    : 'bg-card border-border'
+                }`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-4">
@@ -500,7 +630,7 @@ export default function SeniorConnectSessions() {
                     <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
                       {role}
                     </span>
-                    {getStatusBadge(session.status)}
+                    {getStatusBadge(session.status, role)}
                   </div>
                 </div>
 
@@ -645,15 +775,26 @@ export default function SeniorConnectSessions() {
                     </>
                   )}
 
-                  {/* Guaranteed Working Video Call Button (for both Mentor & Mentee) */}
-                  {['accepted', 'started'].includes(session.status) && (
+                  {/* Video Call Button with Reactive Start Meet states */}
+                  {session.status === 'started' && (
                     <button
                       onClick={() => handleJoinCall(session)}
                       disabled={isBusy(session.id, 'start')}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium shadow-xs"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl transition-all disabled:opacity-50 text-sm font-bold shadow-lg shadow-emerald-600/30 animate-pulse cursor-pointer"
+                    >
+                      <Video className="w-4 h-4 animate-bounce" />
+                      {role === 'Junior' ? 'Start Meet / Join Now' : 'Re-enter Live Call'}
+                    </button>
+                  )}
+
+                  {session.status === 'accepted' && (
+                    <button
+                      onClick={() => handleJoinCall(session)}
+                      disabled={isBusy(session.id, 'start')}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium shadow-xs cursor-pointer"
                     >
                       <Video className="w-4 h-4" />
-                      Join Video Call
+                      {role === 'Senior' ? 'Start Video Call' : 'Join Video Call'}
                     </button>
                   )}
 

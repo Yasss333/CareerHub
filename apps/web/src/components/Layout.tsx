@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell, Moon, Sun, Map, ShieldCheck, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
-import { useState } from 'react'
+import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell, Moon, Sun, Map, ShieldCheck, Settings, PanelLeftClose, PanelLeftOpen, Video, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import NotificationsPanel from './NotificationsPanel'
 import { DarkModeProvider, useDarkMode } from '../contexts/DarkModeContext'
 
@@ -9,6 +9,8 @@ function LayoutContent() {
   const navigate = useNavigate()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('careerhub-sidebar-collapsed') === 'true')
+  const [liveMeeting, setLiveMeeting] = useState<{ id: string; topic: string; mentorName: string } | null>(null)
+  const [dismissedMeetingId, setDismissedMeetingId] = useState<string | null>(null)
   const { darkMode, toggleDarkMode } = useDarkMode()
 
   const handleLogout = () => {
@@ -26,6 +28,43 @@ function LayoutContent() {
       return !collapsed
     })
   }
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const checkLiveMeetings = async () => {
+      try {
+        const res = await fetch('/api/connect/sessions?status=started', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) return
+        const sessions = await res.json()
+        if (Array.isArray(sessions) && sessions.length > 0) {
+          const active = sessions.find((s: any) => s.status === 'started')
+          if (active) {
+            const isJunior = active.junior?.id === user.id
+            const peerName = isJunior ? active.senior?.name : active.junior?.name
+            setLiveMeeting({
+              id: active.id,
+              topic: active.topic,
+              mentorName: peerName || 'Mentor'
+            })
+          } else {
+            setLiveMeeting(null)
+          }
+        } else {
+          setLiveMeeting(null)
+        }
+      } catch {
+        // silent
+      }
+    }
+
+    checkLiveMeetings()
+    const timer = setInterval(checkLiveMeetings, 5000)
+    return () => clearInterval(timer)
+  }, [user.id])
 
   const navItems = user.role === 'MENTOR'
     ? [
@@ -92,6 +131,36 @@ function LayoutContent() {
           </div>
         </div>
       </nav>
+
+      {/* Real-time Global Live Meeting Alert Banner */}
+      {liveMeeting && dismissedMeetingId !== liveMeeting.id && !location.pathname.includes('/connect/sessions') && (
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white px-4 py-2.5 shadow-md flex items-center justify-between z-40 animate-pulse">
+          <div className="flex items-center gap-3 text-xs sm:text-sm font-medium">
+            <span className="relative flex h-3 w-3 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+            </span>
+            <span>
+              <strong>Meeting Started!</strong> {liveMeeting.mentorName} started the video session for "{liveMeeting.topic}".
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate(`/connect/sessions?join=${liveMeeting.id}`)}
+              className="px-3.5 py-1 bg-white text-emerald-700 hover:bg-emerald-50 font-bold text-xs rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+            >
+              <Video className="w-3.5 h-3.5 text-emerald-600" /> Start Meet / Join Now
+            </button>
+            <button
+              onClick={() => setDismissedMeetingId(liveMeeting.id)}
+              className="p-1 hover:bg-white/20 rounded-md text-white/80 hover:text-white"
+              title="Dismiss alert"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex min-w-0 flex-col md:flex-row">
         {/* Sidebar */}

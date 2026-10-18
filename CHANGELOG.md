@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed legacy resume test feature from `ResumeBuilder.tsx` as requested, focusing the workspace on content editing and live preview
 
 ### Added
+- Added real-time mentor meeting start alerts and direct "Start Meet" notification flows:
+  - Added in-app notification dispatch in `POST /api/connect/sessions/:id/start` notifying candidates when mentors launch a video session.
+  - Added real-time silent session polling (every 4s) and Web Audio API soft chime in `SeniorConnectSessions.tsx`.
+  - Added pulsing "Live Meeting Started" alert banner with direct "Start Meet / Join Now" button at top of sessions page.
+  - Added interactive session card live state highlighting (`ring-2 ring-emerald-500`) and glowing "Start Meet / Join Now" button when a call is started.
+  - Added global top banner alert across all authenticated views in `Layout.tsx` for real-time live meeting notification with one-click direct launch.
+  - Added `session_started` notification type with direct action button in `NotificationsPanel.tsx`.
 - Implemented in-house WebRTC SFU video conferencing using self-hosted LiveKit:
   - Added isolated branch `feat/livekit-video-conferencing` for testing and gradual verification.
   - Added `livekit-server-sdk` in `apps/api` and `livekit-client`, `@livekit/components-react`, `@livekit/components-styles` in `apps/web`.

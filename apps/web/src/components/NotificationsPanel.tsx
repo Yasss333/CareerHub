@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Bell, X, Check, Clock } from 'lucide-react';
+import { Bell, X, Check, Clock, Video } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Notification {
   id: string;
@@ -17,6 +18,7 @@ interface NotificationsPanelProps {
 }
 
 const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -68,7 +70,7 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
   const markAllAsRead = async () => {
     try {
       const token = localStorage.getItem('token');
-      await fetch('/api/connect/notifications/read-all', {
+      await fetch(`/api/connect/notifications/read-all`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -89,6 +91,7 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
 
   const getTypeColor = (type: string) => {
     switch (type) {
+      case 'session_started': return 'bg-emerald-50 border-emerald-300 text-emerald-800';
       case 'session_request': return 'bg-primary/5 text-primary/15';
       case 'session_accepted': return 'bg-green-50 border-green-200';
       case 'session_rejected': return 'bg-red-50 border-red-200';
@@ -99,6 +102,7 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
+      case 'session_started': return Video;
       case 'session_request': return Bell;
       case 'session_accepted': return Check;
       case 'session_rejected': return X;
@@ -149,6 +153,7 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
           <div className="divide-y">
             {notifications.map((notification) => {
               const Icon = getTypeIcon(notification.type);
+              const isSessionStarted = notification.type === 'session_started';
               return (
                 <div
                   key={notification.id}
@@ -166,6 +171,23 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
                     <div className="flex-1">
                       <p className="font-medium text-sm">{notification.title}</p>
                       <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                      
+                      {isSessionStarted && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!notification.isRead) markAsRead(notification.id);
+                            onClose();
+                            const sid = notification.data?.sessionId;
+                            navigate(sid ? `/connect/sessions?join=${sid}` : '/connect/sessions');
+                          }}
+                          className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                        >
+                          <Video className="w-3.5 h-3.5" /> Start Meet / Join Now
+                        </button>
+                      )}
+
                       <p className="text-xs text-gray-400 mt-2">
                         {new Date(notification.createdAt).toLocaleString()}
                       </p>
