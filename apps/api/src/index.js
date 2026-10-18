@@ -74,16 +74,33 @@ const allowedOrigins = new Set([
   'http://127.0.0.1:5173',
   'http://127.0.0.1:54046',
   'http://localhost:54046',
-  ...(process.env.CLIENT_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean)
+  'https://careerhub-navy.vercel.app',
+  ...(process.env.CLIENT_ORIGIN || '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean)
 ]);
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  const cleanOrigin = origin.trim().replace(/\/+$/, '');
+  if (allowedOrigins.has(cleanOrigin)) return true;
+  // Support Vercel production and branch preview deployments for CareerHub
+  if (/^https:\/\/(careerhub|careerhub-navy).*\.vercel\.app$/i.test(cleanOrigin)) {
+    return true;
+  }
+  return false;
+};
 
 app.disable('x-powered-by');
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
-    return callback(new Error('Origin is not allowed by CORS'));
+    if (isOriginAllowed(origin)) return callback(null, true);
+    return callback(new Error(`Origin ${origin} is not allowed by CORS`));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());

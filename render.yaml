@@ -19,7 +19,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CLIENT_ORIGIN
-        sync: false
+        value: "https://careerhub-navy.vercel.app,http://localhost:5173"
       - key: PISTON_API_URL
         sync: false
       - key: JWT_EXPIRES_IN
