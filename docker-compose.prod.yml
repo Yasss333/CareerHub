@@ -70,7 +70,7 @@ services:
       - "7881:7881"
       - "7882:7882/udp"
     environment:
-      - LIVEKIT_KEYS=${LIVEKIT_API_KEY:-careerhub-key}: ${LIVEKIT_API_SECRET:-careerhub-livekit-secret-2026}
+      - 'LIVEKIT_KEYS=${LIVEKIT_API_KEY:-careerhub-key}: ${LIVEKIT_API_SECRET:-careerhub-livekit-secret-2026}'
 
   web:
     build:
