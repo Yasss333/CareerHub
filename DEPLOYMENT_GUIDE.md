@@ -203,6 +203,9 @@ Render will prompt you for variables configured in `render.yaml`:
 | `IMAGEKIT_PUBLIC_KEY`| Optional | ImageKit public key for avatar/resume image storage |
 | `IMAGEKIT_PRIVATE_KEY`| Optional| ImageKit private key |
 | `IMAGEKIT_URL_ENDPOINT`| Optional| ImageKit URL endpoint |
+| `LIVEKIT_URL` | Optional | LiveKit SFU URL (`wss://...` or self-hosted; defaults to Jitsi fallback if omitted) |
+| `LIVEKIT_API_KEY` | Optional | LiveKit API Key |
+| `LIVEKIT_API_SECRET` | Optional | LiveKit API Secret |
 
 ---
 
