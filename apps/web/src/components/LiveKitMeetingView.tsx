@@ -57,15 +57,15 @@ export default function LiveKitMeetingView({
 
       const data: TokenResponse = await response.json()
       if (!data.available || !data.token) {
-        // LiveKit is not configured or server indicated fallback
-        setTokenData(data)
-        setError(data.message || 'LiveKit server is not configured. Jitsi fallback is ready.')
+        // LiveKit is not configured; fallback immediately to direct video call
+        onSwitchToJitsi()
+        return
       } else {
         setTokenData(data)
       }
     } catch (err: any) {
-      console.error('Failed to obtain LiveKit meeting token:', err)
-      setError(err.message || 'Unable to connect to the video service')
+      console.warn('LiveKit meeting token fetch failed, switching directly to Jitsi:', err)
+      onSwitchToJitsi()
     } finally {
       setLoading(false)
     }
@@ -83,12 +83,12 @@ export default function LiveKitMeetingView({
             <Radio className="w-8 h-8 animate-pulse" />
           </div>
         </div>
-        <h4 className="text-lg font-semibold text-gray-200">Initializing In-House Video Session...</h4>
+        <h4 className="text-lg font-semibold text-gray-200">Connecting to Video Session...</h4>
         <p className="text-sm text-gray-400 max-w-md text-center mt-2">
-          Generating cryptographic room credentials for an encrypted session with <strong className="text-gray-300">{peerName}</strong>.
+          Setting up encrypted media room for you and <strong className="text-gray-300">{peerName}</strong>.
         </p>
         <div className="mt-6 flex items-center gap-2 text-xs text-gray-500">
-          <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" /> Connecting to LiveKit SFU media router...
+          <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" /> Initializing media channels...
         </div>
       </div>
     )
@@ -97,40 +97,19 @@ export default function LiveKitMeetingView({
   if (error || !tokenData?.token || !tokenData.serverUrl) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-gray-950 text-white p-6 min-h-[400px]">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-4">
-          <AlertCircle className="w-8 h-8" />
+        <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4">
+          <RefreshCw className="w-8 h-8 animate-spin" />
         </div>
-        <h4 className="text-lg font-semibold text-gray-200">In-House Video Server Notice</h4>
+        <h4 className="text-lg font-semibold text-gray-200">Connecting to Video Call...</h4>
         <p className="text-sm text-gray-400 max-w-md text-center mt-2">
-          {error || 'The LiveKit SFU server is currently offline or unconfigured on this environment.'}
+          Directing you straight into the video call room.
         </p>
-
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 my-5 max-w-lg w-full text-xs text-gray-300 space-y-2">
-          <div className="font-semibold text-gray-200 flex items-center gap-1.5">
-            💡 To run LiveKit locally in-house with Docker:
-          </div>
-          <code className="block bg-black/60 p-2.5 rounded-lg text-emerald-400 font-mono select-all">
-            docker compose up livekit -d
-          </code>
-          <p className="text-gray-400 text-[11px]">
-            No third-party login or credit card required. LiveKit runs 100% locally on port 7880.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={fetchToken}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium rounded-lg border border-gray-700 transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Retry Connection
-          </button>
-          <button
-            onClick={onSwitchToJitsi}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors shadow-lg shadow-indigo-600/20"
-          >
-            <ExternalLink className="w-3.5 h-3.5" /> Continue with Jitsi Call
-          </button>
-        </div>
+        <button
+          onClick={onSwitchToJitsi}
+          className="mt-5 flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-colors shadow-lg shadow-indigo-600/20"
+        >
+          <ExternalLink className="w-4 h-4" /> Start Video Call Now
+        </button>
       </div>
     )
   }

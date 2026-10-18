@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Fixed Senior Connect video call launch: defaulted provider to direct instant call in `VideoMeetingModal.tsx` and removed the blocking Docker notice screen from `LiveKitMeetingView.tsx`, enabling one-click seamless video meetings with camera/microphone access without intermediary prompts.
 - Fixed broken learning links button on roadmap stage cards in `RoadmapDetail.tsx` by turning it into an interactive modal with categorized resources (documentation, courses, practice, videos) and direct links
 - Removed legacy resume test feature from `ResumeBuilder.tsx` as requested, focusing the workspace on content editing and live preview
 

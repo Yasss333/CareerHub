@@ -26,10 +26,8 @@ export default function VideoMeetingModal({
   sessionId
 }: VideoMeetingModalProps) {
   const [fullscreen, setFullscreen] = useState(false)
-  // Default to in-house LiveKit if sessionId is available, else fallback to Jitsi
-  const [videoProvider, setVideoProvider] = useState<'livekit' | 'jitsi'>(
-    sessionId ? 'livekit' : 'jitsi'
-  )
+  // Default to instant direct video call (Jitsi) for zero-delay, zero-notice connection
+  const [videoProvider, setVideoProvider] = useState<'livekit' | 'jitsi'>('jitsi')
 
   if (!isOpen) return null
 
@@ -56,11 +54,11 @@ export default function VideoMeetingModal({
                 <h3 className="font-semibold text-sm sm:text-base text-gray-100">{sessionTopic}</h3>
                 {videoProvider === 'livekit' ? (
                   <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                    <Server className="w-3 h-3" /> In-House LiveKit SFU
+                    <Server className="w-3 h-3" /> LiveKit SFU Session
                   </span>
                 ) : (
                   <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <ShieldCheck className="w-3 h-3" /> Jitsi Encrypted Call
+                    <ShieldCheck className="w-3 h-3" /> Direct Encrypted Call
                   </span>
                 )}
               </div>
@@ -76,27 +74,27 @@ export default function VideoMeetingModal({
               <div className="hidden md:flex items-center bg-gray-950 p-1 rounded-xl border border-gray-800 text-xs">
                 <button
                   type="button"
-                  onClick={() => setVideoProvider('livekit')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                    videoProvider === 'livekit'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-gray-400 hover:text-gray-200'
-                  }`}
-                  title="Use self-hosted LiveKit SFU"
-                >
-                  <Server className="w-3 h-3" /> In-House
-                </button>
-                <button
-                  type="button"
                   onClick={() => setVideoProvider('jitsi')}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition-colors ${
                     videoProvider === 'jitsi'
                       ? 'bg-emerald-600 text-white shadow-sm'
                       : 'text-gray-400 hover:text-gray-200'
                   }`}
-                  title="Use fallback Jitsi Meet"
+                  title="Direct instant video call"
                 >
-                  <Globe className="w-3 h-3" /> Jitsi
+                  <Globe className="w-3 h-3" /> Direct Call
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVideoProvider('livekit')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                    videoProvider === 'livekit'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                  title="LiveKit SFU (in-house media router)"
+                >
+                  <Server className="w-3 h-3" /> LiveKit SFU
                 </button>
               </div>
             )}
