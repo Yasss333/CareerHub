@@ -57,6 +57,20 @@ services:
       - IMAGEKIT_PUBLIC_KEY=${IMAGEKIT_PUBLIC_KEY:-}
       - IMAGEKIT_PRIVATE_KEY=${IMAGEKIT_PRIVATE_KEY:-}
       - IMAGEKIT_URL_ENDPOINT=${IMAGEKIT_URL_ENDPOINT:-}
+      - LIVEKIT_URL=${LIVEKIT_URL:-ws://livekit:7880}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-careerhub-key}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-careerhub-livekit-secret-2026}
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: careerhub-prod-livekit
+    restart: unless-stopped
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    environment:
+      - LIVEKIT_KEYS=${LIVEKIT_API_KEY:-careerhub-key}: ${LIVEKIT_API_SECRET:-careerhub-livekit-secret-2026}
 
   web:
     build:

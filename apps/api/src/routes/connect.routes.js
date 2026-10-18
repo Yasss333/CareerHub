@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import openai from '../config/ai.js';
+import { generateLiveKitToken, isLiveKitConfigured } from '../services/livekit.service.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -1308,6 +1309,98 @@ router.post('/sessions/:id/messages', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Send session message error:', error);
     res.status(500).json({ error: 'Failed to send message' });
+  }
+});
+
+// ============================================
+// LIVEKIT VIDEO CONFERENCING ROUTES
+// ============================================
+
+// Check LiveKit status and availability
+router.get('/video/status', authenticate, async (req, res) => {
+  try {
+    const configured = isLiveKitConfigured();
+    res.json({
+      livekitAvailable: configured,
+      provider: configured ? 'livekit' : 'jitsi'
+    });
+  } catch (error) {
+    res.json({ livekitAvailable: false, provider: 'jitsi' });
+  }
+});
+
+// Generate LiveKit token for a session
+router.get('/sessions/:id/livekit-token', authenticate, async (req, res) => {
+  try {
+    const session = await prisma.sessionBooking.findUnique({
+      where: { id: req.params.id },
+      include: {
+        junior: { select: { id: true, name: true } },
+        senior: { select: { id: true, name: true } }
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const isJunior = session.juniorId === req.user.id;
+    const isSenior = session.seniorId === req.user.id;
+    const isAdmin = req.user.role === 'ADMIN';
+
+    if (!isJunior && !isSenior && !isAdmin) {
+      return res.status(403).json({ error: 'You are not authorized to join this meeting' });
+    }
+
+    if (session.status === 'cancelled' || session.status === 'rejected') {
+      return res.status(400).json({ error: 'This session has been cancelled or rejected' });
+    }
+
+    // Default fallback Jitsi URL
+    const fallbackUrl = session.jitsiRoomUrl || `https://meet.jit.si/seniorconnect-session-${session.id}`;
+
+    // If LiveKit is not configured, signal client to use Jitsi fallback
+    if (!isLiveKitConfigured()) {
+      return res.json({
+        available: false,
+        provider: 'jitsi',
+        fallbackUrl,
+        message: 'LiveKit server is not configured. Falling back to Jitsi Meet.'
+      });
+    }
+
+    // User display name
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { name: true, role: true }
+    });
+
+    const roomName = `careerhub-session-${session.id}`;
+    const tokenData = await generateLiveKitToken({
+      roomName,
+      participantIdentity: req.user.id,
+      participantName: currentUser?.name || req.user.name || 'Participant',
+      isMentor: isSenior || isAdmin
+    });
+
+    res.json({
+      available: true,
+      provider: 'livekit',
+      token: tokenData.token,
+      serverUrl: tokenData.serverUrl,
+      roomName: tokenData.roomName,
+      participantIdentity: tokenData.participantIdentity,
+      participantName: tokenData.participantName,
+      fallbackUrl
+    });
+  } catch (error) {
+    console.error('Error generating LiveKit token:', error);
+    res.status(500).json({
+      error: 'Failed to generate meeting token',
+      available: false,
+      provider: 'jitsi',
+      fallbackUrl: `https://meet.jit.si/seniorconnect-session-${req.params.id}`
+    });
   }
 });
 

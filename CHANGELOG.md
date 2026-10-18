@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed legacy resume test feature from `ResumeBuilder.tsx` as requested, focusing the workspace on content editing and live preview
 
 ### Added
+- Implemented in-house WebRTC SFU video conferencing using self-hosted LiveKit:
+  - Added isolated branch `feat/livekit-video-conferencing` for testing and gradual verification.
+  - Added `livekit-server-sdk` in `apps/api` and `livekit-client`, `@livekit/components-react`, `@livekit/components-styles` in `apps/web`.
+  - Added token generation service (`livekit.service.js`) and endpoint `GET /api/connect/sessions/:id/livekit-token` with session participant validation and role-based permissions.
+  - Added in-house Docker service definition for LiveKit server (`livekit/livekit-server:latest`) to `docker-compose.yml` and `docker-compose.prod.yml` running on port 7880.
+  - Created `LiveKitMeetingView.tsx` with adaptive bitrate, screen sharing, speaker view, and participant tiles.
+  - Enhanced `VideoMeetingModal.tsx` with a dual-engine toggle allowing seamless switching between in-house LiveKit and public Jitsi Meet, with automatic fail-safe fallback.
 - Created complete production deployment guide (`DEPLOYMENT_GUIDE.md`) and updated `docs/deployment.md`:
   - Step-by-step instructions for Hugging Face Spaces Docker deployment for the AI multimodal proctoring service (16 GB free RAM tier).
   - Neon PostgreSQL serverless database setup instructions with pooled connection string and Prisma direct URL configuration.

@@ -717,6 +717,7 @@ export default function SeniorConnectSessions() {
         <VideoMeetingModal
           isOpen={Boolean(activeMeetingSession)}
           onClose={() => setActiveMeetingSession(null)}
+          sessionId={activeMeetingSession.id}
           jitsiRoomUrl={activeMeetingSession.jitsiRoomUrl}
           sessionTopic={activeMeetingSession.topic}
           peerName={otherPerson(activeMeetingSession)?.name || 'Mentorship Partner'}

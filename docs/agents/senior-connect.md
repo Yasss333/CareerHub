@@ -180,12 +180,19 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 
 ## External Integrations
 
-### Jitsi Meet
-- **Purpose**: Video conferencing for mentorship sessions
+### In-House LiveKit SFU (Primary Video Engine)
+- **Purpose**: Self-hosted, low-latency WebRTC video conferencing for mentorship sessions
+- **Architecture**: In-house Docker service (`livekit/livekit-server:latest`) running on port 7880
+- **Token Endpoint**: `GET /api/connect/sessions/:id/livekit-token` (gated by session participant verification)
+- **UI Component**: `LiveKitMeetingView.tsx` with `@livekit/components-react`
+- **Features**: Screen sharing, adaptive bitrate (simulcast), participant tiles, active speaker detection, mic/cam controls
+
+### Jitsi Meet (Fallback Engine)
+- **Purpose**: Fail-safe video conferencing backup if LiveKit container is stopped or unconfigured
 - **Integration**: Public Jitsi URLs without API key
 - **URL Format**: `https://meet.jit.si/seniorconnect-session-{bookingId}`
-- **Status**: Implemented and functional
-- **Limitations**: No customization, no recording features
+- **Status**: Implemented and preserved as a 1-click fallback in `VideoMeetingModal.tsx`
+
 
 ## Constraints
 

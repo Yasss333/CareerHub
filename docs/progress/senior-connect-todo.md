@@ -57,6 +57,7 @@ This document tracks the implementation progress of the Senior Connect module mi
 - [ ] Add mentor profile search and filters
 - [ ] Implement session booking wizard
 - [x] Add video call interface improvements (In-page VideoMeetingModal with Jitsi Meet integration)
+- [x] Implement in-house WebRTC SFU video conferencing (Self-hosted LiveKit server in Docker with dual-engine fallback)
 - [x] Implement chat during mentorship sessions (SessionChatModal with real-time polling and message persistence)
 - [x] Add auto-fill mentor profile from senior resume (AI PDF/text parsing endpoint and UI)
 - [x] Display candidate Placement Readiness Index (PRI) breakdown on session cards for senior mentors
