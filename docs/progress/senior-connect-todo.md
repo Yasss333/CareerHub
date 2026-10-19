@@ -1,5 +1,13 @@
 # Senior Connect - Implementation Progress
 
+## Follow-up: booking, reschedule approval, and session UX
+- [ ] Require participant approval before changing an accepted session's scheduled time
+- [ ] Use consistent timezone handling and reject past slots/bookings at all entry points
+- [ ] Add chat unread indicators, clear meeting-exit state, booking shortcut, and action feedback
+- [ ] Remove fabricated mentor PRI fallback and parser values
+
+Implementation note: accepted-session reschedules now remain pending in notifications until the counterpart approves; approval rechecks future time and participant conflicts. New-message notifications are cleared when that session's chat opens, and leaving/disconnecting shows a post-meeting state. Fabricated mentor PRI/parser values were removed. Timezone consistency, booking shortcut, broader action feedback, and authenticated E2E tests remain pending.
+
 ## Overview
 This document tracks the implementation progress of the Senior Connect module migration and feature development.
 

@@ -1,5 +1,11 @@
 # CareerHub Dashboard Progress
 
+## Follow-up: verified, database-derived PRI
+- [ ] Remove sample scores/history and show zero until actual source data is available
+- [ ] Disable student-entered scores and derive daily snapshots from verified database data
+
+Implementation note: removed client score entry and generated trend values; dashboard and mentor summaries now calculate from user-specific records and use zero for missing data. The API rejects client-supplied components and the dashboard requests a server-derived daily upsert. Web build and API syntax checks pass; database-backed ownership, calculation, legacy snapshot, and daily-idempotency checks remain pending.
+
 ## Dashboard overview
 - [x] Use the supplied welcome, KPI cards, and chart layout with CareerHub's purple theme
 - [x] Show the selected student KPIs: problems solved, resumes, mentorship, and current streak

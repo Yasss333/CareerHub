@@ -28,6 +28,7 @@ interface Session {
       problemsSolved: number
       dsaScore: number
       resumeScore: number
+      resumesCount: number
       readinessLevel: string
     }
   }

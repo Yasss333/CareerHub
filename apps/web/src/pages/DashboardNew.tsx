@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -28,7 +28,6 @@ import {
 
 const DashboardDonutChart = lazy(() => import('../components/dashboard/DashboardDonutChart'))
 const PRITrendChart = lazy(() => import('../components/dashboard/PRITrendChart'))
-const samplePriComponents = { interviewScore: 70, algoRankScore: 80, resumeScore: 60, score: 72.5 }
 
 interface PriSnapshot {
   id: string
@@ -250,9 +249,6 @@ export default function Dashboard() {
   const [recentResumes, setRecentResumes] = useState<ResumeRecord[]>([])
   const [priSnapshots, setPriSnapshots] = useState<PriSnapshot[]>([])
   const [livePri, setLivePri] = useState<LivePriData | null>(null)
-  const [priInput, setPriInput] = useState({ interviewScore: '', algoRankScore: '', resumeScore: '' })
-  const [savingPri, setSavingPri] = useState(false)
-  const [priSaveError, setPriSaveError] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [widgetVisibility, setWidgetVisibility] = useState(defaultWidgetVisibility)
@@ -278,6 +274,14 @@ export default function Dashboard() {
           fetchJson<{ snapshots: PriSnapshot[] }>('/api/dashboard/pri/history?days=30', token),
           fetchJson<LivePriData>('/api/dashboard/pri/live', token).catch(() => null),
         ])
+
+      const snapshotResponse = await fetch('/api/dashboard/pri/today', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => null)
+      const snapshotPayload = snapshotResponse?.ok
+        ? await snapshotResponse.json() as { snapshot?: PriSnapshot }
+        : null
 
       if (livePriResponse) {
         setLivePri(livePriResponse)
@@ -312,7 +316,12 @@ export default function Dashboard() {
       setRecentSessions(sessions.slice(0, 5))
       setRecentSubmissions(submissionsResponse.submissions ?? [])
       setRecentResumes(resumes.slice(0, 5))
-      setPriSnapshots(priHistory.snapshots ?? [])
+      const snapshots = priHistory.snapshots ?? []
+      const dailySnapshot = snapshotPayload?.snapshot
+      setPriSnapshots(dailySnapshot
+        ? [...snapshots.filter((snapshot) => snapshot.snapshotDate.slice(0, 10) !== dailySnapshot.snapshotDate.slice(0, 10)), dailySnapshot]
+          .sort((left, right) => left.snapshotDate.localeCompare(right.snapshotDate))
+        : snapshots)
     } catch (fetchError) {
       console.error('Failed to fetch dashboard data:', fetchError)
       setError(fetchError instanceof Error ? fetchError.message : 'Unable to load dashboard data.')
@@ -420,7 +429,9 @@ export default function Dashboard() {
     { title: 'Ranking score', value: stats.rankingScore.toFixed(0), icon: Trophy },
   ]
 
-  const isPriSample = priSnapshots.length === 0 && !livePri?.hasRealInterview
+  const hasVerifiedPriData = priSnapshots.length > 0 || Boolean(
+    livePri && (livePri.interviewScore > 0 || livePri.algoRankScore > 0 || livePri.resumeScore > 0)
+  )
   const priTrendData = useMemo(() => {
     if (priSnapshots.length > 0) {
       return priSnapshots.map((snapshot) => ({
@@ -429,24 +440,14 @@ export default function Dashboard() {
       }))
     }
 
-    const baselineScore = livePri ? livePri.score : samplePriComponents.score
-    const sampleScores = [
-      Math.max(40, baselineScore - 8),
-      Math.max(42, baselineScore - 6),
-      Math.max(41, baselineScore - 7),
-      Math.max(44, baselineScore - 4),
-      Math.max(45, baselineScore - 3),
-      Math.max(46, baselineScore - 1),
-      baselineScore,
-    ]
-    return sampleScores.map((score, index) => {
-      const date = new Date()
-      date.setDate(date.getDate() - (sampleScores.length - 1 - index))
-      return {
-        date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        score,
-      }
-    })
+    if (!livePri) {
+      return []
+    }
+
+    return [{
+      date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      score: livePri.score,
+    }]
   }, [priSnapshots, livePri])
 
   const currentPri = useMemo(() => {
@@ -463,45 +464,15 @@ export default function Dashboard() {
         snapshotDate: new Date().toISOString(),
       }
     }
-    return samplePriComponents
-  }, [priSnapshots, livePri])
-
-  const savePriSnapshot = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setSavingPri(true)
-    setPriSaveError('')
-
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/dashboard/pri/today', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          interviewScore: Number(priInput.interviewScore),
-          algoRankScore: Number(priInput.algoRankScore),
-          resumeScore: Number(priInput.resumeScore),
-        }),
-      })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({})) as { error?: string }
-        throw new Error(payload.error || 'Could not save today’s PRI inputs.')
-      }
-
-      const payload = await response.json() as { snapshot: PriSnapshot }
-      setPriSnapshots((current) => [
-        ...current.filter((item) => item.snapshotDate.slice(0, 10) !== payload.snapshot.snapshotDate.slice(0, 10)),
-        payload.snapshot,
-      ].sort((left, right) => left.snapshotDate.localeCompare(right.snapshotDate)))
-      setPriInput({ interviewScore: '', algoRankScore: '', resumeScore: '' })
-    } catch (saveError) {
-      setPriSaveError(saveError instanceof Error ? saveError.message : 'Could not save today’s PRI inputs.')
-    } finally {
-      setSavingPri(false)
+    return {
+      id: 'empty',
+      score: 0,
+      interviewScore: 0,
+      algoRankScore: 0,
+      resumeScore: 0,
+      snapshotDate: new Date().toISOString(),
     }
-  }
+  }, [priSnapshots, livePri])
 
   if (loading) {
     return (
@@ -612,8 +583,8 @@ export default function Dashboard() {
               <CardTitle>PRI trend</CardTitle>
               <CardDescription className="mt-1">Placement Readiness Index across days.</CardDescription>
             </div>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${isPriSample ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>
-              {isPriSample ? 'Sample preview' : 'Your history'}
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${hasVerifiedPriData ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+              {hasVerifiedPriData ? 'Verified data' : 'No verified data'}
             </span>
           </CardHeader>
           <CardContent>
@@ -639,7 +610,7 @@ export default function Dashboard() {
                   ? 'Updated today'
                   : livePri?.hasRealInterview
                     ? `Live AI Interview (${livePri.interviewCount} sessions)`
-                    : 'Demo data'}
+                    : 'No verified data'}
               </span>
             </div>
             <CardDescription>One score across AI interview, coding, and resume preparation.</CardDescription>
@@ -650,7 +621,7 @@ export default function Dashboard() {
                 className="grid size-32 shrink-0 place-items-center rounded-full p-2"
                 style={{ background: `conic-gradient(var(--primary) 0 ${currentPri.score}%, var(--muted) ${currentPri.score}% 100%)` }}
                 role="img"
-                aria-label={`${isPriSample ? 'Sample' : 'Your'} Placement Readiness Index ${currentPri.score} out of 100`}
+                aria-label={`Your Placement Readiness Index ${currentPri.score} out of 100`}
               >
                 <div className="grid size-full place-items-center rounded-full bg-card">
                   <div className="text-center">
@@ -686,50 +657,12 @@ export default function Dashboard() {
               </div>
             </div>
             <p className="mt-5 rounded-lg bg-muted/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-              {isPriSample
-                ? 'Preview only. Complete an AI Mock Interview and practice on AlgoRank to automatically calculate your Placement Readiness Index.'
+              {!hasVerifiedPriData
+                ? 'No verified AI interview, coding, or resume data is available yet, so the current PRI is 0.'
                 : livePri?.hasRealInterview
                   ? `Calculated from your live AI Mock Interview sessions (${livePri.interviewCount} completed), AlgoRank coding accuracy, and Resume quality.`
                   : 'Component scores · PRI = 0.45 × AI Interview + 0.40 × AlgoRank + 0.15 × Resume.'}
             </p>
-            <details className="group mt-4 rounded-lg border border-border bg-background/70 p-3">
-              <summary className="cursor-pointer list-none text-sm font-medium text-primary">
-                Enter today’s assessment scores
-              </summary>
-              <form onSubmit={savePriSnapshot} className="mt-4 space-y-3">
-                {[
-                  { key: 'interviewScore', label: 'Interview score (45%)' },
-                  { key: 'algoRankScore', label: 'AlgoRank percentile (40%)' },
-                  { key: 'resumeScore', label: 'Resume ATS score (15%)' },
-                ].map((field) => (
-                  <label key={field.key} className="block text-xs font-medium text-muted-foreground">
-                    {field.label}
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      required
-                      value={priInput[field.key as keyof typeof priInput]}
-                      onChange={(event) => setPriInput((current) => ({ ...current, [field.key]: event.target.value }))}
-                      className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      placeholder="0–100"
-                    />
-                  </label>
-                ))}
-                {priSaveError && <p role="alert" className="text-xs text-destructive">{priSaveError}</p>}
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Scores are entered by you and are not verified. Saving records today’s PRI and replaces the sample preview.
-                </p>
-                <button
-                  type="submit"
-                  disabled={savingPri}
-                  className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-                >
-                  {savingPri ? 'Saving…' : 'Save today’s PRI'}
-                </button>
-              </form>
-            </details>
           </CardContent>
         </Card>}
       </section>

@@ -26,6 +26,7 @@ export default function VideoMeetingModal({
   sessionId
 }: VideoMeetingModalProps) {
   const [fullscreen, setFullscreen] = useState(false)
+  const [meetingEnded, setMeetingEnded] = useState(false)
   // Default to in-house LiveKit video meeting as primary
   const [videoProvider, setVideoProvider] = useState<'livekit' | 'jitsi'>(
     sessionId ? 'livekit' : 'jitsi'
@@ -135,9 +136,10 @@ export default function VideoMeetingModal({
             )}
 
             <button
-              onClick={onClose}
+              onClick={() => setMeetingEnded(true)}
               className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"
-              title="Close Call Window"
+              title="Leave meeting"
+              aria-label="Leave meeting"
             >
               <X className="w-5 h-5" />
             </button>
@@ -146,13 +148,23 @@ export default function VideoMeetingModal({
 
         {/* Video Container */}
         <div className="flex-1 bg-black relative flex flex-col overflow-hidden">
-          {videoProvider === 'livekit' && sessionId ? (
+          {meetingEnded ? (
+            <div role="status" className="flex flex-1 flex-col items-center justify-center gap-3 bg-gray-950 p-6 text-center text-white">
+              <Video className="size-10 text-emerald-400" aria-hidden="true" />
+              <h4 className="text-lg font-semibold">You left the meeting</h4>
+              <p className="max-w-md text-sm text-gray-400">The call has been closed on this device. You can return to your sessions now.</p>
+              <button type="button" onClick={onClose} className="mt-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90">
+                Return to sessions
+              </button>
+            </div>
+          ) : videoProvider === 'livekit' && sessionId ? (
             <LiveKitMeetingView
               sessionId={sessionId}
               peerName={peerName}
               peerRole={peerRole}
               fallbackJitsiUrl={jitsiRoomUrl}
               onSwitchToJitsi={() => setVideoProvider('jitsi')}
+              onLeave={() => setMeetingEnded(true)}
             />
           ) : (
             <iframe

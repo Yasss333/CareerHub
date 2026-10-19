@@ -6,6 +6,7 @@ interface Session {
   scheduledTime: string;
   duration: number;
   topic: string;
+  status: string;
 }
 
 interface RescheduleModalProps {
@@ -15,12 +16,16 @@ interface RescheduleModalProps {
 }
 
 const RescheduleModal = ({ session, onClose, onRescheduled }: RescheduleModalProps) => {
-  const [scheduledTime, setScheduledTime] = useState(
-    new Date(session.scheduledTime).toISOString().slice(0, 16)
-  );
+  const toLocalDateTimeInput = (value: Date | string) => {
+    const date = new Date(value);
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString().slice(0, 16);
+  };
+  const [scheduledTime, setScheduledTime] = useState(toLocalDateTimeInput(session.scheduledTime));
   const [duration, setDuration] = useState(session.duration);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +46,12 @@ const RescheduleModal = ({ session, onClose, onRescheduled }: RescheduleModalPro
         })
       });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.error || 'Failed to reschedule session');
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || 'Failed to reschedule session');
+      if (data?.pendingApproval) {
+        setSuccess('Your request was sent. The scheduled time will remain unchanged until the other participant approves.');
+        return;
       }
-
       onRescheduled();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reschedule session');
@@ -68,6 +74,12 @@ const RescheduleModal = ({ session, onClose, onRescheduled }: RescheduleModalPro
           Reschedule: <span className="font-medium">{session.topic}</span>
         </p>
 
+        {success ? (
+          <div className="space-y-4">
+            <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{success}</p>
+            <button type="button" onClick={onRescheduled} className="w-full rounded-lg bg-primary py-2.5 text-white hover:bg-primary/90">Done</button>
+          </div>
+        ) : <>
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm">
             {error}
@@ -82,6 +94,7 @@ const RescheduleModal = ({ session, onClose, onRescheduled }: RescheduleModalPro
             <input
               type="datetime-local"
               value={scheduledTime}
+              min={toLocalDateTimeInput(new Date())}
               onChange={(e) => setScheduledTime(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               required
@@ -108,9 +121,10 @@ const RescheduleModal = ({ session, onClose, onRescheduled }: RescheduleModalPro
             disabled={submitting}
             className="w-full bg-primary text-white py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {submitting ? 'Rescheduling...' : 'Reschedule Session'}
+            {submitting ? 'Submitting...' : session.status === 'accepted' ? 'Request Reschedule' : 'Reschedule Session'}
           </button>
         </form>
+        </>}
       </div>
     </div>
   );

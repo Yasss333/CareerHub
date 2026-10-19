@@ -358,7 +358,7 @@ const upsertProfile = async (req, res) => {
         create: {
           userId: req.user.id,
           ...profileData,
-          title: profileData.title || 'Senior Mentor',
+          title: profileData.title || '',
           experience: profileData.experience || 0,
           location: profileData.location || ''
         }
@@ -392,6 +392,7 @@ router.post('/parse-senior-resume', authenticate, async (req, res) => {
       if (apiKey && !/^(your|replace|placeholder)/i.test(apiKey)) {
         const systemPrompt = `You are an expert tech recruiter and mentor profile extractor.
 Parse the following senior developer/engineer's resume into a structured mentor profile JSON.
+Only use facts explicitly present in the resume. Never infer or invent a name, title, company, location, years of experience, bio, expertise, achievements, or hourly rate. Use empty strings, 0, or [] when the resume does not state a value.
 Return ONLY valid JSON with this exact structure:
 {
   "name": "Candidate Full Name",
@@ -423,40 +424,43 @@ Do not include any text outside the JSON object.`;
         }
       }
     } catch (aiErr) {
-      console.warn('AI senior resume parsing error, using heuristic parser:', aiErr.message);
+      console.warn('AI senior resume parsing error:', aiErr.message);
     }
 
-    // Heuristic fallback if AI failed or not configured
-    if (!parsedProfile || !parsedProfile.title) {
-      const lines = resumeText.split('\n').map(l => l.trim()).filter(Boolean);
-      const firstLine = lines[0] || 'Senior Mentor';
-      
-      let detectedDomain = 'Fullstack';
-      if (/backend|node|python|java|golang|distributed|microservice/i.test(resumeText)) detectedDomain = 'Backend';
-      else if (/frontend|react|vue|angular|css|next\.js|web/i.test(resumeText)) detectedDomain = 'Frontend';
-      else if (/machine learning|data science|ai|pytorch|tensorflow/i.test(resumeText)) detectedDomain = 'AI/ML';
-      else if (/devops|cloud|aws|docker|kubernetes|ci\/cd/i.test(resumeText)) detectedDomain = 'DevOps';
+    const account = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { name: true, title: true, company: true, location: true }
+    });
+    const accountProfile = {
+      name: account?.name || '',
+      title: account?.title || '',
+      company: account?.company || '',
+      domain: '',
+      role: '',
+      experience: 0,
+      location: account?.location || '',
+      bio: '',
+      expertise: [],
+      achievements: [],
+      hourlyRate: 0
+    };
+    const resumeProfile = parsedProfile && typeof parsedProfile === 'object' && !Array.isArray(parsedProfile)
+      ? parsedProfile
+      : {};
 
-      let detectedExp = 4;
-      const expMatch = resumeText.match(/(\d+)\+?\s*years(?:\s+of)?\s+experience/i);
-      if (expMatch) detectedExp = parseInt(expMatch[1], 10) || 4;
-
-      parsedProfile = {
-        name: firstLine.length < 40 ? firstLine : 'Senior Mentor',
-        title: `Senior ${detectedDomain} Engineer`,
-        company: 'Tech Enterprise',
-        domain: detectedDomain,
-        role: `${detectedDomain} Lead`,
-        experience: detectedExp,
-        location: 'Bengaluru, India',
-        bio: `Experienced ${detectedDomain} engineer passionate about mentoring junior developers in system design, clean coding, and career growth.`,
-        expertise: ['System Design', 'Code Reviews', 'Interview Prep', detectedDomain],
-        achievements: ['Industry Mentor', 'Multiple production systems deployed'],
-        hourlyRate: 0
-      };
-    }
-
-    return res.json({ profile: parsedProfile });
+    return res.json({
+      profile: {
+        ...accountProfile,
+        ...resumeProfile,
+        name: resumeProfile.name || accountProfile.name,
+        title: resumeProfile.title || accountProfile.title,
+        company: resumeProfile.company || accountProfile.company,
+        location: resumeProfile.location || accountProfile.location,
+        experience: Number.isFinite(Number(resumeProfile.experience)) ? Number(resumeProfile.experience) : 0,
+        expertise: Array.isArray(resumeProfile.expertise) ? resumeProfile.expertise : [],
+        achievements: Array.isArray(resumeProfile.achievements) ? resumeProfile.achievements : []
+      }
+    });
   } catch (err) {
     console.error('Parse senior resume error:', err);
     return res.status(500).json({ error: 'Failed to parse resume: ' + err.message });
@@ -661,6 +665,11 @@ router.post('/availability', authenticate, requireAlumniMentor, async (req, res)
         return res.status(400).json({ error: 'Each slot requires date, startTime and endTime' });
       }
 
+      // Only today or future dates are allowed
+      if (dateOnly(date).getTime() < dateOnly(new Date()).getTime()) {
+        return res.status(400).json({ error: `Slots cannot be created for past dates: ${date}` });
+      }
+
       const conflict = await assertNoAvailabilityConflict(req.user.id, date, startTime, endTime);
       if (conflict) {
         return res.status(409).json({ error: `${conflict.error}: ${date}` });
@@ -709,7 +718,12 @@ router.put('/availability/:id', authenticate, requireAlumniMentor, async (req, r
     const nextDate = date ? dateOnly(date) : slot.date;
     const nextStart = startTime !== undefined ? String(startTime) : slot.startTime;
     const nextEnd = endTime !== undefined ? String(endTime) : slot.endTime;
-    
+
+    // Reject moving a slot into the past
+    if (dateOnly(nextDate).getTime() < dateOnly(new Date()).getTime()) {
+      return res.status(400).json({ error: 'Slots cannot be moved to past dates' });
+    }
+
     const conflict = await assertNoAvailabilityConflict(req.user.id, nextDate, nextStart, nextEnd, req.params.id);
     if (conflict) {
       return res.status(409).json({ error: conflict.error });
@@ -775,7 +789,14 @@ const getCandidatePriSummary = async (userId) => {
       }),
       prisma.resume.findMany({
         where: { userId },
-        select: { id: true, title: true, skills: true, experience: true },
+        select: {
+          professionSummary: true,
+          skills: true,
+          experience: true,
+          education: true,
+          projects: true,
+          personalInfo: true,
+        },
         take: 5
       })
     ]);
@@ -789,31 +810,42 @@ const getCandidatePriSummary = async (userId) => {
         validInterviewCount++;
       }
     }
-    const interviewAvg = validInterviewCount > 0 ? Math.round(totalInterviewScore / validInterviewCount) : 70;
-    const dsaScore = Math.min(100, Math.round((solvedProblems.length / 25) * 100)) || 65;
-    const resumeScore = resumes.length > 0 ? 80 : 50;
+    const interviewAvg = validInterviewCount > 0 ? Math.round(totalInterviewScore / validInterviewCount) : 0;
+    const dsaScore = Math.min(100, Math.round((solvedProblems.length / 25) * 100));
+    const resumeScore = resumes.reduce((bestScore, resume) => {
+      let score = 0;
+      if (resume.professionSummary && resume.professionSummary.length > 20) score += 15;
+      if (resume.skills?.length >= 3) score += 15;
+      if (resume.experience?.length > 0) score += 20;
+      if (resume.education?.length > 0) score += 10;
+      if (resume.projects?.length > 0) score += 10;
+      if (resume.personalInfo && Object.keys(resume.personalInfo).length > 0) score += 30;
+      return Math.max(bestScore, Math.min(100, score));
+    }, 0);
 
     const pri = Math.round(interviewAvg * 0.45 + dsaScore * 0.40 + resumeScore * 0.15);
 
     return {
       score: pri,
       interviewAvg,
-      interviewCount: interviewSessions.length,
+      interviewCount: validInterviewCount,
       problemsSolved: solvedProblems.length,
       dsaScore,
       resumeScore,
       resumesCount: resumes.length,
       readinessLevel: pri >= 80 ? 'High' : pri >= 60 ? 'Moderate' : 'Developing'
     };
-  } catch (e) {
+  } catch (error) {
+    console.error('Failed to compute candidate PRI summary:', error);
     return {
-      score: 72,
-      interviewAvg: 70,
-      interviewCount: 1,
-      problemsSolved: 12,
-      dsaScore: 68,
-      resumeScore: 75,
-      readinessLevel: 'Moderate'
+      score: 0,
+      interviewAvg: 0,
+      interviewCount: 0,
+      problemsSolved: 0,
+      dsaScore: 0,
+      resumeScore: 0,
+      resumesCount: 0,
+      readinessLevel: 'Developing'
     };
   }
 };
@@ -909,7 +941,12 @@ router.post('/sessions', authenticate, async (req, res) => {
     }
     const dur = Math.min(Math.max(parseInt(duration, 10) || 45, 15), 120);
     const requestedEnd = new Date(requestedStart.getTime() + dur * 60000);
-    
+
+    // Reject bookings in the past
+    if (requestedStart.getTime() <= Date.now()) {
+      return res.status(400).json({ error: 'Cannot book a session in the past. Please pick a future date and time.' });
+    }
+
     let slot = null;
     if (availabilitySlotId) {
       // Verify the chosen slot belongs to the senior and matches the requested time
@@ -1256,6 +1293,20 @@ router.get('/sessions/:id/messages', authenticate, async (req, res) => {
 
     if (!session) {
       return res.status(404).json({ error: 'Session not found or unauthorized' });
+    }
+
+    const unreadMessageNotifications = await prisma.notification.findMany({
+      where: { userId: req.user.id, type: 'session_message', isRead: false },
+      select: { id: true, data: true },
+    });
+    const notificationsToClear = unreadMessageNotifications
+      .filter((notification) => notification.data?.bookingId === session.id)
+      .map((notification) => notification.id);
+    if (notificationsToClear.length > 0) {
+      await prisma.notification.updateMany({
+        where: { id: { in: notificationsToClear }, userId: req.user.id },
+        data: { isRead: true },
+      });
     }
 
     const messages = await prisma.sessionMessage.findMany({
@@ -1614,6 +1665,9 @@ router.put('/notifications/:id/read', authenticate, async (req, res) => {
     if (!notification) {
       return res.status(404).json({ error: 'Notification not found' });
     }
+    if (notification.type === 'session_reschedule_request') {
+      return res.status(409).json({ error: 'Approve or reject this reschedule request before dismissing it.' });
+    }
 
     await prisma.notification.update({
       where: { id: req.params.id },
@@ -1633,7 +1687,8 @@ router.put('/notifications/read-all', authenticate, async (req, res) => {
     await prisma.notification.updateMany({
       where: {
         userId: req.user.id,
-        isRead: false
+        isRead: false,
+        NOT: { type: 'session_reschedule_request' }
       },
       data: { isRead: true }
     });
@@ -1705,6 +1760,24 @@ router.put('/sessions/:id/notes', authenticate, async (req, res) => {
 // RESCHEDULE ROUTES
 // ============================================
 
+const findRescheduleConflict = async (session, scheduledTime, duration) => {
+  const newEnd = new Date(scheduledTime.getTime() + duration * 60000);
+  const bookings = await prisma.sessionBooking.findMany({
+    where: {
+      id: { not: session.id },
+      status: { in: ['pending', 'accepted', 'started'] },
+      OR: [{ seniorId: session.seniorId }, { juniorId: session.juniorId }],
+    },
+    select: { seniorId: true, juniorId: true, scheduledTime: true, duration: true },
+  });
+
+  return bookings.some((booking) => {
+    const bookingStart = new Date(booking.scheduledTime);
+    const bookingEnd = new Date(bookingStart.getTime() + booking.duration * 60000);
+    return dateOverlap(scheduledTime, newEnd, bookingStart, bookingEnd);
+  });
+};
+
 // Reschedule session
 router.put('/sessions/:id/reschedule', authenticate, async (req, res) => {
   try {
@@ -1736,51 +1809,39 @@ router.put('/sessions/:id/reschedule', authenticate, async (req, res) => {
     if (isNaN(newStart.getTime())) {
       return res.status(400).json({ error: 'Invalid scheduledTime' });
     }
+    if (newStart <= new Date()) {
+      return res.status(400).json({ error: 'Rescheduled time must be in the future' });
+    }
 
     const dur = duration ? Math.min(Math.max(parseInt(duration, 10) || 45, 15), 120) : session.duration;
-    const newEnd = new Date(newStart.getTime() + dur * 60000);
-
-    // Check for conflicts with the senior
-    const seniorBookings = await prisma.sessionBooking.findMany({
-      where: {
-        seniorId: session.seniorId,
-        status: { in: ['pending', 'accepted', 'started'] },
-        id: { not: req.params.id }
-      },
-      select: { scheduledTime: true, duration: true }
-    });
-
-    const seniorConflict = seniorBookings.some((b) => {
-      const bStart = new Date(b.scheduledTime);
-      const bEnd = new Date(bStart.getTime() + b.duration * 60000);
-      return dateOverlap(newStart, newEnd, bStart, bEnd);
-    });
-
-    if (seniorConflict) {
-      return res.status(409).json({ error: 'Senior already has a session at this time' });
+    if (await findRescheduleConflict(session, newStart, dur)) {
+      return res.status(409).json({ error: 'A participant already has a session at this time' });
     }
 
-    // Check for conflicts with the junior
-    const juniorBookings = await prisma.sessionBooking.findMany({
-      where: {
-        juniorId: session.juniorId,
-        status: { in: ['pending', 'accepted', 'started'] },
-        id: { not: req.params.id }
-      },
-      select: { scheduledTime: true, duration: true }
-    });
+    const otherUserId = req.user.id === session.juniorId ? session.seniorId : session.juniorId;
+    if (session.status.toLowerCase() === 'accepted') {
+      const pendingNotifications = await prisma.notification.findMany({
+        where: { userId: otherUserId, type: 'session_reschedule_request', isRead: false },
+        select: { data: true },
+      });
+      if (pendingNotifications.some((notification) => notification.data?.bookingId === session.id)) {
+        return res.status(409).json({ error: 'A reschedule request is already awaiting approval' });
+      }
 
-    const juniorConflict = juniorBookings.some((b) => {
-      const bStart = new Date(b.scheduledTime);
-      const bEnd = new Date(bStart.getTime() + b.duration * 60000);
-      return dateOverlap(newStart, newEnd, bStart, bEnd);
-    });
+      const requestData = {
+        bookingId: session.id,
+        requestedBy: req.user.id,
+        newTime: newStart.toISOString(),
+        duration: dur,
+      };
+      await createNotification(otherUserId, 'session_reschedule_request', 'Reschedule approval needed',
+        'The other participant requested a new time. Approve or reject the request.', requestData);
+      await createNotification(req.user.id, 'session_reschedule_pending', 'Reschedule requested',
+        'The session time will stay unchanged until the other participant responds.', requestData);
 
-    if (juniorConflict) {
-      return res.status(409).json({ error: 'You already have a session at this time' });
+      return res.status(202).json({ pendingApproval: true, session });
     }
 
-    // Update session
     const updatedSession = await prisma.sessionBooking.update({
       where: { id: req.params.id },
       data: {
@@ -1793,8 +1854,6 @@ router.put('/sessions/:id/reschedule', authenticate, async (req, res) => {
       }
     });
 
-    // Notify the other party
-    const otherUserId = req.user.id === session.juniorId ? session.seniorId : session.juniorId;
     await createNotification(
       otherUserId,
       'session_rescheduled',
@@ -1807,6 +1866,74 @@ router.put('/sessions/:id/reschedule', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Reschedule session error:', error);
     res.status(500).json({ error: 'Failed to reschedule session' });
+  }
+});
+
+router.put('/sessions/:id/reschedule/decision', authenticate, async (req, res) => {
+  try {
+    const { decision } = req.body || {};
+    if (!['approve', 'reject'].includes(decision)) {
+      return res.status(400).json({ error: "decision must be 'approve' or 'reject'" });
+    }
+
+    const session = await prisma.sessionBooking.findFirst({
+      where: {
+        id: req.params.id,
+        OR: [{ juniorId: req.user.id }, { seniorId: req.user.id }],
+      },
+    });
+    if (!session) return res.status(404).json({ error: 'Session not found or unauthorized' });
+
+    const requesterId = req.user.id === session.juniorId ? session.seniorId : session.juniorId;
+    const pendingNotifications = await prisma.notification.findMany({
+      where: { userId: req.user.id, type: 'session_reschedule_request', isRead: false },
+    });
+    const requestNotification = pendingNotifications.find((notification) => notification.data?.bookingId === session.id);
+    if (!requestNotification || requestNotification.data?.requestedBy !== requesterId) {
+      return res.status(404).json({ error: 'Pending reschedule request not found' });
+    }
+    if (session.status.toLowerCase() !== 'accepted') {
+      return res.status(409).json({ error: 'Only accepted sessions can use approval-based rescheduling' });
+    }
+
+    let updatedSession = session;
+    if (decision === 'approve') {
+      const newStart = new Date(requestNotification.data.newTime);
+      const duration = Number(requestNotification.data.duration);
+      if (!Number.isFinite(newStart.getTime()) || newStart <= new Date()) {
+        return res.status(400).json({ error: 'Requested time has passed or is invalid' });
+      }
+      if (!Number.isInteger(duration) || duration < 15 || duration > 120) {
+        return res.status(400).json({ error: 'Requested duration is invalid' });
+      }
+      if (await findRescheduleConflict(session, newStart, duration)) {
+        return res.status(409).json({ error: 'A participant now has a session at the requested time' });
+      }
+      updatedSession = await prisma.sessionBooking.update({
+        where: { id: session.id },
+        data: { scheduledTime: newStart, duration },
+        include: {
+          junior: { select: { id: true, name: true, avatar: true, university: true } },
+          senior: { select: { id: true, name: true, avatar: true, title: true, company: true } },
+        },
+      });
+    }
+
+    await prisma.notification.update({
+      where: { id: requestNotification.id },
+      data: { isRead: true },
+    });
+    const outcome = decision === 'approve' ? 'approved' : 'rejected';
+    const outcomeData = { bookingId: session.id, decision, requestedBy: requesterId };
+    await createNotification(requesterId, 'session_reschedule_result', 'Reschedule request updated',
+      `The other participant ${outcome} your reschedule request.`, outcomeData);
+    await createNotification(req.user.id, 'session_reschedule_result', 'Reschedule request updated',
+      `You ${outcome} the reschedule request.`, outcomeData);
+
+    return res.json({ decision, session: updatedSession });
+  } catch (error) {
+    console.error('Reschedule decision error:', error);
+    return res.status(500).json({ error: 'Failed to process reschedule decision' });
   }
 });
 

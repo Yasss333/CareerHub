@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Removed fabricated PRI defaults and sample trend data from dashboard and mentor session summaries. PRI components now use user-specific records, default to zero, reject client-supplied scores, and upsert one server-derived UTC-day snapshot per user.
+- Made mentor resume parsing evidence-based, with only current account profile fields used as fallbacks; removed generated title, company, location, experience, biography, and expertise defaults.
+- Changed accepted-session rescheduling to require the other participant's approval, leaving the current booking unchanged until approval and rechecking time/conflicts before applying it.
+- Clear unread session-message notifications when the conversation opens, preserve pending reschedule requests from bulk dismissal, and show a post-meeting state after leaving or disconnecting from LiveKit.
+- Require an active login before resume imports start; retained authenticated API calls for PDF and pasted-text imports.
 - Fixed Senior Connect video call launch: defaulted provider to direct instant call in `VideoMeetingModal.tsx` and removed the blocking Docker notice screen from `LiveKitMeetingView.tsx`, enabling one-click seamless video meetings with camera/microphone access without intermediary prompts.
 - Fixed broken learning links button on roadmap stage cards in `RoadmapDetail.tsx` by turning it into an interactive modal with categorized resources (documentation, courses, practice, videos) and direct links
 - Removed legacy resume test feature from `ResumeBuilder.tsx` as requested, focusing the workspace on content editing and live preview

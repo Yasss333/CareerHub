@@ -13,6 +13,7 @@ interface LiveKitMeetingViewProps {
   peerRole: string
   fallbackJitsiUrl: string
   onSwitchToJitsi: () => void
+  onLeave: () => void
 }
 
 interface TokenResponse {
@@ -30,7 +31,8 @@ export default function LiveKitMeetingView({
   peerName,
   peerRole,
   fallbackJitsiUrl,
-  onSwitchToJitsi
+  onSwitchToJitsi,
+  onLeave
 }: LiveKitMeetingViewProps) {
   const [tokenData, setTokenData] = useState<TokenResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -166,7 +168,7 @@ export default function LiveKitMeetingView({
             setConnectionError(err.message || 'Media connection lost')
           }}
           onDisconnected={() => {
-            console.log('User left or disconnected from LiveKit room')
+            onLeave()
           }}
         >
           <VideoConference />

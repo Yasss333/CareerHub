@@ -22,6 +22,8 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [rescheduleAction, setRescheduleAction] = useState<string | null>(null);
+  const [actionError, setActionError] = useState('');
 
   const fetchNotifications = async () => {
     try {
@@ -74,10 +76,34 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
-      setUnreadCount(0);
+      await fetchNotifications();
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
+    }
+  };
+
+  const decideReschedule = async (notification: Notification, decision: 'approve' | 'reject') => {
+    const bookingId = notification.data?.bookingId;
+    if (!bookingId) return;
+    setRescheduleAction(notification.id);
+    setActionError('');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/connect/sessions/${bookingId}/reschedule/decision`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ decision }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Could not update the reschedule request.');
+      await fetchNotifications();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not update the reschedule request.');
+    } finally {
+      setRescheduleAction(null);
     }
   };
 
@@ -142,6 +168,7 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {actionError && <p role="alert" className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">{actionError}</p>}
         {loading ? (
           <div className="p-4 text-center text-gray-500">Loading notifications...</div>
         ) : notifications.length === 0 ? (
@@ -154,13 +181,14 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
             {notifications.map((notification) => {
               const Icon = getTypeIcon(notification.type);
               const isSessionStarted = notification.type === 'session_started';
+              const isRescheduleRequest = notification.type === 'session_reschedule_request' && !notification.isRead;
               return (
                 <div
                   key={notification.id}
                   className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${
                     notification.isRead ? 'opacity-60' : getTypeColor(notification.type)
                   }`}
-                  onClick={() => !notification.isRead && markAsRead(notification.id)}
+                  onClick={() => !notification.isRead && notification.type !== 'session_reschedule_request' && markAsRead(notification.id)}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`p-2 rounded-full ${
@@ -186,6 +214,33 @@ const NotificationsPanel = ({ isOpen, onClose }: NotificationsPanelProps) => {
                         >
                           <Video className="w-3.5 h-3.5" /> Start Meet / Join Now
                         </button>
+                      )}
+
+                      {isRescheduleRequest && (
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void decideReschedule(notification, 'approve');
+                            }}
+                            disabled={rescheduleAction === notification.id}
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
+                          >
+                            <Check className="size-3.5" /> Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void decideReschedule(notification, 'reject');
+                            }}
+                            disabled={rescheduleAction === notification.id}
+                            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+                          >
+                            <X className="size-3.5" /> Reject
+                          </button>
+                        </div>
                       )}
 
                       <p className="text-xs text-gray-400 mt-2">

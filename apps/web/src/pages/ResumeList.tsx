@@ -184,6 +184,11 @@ export default function ResumeList() {
     setUploadError('');
 
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Please sign in again before importing a resume.');
+      }
+
       let extractedText = '';
 
       if (uploadMode === 'file') {
@@ -218,7 +223,6 @@ export default function ResumeList() {
         return;
       }
 
-      const token = localStorage.getItem('token');
       const response = await fetch('/api/ai/upload-resume', {
         method: 'POST',
         headers: {

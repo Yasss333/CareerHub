@@ -1,5 +1,9 @@
 # AlgoRank - Implementation Progress
 
+## Follow-up: empty problem list
+- [ ] Diagnose why the current question list is empty against the configured database and seed path
+- [ ] Ensure an actionable empty state is shown when no problems are available
+
 ## Overview
 This document tracks the implementation progress of the AlgoRank module migration and feature development.
 

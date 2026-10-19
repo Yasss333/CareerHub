@@ -1,5 +1,12 @@
 # Resume Builder - Implementation Progress
 
+## Follow-up: import authentication and mentor resume parsing
+- [ ] Keep Back navigation authenticated and fix 401s for PDF and pasted-text imports
+- [ ] Correct mentor resume parsing and remove fabricated fallback values
+- [ ] Verify imports and mentor signup with complete and incomplete resume content
+
+Implementation note: resume import now checks for a token before PDF or pasted-text submission; the API import route remains authenticated. Mentor parsing uses current account fields only as fallback and no longer fills missing resume details with fabricated defaults. Production build and API syntax checks pass; authenticated end-to-end import and incomplete-resume checks are still pending.
+
 ## Overview
 This document tracks the implementation progress of the Resume Builder module migration and feature development.
 
