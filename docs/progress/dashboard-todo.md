@@ -1,5 +1,11 @@
 # CareerHub Dashboard Progress
 
+## Follow-up: tolerate temporary AlgoRank outages
+- [x] Keep the dashboard usable when ranking, problem, or submission APIs are unavailable
+- [x] Return effective streak data from both public and current-user ranking endpoints
+
+Implementation note: AlgoRank dashboard calls now fall back to empty metrics with an availability message; other dashboard data remains visible. Both ranking endpoints calculate active streaks from the last activity date. Frontend build and API syntax checks pass.
+
 ## Follow-up: cross-module activity streak
 - [x] Count meaningful resume, roadmap, interview, mentorship, and accepted problem-solving activity toward the user's daily streak
 - [x] Keep streak updates idempotent within a day and preserve the longest streak

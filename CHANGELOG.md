@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Fixed a ranking endpoint runtime error and made the dashboard retain its non-AlgoRank data when ranking, problem, or submission APIs are temporarily unavailable.
 - Fixed resume editor dashboard navigation and isolated resume PDF printing to a single-page A4 document; cover-letter PDFs now use a clean print layout without browser-added page headers or footers.
 - Fixed landing-page Explore Modules hover contrast with a visible multicolor gradient.
 - Enabled mentors to submit student feedback after completed sessions and ensured direct rescheduling sends confirmation notifications to both participants.

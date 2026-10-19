@@ -251,12 +251,14 @@ export default function Dashboard() {
   const [livePri, setLivePri] = useState<LivePriData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [algoRankUnavailable, setAlgoRankUnavailable] = useState(false)
   const [widgetVisibility, setWidgetVisibility] = useState(defaultWidgetVisibility)
   const [widgetPreferencesLoaded, setWidgetPreferencesLoaded] = useState(false)
 
   const fetchDashboardStats = useCallback(async () => {
     setLoading(true)
     setError('')
+    setAlgoRankUnavailable(false)
 
     try {
       const token = localStorage.getItem('token')
@@ -268,9 +270,9 @@ export default function Dashboard() {
         await Promise.all([
           fetchJson<ResumeRecord[]>('/api/resume', token),
           fetchJson<MentorshipSession[]>('/api/connect/sessions', token),
-          fetchJson<{ user: RankingStats }>('/api/algorank/ranking/me', token),
-          fetchJson<{ pagination?: { totalProblems?: number } }>('/api/algorank/problems?limit=1', token),
-          fetchJson<{ submissions?: Submission[] }>('/api/algorank/submissions?limit=5', token),
+          fetchJson<{ user: RankingStats }>('/api/algorank/ranking/me', token).catch(() => null),
+          fetchJson<{ pagination?: { totalProblems?: number } }>('/api/algorank/problems?limit=1', token).catch(() => null),
+          fetchJson<{ submissions?: Submission[] }>('/api/algorank/submissions?limit=5', token).catch(() => null),
           fetchJson<{ snapshots: PriSnapshot[] }>('/api/dashboard/pri/history?days=30', token),
           fetchJson<LivePriData>('/api/dashboard/pri/live', token).catch(() => null),
         ])
@@ -287,8 +289,16 @@ export default function Dashboard() {
         setLivePri(livePriResponse)
       }
 
-      const userStats = rankingResponse.user
-      const totalProblems = problemsResponse.pagination?.totalProblems ?? 0
+      const userStats = rankingResponse?.user ?? {
+        name: '',
+        totalProblemsSolved: 0,
+        acceptanceRate: 0,
+        currentStreak: 0,
+        rankingScore: 0,
+        rank: 0,
+      }
+      const totalProblems = problemsResponse?.pagination?.totalProblems ?? 0
+      setAlgoRankUnavailable(!rankingResponse || !problemsResponse || !submissionsResponse)
       const now = Date.now()
       const upcomingSessions = sessions.filter((session) =>
         ['pending', 'accepted'].includes(session.status.toLowerCase()) &&
@@ -314,7 +324,7 @@ export default function Dashboard() {
       })
       setSessions(sessions)
       setRecentSessions(sessions.slice(0, 5))
-      setRecentSubmissions(submissionsResponse.submissions ?? [])
+      setRecentSubmissions(submissionsResponse?.submissions ?? [])
       setRecentResumes(resumes.slice(0, 5))
       const snapshots = priHistory.snapshots ?? []
       const dailySnapshot = snapshotPayload?.snapshot
@@ -502,6 +512,11 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto w-full max-w-screen-2xl space-y-6">
+      {algoRankUnavailable && (
+        <div role="status" className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+          AlgoRank data is temporarily unavailable. The rest of your dashboard is still available.
+        </div>
+      )}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="mb-2 text-sm font-medium text-primary">CareerHub · Student overview</p>

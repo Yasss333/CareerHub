@@ -1044,6 +1044,7 @@ router.get('/ranking/user/:userId', optionalAuth, async (req, res) => {
         averageSolveTime: true,
         currentStreak: true,
         longestStreak: true,
+        lastSolvedDate: true,
         rankingScore: true,
         createdAt: true
       }
@@ -1087,7 +1088,7 @@ router.get('/ranking/user/:userId', optionalAuth, async (req, res) => {
 
     res.json({
       success: true,
-      user: { ...user, rank: userRank },
+      user: { ...rankingUser, currentStreak, rank: userRank },
       nearbyUsers
     });
   } catch (error) {
@@ -1172,6 +1173,7 @@ router.get('/ranking/me', authenticate, async (req, res) => {
         averageSolveTime: true,
         currentStreak: true,
         longestStreak: true,
+        lastSolvedDate: true,
         rankingScore: true,
         createdAt: true
       }
@@ -1180,6 +1182,17 @@ router.get('/ranking/me', authenticate, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const lastActivity = user.lastSolvedDate ? new Date(user.lastSolvedDate) : null;
+    lastActivity?.setUTCHours(0, 0, 0, 0);
+    const isStreakActive = lastActivity && lastActivity >= yesterday && lastActivity <= today;
+    const currentStreak = isStreakActive ? user.currentStreak : 0;
+    const rankingUser = { ...user };
+    delete rankingUser.lastSolvedDate;
 
     const usersWithHigherScore = await prisma.user.count({
       where: { role: 'USER', rankingScore: { gt: user.rankingScore } }
