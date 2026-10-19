@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import {
   LiveKitRoom,
   VideoConference,
-  RoomAudioRenderer
+  RoomAudioRenderer,
+  useRoomContext
 } from '@livekit/components-react'
+import { RoomEvent } from 'livekit-client'
 import '@livekit/components-styles'
 import { AlertCircle, RefreshCw, Radio, ExternalLink } from 'lucide-react'
 
@@ -26,6 +28,37 @@ interface TokenResponse {
   fallbackUrl?: string
 }
 
+function MeetingInactivityMonitor() {
+  const room = useRoomContext()
+
+  useEffect(() => {
+    const inactivityLimitMs = 30 * 60 * 1000
+    let lastActivityAt = Date.now()
+    const markActive = () => { lastActivityAt = Date.now() }
+    const markRoomActive = () => { markActive() }
+    const timer = window.setInterval(() => {
+      if (Date.now() - lastActivityAt >= inactivityLimitMs) void room.disconnect()
+    }, 60_000)
+
+    room.on(RoomEvent.ActiveSpeakersChanged, markRoomActive)
+    room.on(RoomEvent.ParticipantConnected, markRoomActive)
+    window.addEventListener('pointerdown', markActive)
+    window.addEventListener('keydown', markActive)
+    window.addEventListener('touchstart', markActive)
+
+    return () => {
+      window.clearInterval(timer)
+      room.off(RoomEvent.ActiveSpeakersChanged, markRoomActive)
+      room.off(RoomEvent.ParticipantConnected, markRoomActive)
+      window.removeEventListener('pointerdown', markActive)
+      window.removeEventListener('keydown', markActive)
+      window.removeEventListener('touchstart', markActive)
+    }
+  }, [room])
+
+  return null
+}
+
 export default function LiveKitMeetingView({
   sessionId,
   peerName,
@@ -38,6 +71,22 @@ export default function LiveKitMeetingView({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [connectionError, setConnectionError] = useState<string | null>(null)
+
+  const reportPresence = async (event: 'joined' | 'left') => {
+    try {
+      const token = localStorage.getItem('token')
+      await fetch(`/api/connect/sessions/${sessionId}/livekit-presence`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ event }),
+      })
+    } catch (presenceError) {
+      console.warn('Could not update meeting presence:', presenceError)
+    }
+  }
 
   const fetchToken = async () => {
     setLoading(true)
@@ -163,14 +212,16 @@ export default function LiveKitMeetingView({
           serverUrl={tokenData.serverUrl}
           data-lk-theme="default"
           style={{ height: '100%', width: '100%' }}
+          onConnected={() => { void reportPresence('joined') }}
           onError={(err) => {
             console.error('LiveKit room connection error:', err)
             setConnectionError(err.message || 'Media connection lost')
           }}
           onDisconnected={() => {
-            onLeave()
+            void reportPresence('left').finally(onLeave)
           }}
         >
+          <MeetingInactivityMonitor />
           <VideoConference />
           <RoomAudioRenderer />
         </LiveKitRoom>

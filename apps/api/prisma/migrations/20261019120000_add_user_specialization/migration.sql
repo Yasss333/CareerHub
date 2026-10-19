@@ -1,0 +1,3 @@
+CREATE TYPE "Specialization" AS ENUM ('CS_SOFTWARE', 'ELECTRONICS_ELECTRICAL', 'OTHER_ENGINEERING');
+
+ALTER TABLE "User" ADD COLUMN "specialization" "Specialization";

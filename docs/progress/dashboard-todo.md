@@ -1,5 +1,13 @@
 # CareerHub Dashboard Progress
 
+## Follow-up: specialization-aware platform and PRI
+- [x] Capture candidate specialization at registration and persist it on the user
+- [x] Hide AlgoRank widgets and navigation for non-CS specializations
+- [x] Exclude AlgoRank from non-CS PRI and normalize remaining component weights
+- [x] Confirm resume PRI component is based on completeness, not resume count
+
+Implementation note: Resume quality remains based on six completeness sections; one resume does not automatically earn the full component. CS/Software uses 45/40/15 weights; Electronics/Electrical and Other Engineering use normalized 75/25 interview/resume weights. Formula simulations pass. The specialization migration is applied locally and Prisma reports the database schema is up to date.
+
 ## Follow-up: tolerate temporary AlgoRank outages
 - [x] Keep the dashboard usable when ranking, problem, or submission APIs are unavailable
 - [x] Return effective streak data from both public and current-user ranking endpoints

@@ -34,6 +34,7 @@ const profilePhotoUpload = multer({
 
 const JWT_SECRET = process.env.JWT_SECRET || 'careerhub-super-secret-jwt-key-2024';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const candidateSpecializations = ['CS_SOFTWARE', 'ELECTRONICS_ELECTRICAL', 'OTHER_ENGINEERING'];
 
 // Helper functions
 const generateToken = (user) => {
@@ -70,7 +71,11 @@ const verifyToken = (token) => {
 // Register new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, role } = req.body;
+    const { email, password, name, role, specialization } = req.body;
+    const isMentor = role === 'MENTOR';
+    if (!isMentor && !candidateSpecializations.includes(specialization)) {
+      return res.status(400).json({ error: 'Choose a valid candidate specialization' });
+    }
     
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -84,7 +89,6 @@ router.post('/register', async (req, res) => {
     // Hash password
     const passwordHash = await hashPassword(password);
     
-    const isMentor = role === 'MENTOR';
     const assignedRole = isMentor ? 'MENTOR' : 'USER';
     const isAlumniMentor = isMentor;
     const mentorApprovalStatus = isMentor ? 'APPROVED' : 'NONE';
@@ -98,6 +102,7 @@ router.post('/register', async (req, res) => {
         role: assignedRole,
         isAlumniMentor,
         mentorApprovalStatus,
+        specialization: isMentor ? null : specialization,
         ...(isMentor ? {
           seniorProfile: {
             create: {
@@ -122,6 +127,7 @@ router.post('/register', async (req, res) => {
         role: true,
         isAlumniMentor: true,
         mentorApprovalStatus: true,
+        specialization: true,
         createdAt: true
       }
     });
@@ -212,6 +218,9 @@ router.get('/me', async (req, res) => {
         role: true,
         isAlumniMentor: true,
         mentorApprovalStatus: true,
+        specialization: true,
+        currentStreak: true,
+        lastSolvedDate: true,
         image: true,
         avatar: true,
         createdAt: true
@@ -222,7 +231,16 @@ router.get('/me', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    res.json(user);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const lastActivity = user.lastSolvedDate ? new Date(user.lastSolvedDate) : null;
+    lastActivity?.setUTCHours(0, 0, 0, 0);
+    const isStreakActive = lastActivity && lastActivity >= yesterday && lastActivity <= today;
+    const { lastSolvedDate, ...profile } = user;
+
+    res.json({ ...profile, currentStreak: isStreakActive ? user.currentStreak : 0 });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to fetch user' });

@@ -1,5 +1,12 @@
 # Senior Connect - Implementation Progress
 
+## Follow-up: live room presence and stale-call cleanup
+- [x] Notify participants only after a verified LiveKit room join
+- [x] Show waiting state from participant presence, not booking role
+- [x] Disconnect locally inactive participants and complete empty stale rooms
+
+Implementation note: LiveKit joins are verified before started status/notifications; client inactivity disconnects after 30 minutes, empty rooms complete after five minutes, and all sessions have a 24-hour cap. Room cleanup boundaries and stale-notification clearing pass mocked simulations. Docker image builds and LiveKit runs locally; authenticated two-participant end-to-end call verification remains pending.
+
 ## Follow-up: bilateral feedback and reschedule notifications
 - [x] Allow mentors to submit feedback for students after completed sessions
 - [x] Notify both participants when a session is rescheduled

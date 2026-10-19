@@ -242,6 +242,9 @@ interface LivePriData {
 }
 
 export default function Dashboard() {
+  const signedInUser = JSON.parse(localStorage.getItem('user') || '{}')
+  const isNonSoftwareSpecialization = ['ELECTRONICS_ELECTRICAL', 'OTHER_ENGINEERING'].includes(signedInUser.specialization)
+  const includeAlgoRank = !isNonSoftwareSpecialization
   const [stats, setStats] = useState<DashboardStats>(initialStats)
   const [sessions, setSessions] = useState<MentorshipSession[]>([])
   const [recentSessions, setRecentSessions] = useState<MentorshipSession[]>([])
@@ -266,13 +269,22 @@ export default function Dashboard() {
         throw new Error('Your session has expired. Please sign in again.')
       }
 
-      const [resumes, sessions, rankingResponse, problemsResponse, submissionsResponse, priHistory, livePriResponse] =
+      const emptyRanking: RankingStats = {
+        name: signedInUser.name || '',
+        totalProblemsSolved: 0,
+        acceptanceRate: 0,
+        currentStreak: 0,
+        rankingScore: 0,
+        rank: 0,
+      }
+      const [resumes, sessions, profileResponse, rankingResponse, problemsResponse, submissionsResponse, priHistory, livePriResponse] =
         await Promise.all([
           fetchJson<ResumeRecord[]>('/api/resume', token),
           fetchJson<MentorshipSession[]>('/api/connect/sessions', token),
-          fetchJson<{ user: RankingStats }>('/api/algorank/ranking/me', token).catch(() => null),
-          fetchJson<{ pagination?: { totalProblems?: number } }>('/api/algorank/problems?limit=1', token).catch(() => null),
-          fetchJson<{ submissions?: Submission[] }>('/api/algorank/submissions?limit=5', token).catch(() => null),
+          fetchJson<{ name?: string | null; currentStreak?: number }>('/api/auth/me', token),
+          includeAlgoRank ? fetchJson<{ user: RankingStats }>('/api/algorank/ranking/me', token).catch(() => null) : Promise.resolve(null),
+          includeAlgoRank ? fetchJson<{ pagination?: { totalProblems?: number } }>('/api/algorank/problems?limit=1', token).catch(() => null) : Promise.resolve(null),
+          includeAlgoRank ? fetchJson<{ submissions?: Submission[] }>('/api/algorank/submissions?limit=5', token).catch(() => null) : Promise.resolve(null),
           fetchJson<{ snapshots: PriSnapshot[] }>('/api/dashboard/pri/history?days=30', token),
           fetchJson<LivePriData>('/api/dashboard/pri/live', token).catch(() => null),
         ])
@@ -289,16 +301,9 @@ export default function Dashboard() {
         setLivePri(livePriResponse)
       }
 
-      const userStats = rankingResponse?.user ?? {
-        name: '',
-        totalProblemsSolved: 0,
-        acceptanceRate: 0,
-        currentStreak: 0,
-        rankingScore: 0,
-        rank: 0,
-      }
+      const userStats = rankingResponse?.user ?? emptyRanking
       const totalProblems = problemsResponse?.pagination?.totalProblems ?? 0
-      setAlgoRankUnavailable(!rankingResponse || !problemsResponse || !submissionsResponse)
+      setAlgoRankUnavailable(includeAlgoRank && (!rankingResponse || !problemsResponse || !submissionsResponse))
       const now = Date.now()
       const upcomingSessions = sessions.filter((session) =>
         ['pending', 'accepted'].includes(session.status.toLowerCase()) &&
@@ -309,13 +314,13 @@ export default function Dashboard() {
       ).length
 
       setStats({
-        name: userStats.name || '',
+        name: userStats.name || profileResponse.name || signedInUser.name || '',
         resumesCount: resumes.length,
         resumesCompleted: resumes.filter(isResumeComplete).length,
         problemsSolved: userStats.totalProblemsSolved,
         totalProblems,
         acceptanceRate: userStats.acceptanceRate,
-        currentStreak: userStats.currentStreak,
+        currentStreak: profileResponse.currentStreak ?? userStats.currentStreak,
         rankingScore: userStats.rankingScore,
         userRank: userStats.rank,
         connectSessions: sessions.length,
@@ -338,7 +343,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [includeAlgoRank, signedInUser.name])
 
   useEffect(() => {
     void fetchDashboardStats()
@@ -373,7 +378,7 @@ export default function Dashboard() {
     }
   }, [widgetPreferencesLoaded, widgetVisibility])
 
-  const visibleActivityWidgets = widgetVisibility.sessions || widgetVisibility.submissions || widgetVisibility.resumes
+  const visibleActivityWidgets = widgetVisibility.sessions || (includeAlgoRank && widgetVisibility.submissions) || widgetVisibility.resumes
 
   const problemChartData = useMemo<ProblemChartEntry[]>(() => {
     if (stats.totalProblems <= 0) return []
@@ -400,14 +405,14 @@ export default function Dashboard() {
   }, [sessions])
 
   const metricCards = [
-    {
+    ...(includeAlgoRank ? [{
       title: 'Problems solved',
       value: stats.problemsSolved,
       detail: `${stats.totalProblems > 0 ? Math.round((stats.problemsSolved / stats.totalProblems) * 100) : 0}% of problem library`,
       icon: Code2,
       iconClass: 'bg-primary/10 text-primary',
       href: '/algorank',
-    },
+    }] : []),
     {
       title: 'Resumes created',
       value: stats.resumesCount,
@@ -430,17 +435,17 @@ export default function Dashboard() {
       detail: 'Keep your practice consistent',
       icon: Flame,
       iconClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-      href: '/algorank',
+      href: includeAlgoRank ? '/algorank' : '/roadmaps',
     },
   ]
 
-  const performanceMetrics = [
+  const performanceMetrics = includeAlgoRank ? [
     { title: 'Acceptance rate', value: `${stats.acceptanceRate.toFixed(1)}%`, icon: Target },
     { title: 'Ranking score', value: stats.rankingScore.toFixed(0), icon: Trophy },
-  ]
+  ] : []
 
   const hasVerifiedPriData = priSnapshots.length > 0 || Boolean(
-    livePri && (livePri.interviewScore > 0 || livePri.algoRankScore > 0 || livePri.resumeScore > 0)
+    livePri && (livePri.interviewScore > 0 || (includeAlgoRank && livePri.algoRankScore > 0) || livePri.resumeScore > 0)
   )
   const priTrendData = useMemo(() => {
     if (priSnapshots.length > 0) {
@@ -534,7 +539,7 @@ export default function Dashboard() {
             <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-border bg-card p-3 shadow-lg">
               <p className="px-2 pb-2 text-sm font-semibold">Dashboard widgets</p>
               <div className="space-y-1">
-                {widgetOptions.map(({ key, label }) => (
+                {widgetOptions.filter(({ key }) => includeAlgoRank || !['problemProgress', 'performance', 'submissions'].includes(key)).map(({ key, label }) => (
                   <label key={key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted">
                     <input
                       type="checkbox"
@@ -650,11 +655,11 @@ export default function Dashboard() {
                   {
                     label: 'AI Interview',
                     value: currentPri.interviewScore,
-                    weight: '45%',
+                    weight: includeAlgoRank ? '45%' : '75%',
                     note: livePri?.hasRealInterview ? `${livePri.interviewCount} sessions` : undefined,
                   },
-                  { label: 'AlgoRank', value: currentPri.algoRankScore, weight: '40%' },
-                  { label: 'Resume', value: currentPri.resumeScore, weight: '15%' },
+                  ...(includeAlgoRank ? [{ label: 'AlgoRank', value: currentPri.algoRankScore, weight: '40%' }] : []),
+                  { label: 'Resume', value: currentPri.resumeScore, weight: includeAlgoRank ? '15%' : '25%' },
                 ].map((component) => (
                   <div key={component.label}>
                     <div className="mb-1 flex items-center justify-between gap-2 text-xs">
@@ -673,17 +678,23 @@ export default function Dashboard() {
             </div>
             <p className="mt-5 rounded-lg bg-muted/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
               {!hasVerifiedPriData
-                ? 'No verified AI interview, coding, or resume data is available yet, so the current PRI is 0.'
+                ? includeAlgoRank
+                  ? 'No verified AI interview, coding, or resume data is available yet, so the current PRI is 0.'
+                  : 'No verified AI interview or resume data is available yet, so the current PRI is 0.'
                 : livePri?.hasRealInterview
-                  ? `Calculated from your live AI Mock Interview sessions (${livePri.interviewCount} completed), AlgoRank coding accuracy, and Resume quality.`
-                  : 'Component scores · PRI = 0.45 × AI Interview + 0.40 × AlgoRank + 0.15 × Resume.'}
+                  ? includeAlgoRank
+                    ? `Calculated from your live AI Mock Interview sessions (${livePri.interviewCount} completed), AlgoRank coding accuracy, and Resume quality.`
+                    : `Calculated from your live AI Mock Interview sessions (${livePri.interviewCount} completed) and Resume quality.`
+                  : includeAlgoRank
+                    ? 'Component scores · PRI = 0.45 × AI Interview + 0.40 × AlgoRank + 0.15 × Resume.'
+                    : 'Component scores · PRI = 0.75 × AI Interview + 0.25 × Resume.'}
             </p>
           </CardContent>
         </Card>}
       </section>
 
-      {(widgetVisibility.problemProgress || widgetVisibility.mentorship) && <section aria-label="Progress and activity" className="grid gap-4 xl:grid-cols-3">
-        {widgetVisibility.problemProgress && <Card className="xl:col-span-2">
+      {((includeAlgoRank && widgetVisibility.problemProgress) || widgetVisibility.mentorship) && <section aria-label="Progress and activity" className="grid gap-4 xl:grid-cols-3">
+        {includeAlgoRank && widgetVisibility.problemProgress && <Card className="xl:col-span-2">
           <CardHeader className="flex-row items-start justify-between space-y-0">
             <div>
               <CardTitle>AlgoRank progress</CardTitle>
@@ -793,7 +804,7 @@ export default function Dashboard() {
         </Card>}
       </section>}
 
-      {widgetVisibility.performance && <section aria-label="AlgoRank performance" className="grid gap-4 sm:grid-cols-3">
+      {includeAlgoRank && widgetVisibility.performance && <section aria-label="AlgoRank performance" className="grid gap-4 sm:grid-cols-3">
         {performanceMetrics.map((metric) => {
           const Icon = metric.icon
           return (
@@ -842,7 +853,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>}
 
-        {widgetVisibility.submissions && <Card>
+        {includeAlgoRank && widgetVisibility.submissions && <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle>Recent submissions</CardTitle>
@@ -917,7 +928,7 @@ export default function Dashboard() {
         <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {[
             { icon: FileText, label: 'Create a resume', description: 'Build or update your profile', href: '/resume' },
-            { icon: BookOpen, label: 'Practice problems', description: 'Continue with AlgoRank', href: '/algorank' },
+            ...(includeAlgoRank ? [{ icon: BookOpen, label: 'Practice problems', description: 'Continue with AlgoRank', href: '/algorank' }] : []),
             { icon: ChartNoAxesCombined, label: 'View roadmaps', description: 'Plan your next learning steps', href: '/roadmaps' },
             { icon: UsersRound, label: 'Find a mentor', description: 'Get guidance from alumni', href: '/connect' },
             { icon: CalendarClock, label: 'View sessions', description: 'Manage your mentorships', href: '/connect/sessions' },

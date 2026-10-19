@@ -8,6 +8,7 @@ interface User {
   name: string
   role: 'USER' | 'ADMIN' | 'MENTOR'
   isAlumniMentor: boolean
+  specialization?: 'CS_SOFTWARE' | 'ELECTRONICS_ELECTRICAL' | 'OTHER_ENGINEERING' | null
   createdAt: string
 }
 
@@ -19,6 +20,7 @@ interface AuthResponse {
 
 export default function Register() {
   const [role, setRole] = useState<'USER' | 'MENTOR'>('USER')
+  const [specialization, setSpecialization] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -49,7 +51,7 @@ export default function Register() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, role, ...(role === 'USER' ? { specialization } : {}) }),
       })
 
       const data: AuthResponse = await response.json()
@@ -145,6 +147,26 @@ export default function Register() {
                 </div>
               )}
             </div>
+
+            {role === 'USER' && (
+              <div>
+                <label htmlFor="specialization" className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Study specialization
+                </label>
+                <select
+                  id="specialization"
+                  value={specialization}
+                  onChange={(event) => setSpecialization(event.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                >
+                  <option value="" disabled>Select your area</option>
+                  <option value="CS_SOFTWARE">Computer Science / Software</option>
+                  <option value="ELECTRONICS_ELECTRICAL">Electronics / Electrical</option>
+                  <option value="OTHER_ENGINEERING">Other Engineering</option>
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">

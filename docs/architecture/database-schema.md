@@ -64,6 +64,7 @@ Account roles are `USER`, `ADMIN`, and `MENTOR`. Mentor accounts are assigned on
 - `role`: Account role (USER, ADMIN, MENTOR)
 - `isAlumniMentor`: Approved mentor capability flag; set only after administrator approval
 - `mentorApprovalStatus`: Mentor application state (`NONE`, `PENDING`, `APPROVED`, or `REJECTED`)
+- `specialization`: Optional candidate track (`CS_SOFTWARE`, `ELECTRONICS_ELECTRICAL`, or `OTHER_ENGINEERING`); null on legacy accounts and mentors
 - `createdAt`: Account creation timestamp
 - `updatedAt`: Last update timestamp
 
@@ -97,6 +98,8 @@ model PriSnapshot {
 ```
 
 The API calculates the weighted PRI from the three 0–100 component inputs and stores one snapshot per user per UTC day. Re-saving that day updates its snapshot. The dashboard's sample trend is display-only; user history is based on explicitly entered scores until the interview and ATS modules provide saved scores.
+
+Candidate PRI weights are specialization-aware: CS/Software uses 45% interview, 40% AlgoRank, and 15% resume; Electronics/Electrical and Other Engineering exclude AlgoRank and normalize the remaining components to 75% interview and 25% resume. Resume quality remains a completeness score, not a resume-count score.
 
 ### Resume Model
 User resume data with template and content information.

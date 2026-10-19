@@ -186,6 +186,7 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 - **Token Endpoint**: `GET /api/connect/sessions/:id/livekit-token` (gated by session participant verification)
 - **UI Component**: `LiveKitMeetingView.tsx` with `@livekit/components-react`
 - **Features**: Screen sharing, adaptive bitrate (simulcast), participant tiles, active speaker detection, mic/cam controls
+- **Presence/lifecycle**: Session start notifications are emitted only after LiveKit confirms a participant joined. Client activity/active speakers keep a participant connected; 30 minutes of inactivity disconnects the client. Empty rooms are completed after a five-minute grace period, with a 24-hour hard cap and stale start notifications cleared during cleanup.
 
 ### Jitsi Meet (Fallback Engine)
 - **Purpose**: Fail-safe video conferencing backup if LiveKit container is stopped or unconfigured

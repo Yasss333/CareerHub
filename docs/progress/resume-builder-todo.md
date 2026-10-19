@@ -1,5 +1,11 @@
 # Resume Builder - Implementation Progress
 
+## Follow-up: resume PDF and cover-letter date
+- [x] Make resume PDF generation reliable and return a downloadable PDF
+- [x] Allow a cover-letter date override and default it to today
+
+Implementation note: Saved resumes download a server-generated Puppeteer A4 PDF scaled to one page; unsaved drafts keep the print-preview fallback. Cover-letter dates are validated, formatted, and inserted by the API so the chosen/default date is guaranteed. Web build and one-page PDF smoke tests pass locally and inside the API Docker image.
+
 ## Follow-up: print export and dashboard navigation
 - [x] Print only the resume as a professional single-page A4 document without browser-added page headers or footers
 - [x] Return the resume editor's Back to Dashboard action to the authenticated dashboard route

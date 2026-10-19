@@ -16,6 +16,7 @@ interface Session {
   status: string
   jitsiRoomUrl: string
   feedback: { rating?: number; mentorFeedback?: { rating: number; comment?: string } } | null
+  liveParticipants?: { identity: string; name: string }[]
   junior: {
     id: string
     name: string
@@ -27,6 +28,7 @@ interface Session {
       interviewCount: number
       problemsSolved: number
       dsaScore: number
+      algoRankIncluded: boolean
       resumeScore: number
       resumesCount: number
       readinessLevel: string
@@ -406,12 +408,19 @@ export default function SeniorConnectSessions() {
     return session.junior?.id === currentUser.id ? 'Junior' : 'Senior'
   }
 
-  const getStatusBadge = (status: string, role?: 'Junior' | 'Senior') => {
+  const getStatusBadge = (status: string, role?: 'Junior' | 'Senior', liveParticipants: Session['liveParticipants'] = []) => {
     if (status === 'started') {
+      const otherParticipantPresent = liveParticipants.some((participant) => participant.identity !== currentUser.id)
+      const currentParticipantPresent = liveParticipants.some((participant) => participant.identity === currentUser.id)
+      const message = otherParticipantPresent
+        ? role === 'Junior' ? 'Mentor in call' : 'Candidate in call'
+        : currentParticipantPresent
+          ? role === 'Junior' ? 'Waiting for mentor' : 'Waiting for candidate'
+          : 'Room reconnecting'
       return (
         <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 animate-pulse">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          {role === 'Junior' ? '🔴 Live: Mentor Waiting' : '🔴 Live in Progress'}
+          {message}
         </span>
       )
     }
@@ -468,7 +477,7 @@ export default function SeniorConnectSessions() {
     jitsiRoomUrl: session.jitsiRoomUrl
   }))
 
-  const liveStartedSession = sessions.find((s) => s.status === 'started')
+  const liveStartedSession = sessions.find((s) => s.status === 'started' && (s.liveParticipants?.length ?? 0) > 0)
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-10">
@@ -548,9 +557,11 @@ export default function SeniorConnectSessions() {
                     Live Call Started
                   </span>
                   <span className="text-xs text-emerald-100 font-medium">
-                    {getRoleLabel(liveStartedSession) === 'Junior'
-                      ? 'Your mentor is waiting in the video room!'
-                      : 'Candidate is waiting for you in the call room!'}
+                    {liveStartedSession.liveParticipants?.some((participant) => participant.identity === otherPerson(liveStartedSession)?.id)
+                      ? `${otherPerson(liveStartedSession)?.name || 'Your session partner'} is in the video room.`
+                      : getRoleLabel(liveStartedSession) === 'Junior'
+                        ? 'Waiting for your mentor to join the video room.'
+                        : 'Waiting for the candidate to join the video room.'}
                   </span>
                 </div>
                 <h3 className="text-lg font-bold mt-1 text-white flex items-center gap-2">
@@ -632,7 +643,7 @@ export default function SeniorConnectSessions() {
                     <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
                       {role}
                     </span>
-                    {getStatusBadge(session.status, role)}
+                    {getStatusBadge(session.status, role, session.liveParticipants)}
                   </div>
                 </div>
 
@@ -734,17 +745,17 @@ export default function SeniorConnectSessions() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className={`grid ${session.junior.pri.algoRankIncluded ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-xs`}>
                       <div className="p-2 rounded-lg bg-card border border-border">
                         <div className="text-muted-foreground">Mock Interview</div>
                         <div className="font-semibold text-foreground text-sm">{session.junior.pri.interviewAvg}%</div>
                         <div className="text-[10px] text-muted-foreground">{session.junior.pri.interviewCount} sessions</div>
                       </div>
-                      <div className="p-2 rounded-lg bg-card border border-border">
+                      {session.junior.pri.algoRankIncluded && <div className="p-2 rounded-lg bg-card border border-border">
                         <div className="text-muted-foreground">AlgoRank DSA</div>
                         <div className="font-semibold text-foreground text-sm">{session.junior.pri.dsaScore}%</div>
                         <div className="text-[10px] text-muted-foreground">{session.junior.pri.problemsSolved} solved</div>
-                      </div>
+                      </div>}
                       <div className="p-2 rounded-lg bg-card border border-border">
                         <div className="text-muted-foreground">Resume Quality</div>
                         <div className="font-semibold text-foreground text-sm">{session.junior.pri.resumeScore}%</div>

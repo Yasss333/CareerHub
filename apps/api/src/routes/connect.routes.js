@@ -2,7 +2,8 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import openai from '../config/ai.js';
-import { generateLiveKitToken, isLiveKitConfigured } from '../services/livekit.service.js';
+import { ensureLiveKitRoom, generateLiveKitToken, isLiveKitConfigured, listLiveKitParticipants } from '../services/livekit.service.js';
+import { calculatePriScore, isAlgoRankIncluded } from '../services/pri.service.js';
 import { recordActivityStreak } from '../services/activity-streak.service.js';
 
 const router = express.Router();
@@ -778,7 +779,7 @@ router.delete('/availability/:id', authenticate, requireAlumniMentor, async (req
 // Compute student's Placement Readiness Index (PRI) snapshot for mentor review
 const getCandidatePriSummary = async (userId) => {
   try {
-    const [interviewSessions, solvedProblems, resumes] = await Promise.all([
+    const [interviewSessions, solvedProblems, resumes, candidate] = await Promise.all([
       prisma.interviewSession.findMany({
         where: { userId, status: 'completed' },
         select: { id: true, feedback: true },
@@ -799,7 +800,8 @@ const getCandidatePriSummary = async (userId) => {
           personalInfo: true,
         },
         take: 5
-      })
+      }),
+      prisma.user.findUnique({ where: { id: userId }, select: { specialization: true } })
     ]);
 
     let totalInterviewScore = 0;
@@ -812,7 +814,8 @@ const getCandidatePriSummary = async (userId) => {
       }
     }
     const interviewAvg = validInterviewCount > 0 ? Math.round(totalInterviewScore / validInterviewCount) : 0;
-    const dsaScore = Math.min(100, Math.round((solvedProblems.length / 25) * 100));
+    const algoRankIncluded = isAlgoRankIncluded(candidate?.specialization);
+    const dsaScore = algoRankIncluded ? Math.min(100, Math.round((solvedProblems.length / 25) * 100)) : 0;
     const resumeScore = resumes.reduce((bestScore, resume) => {
       let score = 0;
       if (resume.professionSummary && resume.professionSummary.length > 20) score += 15;
@@ -824,7 +827,12 @@ const getCandidatePriSummary = async (userId) => {
       return Math.max(bestScore, Math.min(100, score));
     }, 0);
 
-    const pri = Math.round(interviewAvg * 0.45 + dsaScore * 0.40 + resumeScore * 0.15);
+    const pri = Math.round(calculatePriScore({
+      interviewScore: interviewAvg,
+      algoRankScore: dsaScore,
+      resumeScore,
+      specialization: candidate?.specialization,
+    }));
 
     return {
       score: pri,
@@ -832,6 +840,7 @@ const getCandidatePriSummary = async (userId) => {
       interviewCount: validInterviewCount,
       problemsSolved: solvedProblems.length,
       dsaScore,
+      algoRankIncluded,
       resumeScore,
       resumesCount: resumes.length,
       readinessLevel: pri >= 80 ? 'High' : pri >= 60 ? 'Moderate' : 'Developing'
@@ -910,7 +919,23 @@ router.get('/sessions', authenticate, async (req, res) => {
       })
     );
     
-    res.json(sessionsWithPri);
+    const sessionsWithPresence = await Promise.all(sessionsWithPri.map(async (session) => {
+      if (session.status !== 'started' || !isLiveKitConfigured()) {
+        return { ...session, liveParticipants: [] };
+      }
+      try {
+        const participants = await listLiveKitParticipants(`careerhub-session-${session.id}`);
+        return {
+          ...session,
+          liveParticipants: participants.map(({ identity, name }) => ({ identity, name })),
+        };
+      } catch (presenceError) {
+        console.warn(`Could not read LiveKit presence for session ${session.id}:`, presenceError.message);
+        return { ...session, liveParticipants: [] };
+      }
+    }));
+
+    res.json(sessionsWithPresence);
   } catch (error) {
     console.error('Fetch sessions error:', error);
     res.status(500).json({ error: 'Failed to fetch sessions' });
@@ -1189,40 +1214,10 @@ router.post('/sessions/:id/start', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Session must be accepted or started' });
     }
     
-    let updatedSession = session;
-    if (session.status !== 'started') {
-      updatedSession = await prisma.sessionBooking.update({
-        where: { id: req.params.id },
-        data: { status: 'started' }
-      });
-
-      // Dispatch in-app notification to the other participant (candidate or mentor)
-      const targetUserId = req.user.id === session.seniorId ? session.juniorId : session.seniorId;
-      const callerName = req.user.name || (req.user.id === session.seniorId ? 'Mentor' : 'Candidate');
-      
-      try {
-        await prisma.notification.create({
-          data: {
-            userId: targetUserId,
-            type: 'session_started',
-            title: 'Meeting Started - Please Join Now!',
-            message: `${callerName} has started the video meeting for "${session.topic}". Click to join immediately.`,
-            data: {
-              sessionId: session.id,
-              jitsiRoomUrl: updatedSession.jitsiRoomUrl,
-              topic: session.topic
-            }
-          }
-        });
-      } catch (notifErr) {
-        console.warn('Failed to create session_started notification:', notifErr.message);
-      }
-    }
-    
     res.json({
-      jitsiRoomUrl: updatedSession.jitsiRoomUrl,
-      jitsiRoomName: updatedSession.jitsiRoomName,
-      status: 'started'
+      jitsiRoomUrl: session.jitsiRoomUrl,
+      jitsiRoomName: session.jitsiRoomName,
+      status: session.status
     });
   } catch (error) {
     console.error('Start session error:', error);
@@ -1439,8 +1434,8 @@ router.get('/sessions/:id/livekit-token', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'You are not authorized to join this meeting' });
     }
 
-    if (session.status === 'cancelled' || session.status === 'rejected') {
-      return res.status(400).json({ error: 'This session has been cancelled or rejected' });
+    if (!['accepted', 'started'].includes(session.status)) {
+      return res.status(400).json({ error: 'This session is not available to join' });
     }
 
     // Default fallback Jitsi URL
@@ -1463,6 +1458,7 @@ router.get('/sessions/:id/livekit-token', authenticate, async (req, res) => {
     });
 
     const roomName = `careerhub-session-${session.id}`;
+    await ensureLiveKitRoom(roomName);
     const tokenData = await generateLiveKitToken({
       roomName,
       participantIdentity: req.user.id,
@@ -1488,6 +1484,72 @@ router.get('/sessions/:id/livekit-token', authenticate, async (req, res) => {
       provider: 'jitsi',
       fallbackUrl: `https://meet.jit.si/seniorconnect-session-${req.params.id}`
     });
+  }
+});
+
+router.post('/sessions/:id/livekit-presence', authenticate, async (req, res) => {
+  try {
+    const { event } = req.body || {};
+    if (!['joined', 'left'].includes(event)) {
+      return res.status(400).json({ error: "event must be 'joined' or 'left'" });
+    }
+    if (!isLiveKitConfigured()) {
+      return res.status(503).json({ error: 'LiveKit presence is unavailable' });
+    }
+
+    const session = await prisma.sessionBooking.findFirst({
+      where: { id: req.params.id, OR: [{ juniorId: req.user.id }, { seniorId: req.user.id }] },
+    });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    if (!['accepted', 'started'].includes(session.status)) {
+      return res.status(409).json({ error: 'This session is no longer available' });
+    }
+
+    if (event === 'joined') {
+      const roomName = `careerhub-session-${session.id}`;
+      const participants = await listLiveKitParticipants(roomName);
+      if (!participants.some((participant) => participant.identity === req.user.id)) {
+        return res.status(409).json({ error: 'LiveKit has not confirmed your room connection yet' });
+      }
+
+      const firstJoin = await prisma.sessionBooking.updateMany({
+        where: { id: session.id, status: 'accepted' },
+        data: { status: 'started' },
+      });
+      if (firstJoin.count === 1) {
+        const otherUserId = req.user.id === session.juniorId ? session.seniorId : session.juniorId;
+        try {
+          await prisma.notification.create({
+            data: {
+              userId: otherUserId,
+              type: 'session_started',
+              title: 'Meeting Started - Please Join Now!',
+              message: `A participant has joined the video meeting for "${session.topic}".`,
+              data: { sessionId: session.id, topic: session.topic },
+            },
+          });
+        } catch (notificationError) {
+          console.warn('Failed to create session_started notification:', notificationError.message);
+        }
+      }
+    }
+
+    let participants = [];
+    try {
+      participants = await listLiveKitParticipants(`careerhub-session-${session.id}`);
+    } catch (presenceError) {
+      if (event === 'joined') throw presenceError;
+    }
+    if (event === 'left' && session.status === 'started' && participants.length === 0) {
+      await prisma.sessionBooking.updateMany({
+        where: { id: session.id, status: 'started', updatedAt: session.updatedAt },
+        data: { updatedAt: new Date() },
+      });
+    }
+    return res.json({ status: session.status === 'started' || event === 'joined' ? 'started' : session.status, participants });
+  } catch (error) {
+    console.error('LiveKit presence update failed:', error);
+    return res.status(500).json({ error: 'Could not update meeting presence' });
   }
 });
 

@@ -256,7 +256,7 @@ export default function ResumeBuilder() {
     }
   };
 
-  const handleDownload = () => {
+  const printResumePreview = () => {
     const resumeDocument = document.querySelector<HTMLElement>('.resume-print-document');
     if (!resumeDocument) return;
 
@@ -270,7 +270,10 @@ export default function ResumeBuilder() {
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map((style) => style.outerHTML)
       .join('\n');
-    printWindow.onload = () => {
+    let printStarted = false;
+    const startPrint = () => {
+      if (printStarted) return;
+      printStarted = true;
       const page = printWindow.document.querySelector<HTMLElement>('.resume-print-document');
       const content = page?.firstElementChild as HTMLElement | null;
       if (page && content && content.scrollHeight > page.clientHeight) {
@@ -280,7 +283,6 @@ export default function ResumeBuilder() {
       }
       printWindow.focus();
       printWindow.print();
-      printWindow.close();
     };
     printWindow.document.write(`<!doctype html>
       <html><head><meta charset="utf-8"><title>Resume</title>${styles}
@@ -297,6 +299,42 @@ export default function ResumeBuilder() {
         }
       </style></head><body>${resumeDocument.outerHTML}</body></html>`);
     printWindow.document.close();
+    if (printWindow.document.readyState === 'complete') {
+      printWindow.setTimeout(startPrint, 250);
+    } else {
+      printWindow.addEventListener('load', () => printWindow.setTimeout(startPrint, 250), { once: true });
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!resumeId) {
+      printResumePreview();
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/pdf/${resumeId}/pdf`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'PDF generation failed');
+      }
+
+      const pdfUrl = URL.createObjectURL(await response.blob());
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pdfUrl;
+      downloadLink.download = `${resumeData.title.replace(/[^a-z0-9_-]+/gi, '_') || 'resume'}.pdf`;
+      document.body.append(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
+    } catch (error) {
+      console.error('Resume PDF download failed:', error);
+      alert('Could not generate the PDF. Opening the print preview instead.');
+      printResumePreview();
+    }
   };
 
   // AI Summary Enhancement

@@ -22,6 +22,12 @@ enum Role {
   MENTOR
 }
 
+enum Specialization {
+  CS_SOFTWARE
+  ELECTRONICS_ELECTRICAL
+  OTHER_ENGINEERING
+}
+
 model User {
   id             String   @id @default(uuid())
   email          String   @unique
@@ -29,6 +35,7 @@ model User {
   role           Role     @default(USER)
   isAlumniMentor Boolean  @default(false)
   mentorApprovalStatus String @default("NONE")
+  specialization Specialization?
   
   // Profile fields (merged from all systems)
   name           String?

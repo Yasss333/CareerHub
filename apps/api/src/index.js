@@ -15,6 +15,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import interviewRoutes from './routes/interview.routes.js';
 import achievementRoutes from './routes/achievement.routes.js';
 import recommendationRoutes from './routes/recommendation.routes.js';
+import { cleanupStaleLiveSessions } from './services/livekit.service.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -172,8 +173,16 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   ensureDatabaseSeeded();
 });
 
+const liveSessionCleanupTimer = setInterval(() => {
+  cleanupStaleLiveSessions(prisma).catch((error) => {
+    console.error('Live session cleanup failed:', error.message);
+  });
+}, 60_000);
+liveSessionCleanupTimer.unref();
+
 const shutdown = (signal) => {
   console.log(`${signal} received; closing HTTP server.`);
+  clearInterval(liveSessionCleanupTimer);
   server.close(async () => {
     await prisma.$disconnect();
     process.exit(0);

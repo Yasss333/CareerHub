@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Replaced the placeholder resume HTML response with an authenticated A4 PDF download, fixed the browser print fallback, and made cover-letter dates selectable with a guaranteed current-date default.
+- Fixed false live-call alerts by deriving meeting state from verified LiveKit participants; added 30-minute client inactivity disconnect, five-minute empty-room cleanup, and a 24-hour hard session cap.
+- Made AlgoRank optional for Electronics/Electrical and Other Engineering candidates, with specialization-aware PRI weights and a full-scale normalized score.
 - Fixed a ranking endpoint runtime error and made the dashboard retain its non-AlgoRank data when ranking, problem, or submission APIs are temporarily unavailable.
 - Fixed resume editor dashboard navigation and isolated resume PDF printing to a single-page A4 document; cover-letter PDFs now use a clean print layout without browser-added page headers or footers.
 - Fixed landing-page Explore Modules hover contrast with a visible multicolor gradient.
@@ -22,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed legacy resume test feature from `ResumeBuilder.tsx` as requested, focusing the workspace on content editing and live preview
 
 ### Added
+- Added optional candidate specialization selection at registration and persisted it through a nullable `User.specialization` enum field; existing accounts remain compatible and retain their current AlgoRank visibility.
 - Added a shared UTC-day activity streak across resume creation/import/duplication, roadmap creation and milestone progress, accepted AlgoRank solves, completed interviews, and completed mentorship sessions; the displayed streak expires after a day without activity.
 - Automated database seeding for deployed AlgoRank:
   - Added programmatic `seedDatabase(client)` export in `apps/api/prisma/seed.js` creating 500+ curated and categorized DSA problems, demo admin (`admin@algorank.com`), and recruiter accounts.

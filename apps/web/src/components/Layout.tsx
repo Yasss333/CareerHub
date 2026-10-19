@@ -21,6 +21,7 @@ function LayoutContent() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const settingsPath = user.role === 'MENTOR' ? '/mentor/settings' : '/settings'
+  const isNonSoftwareSpecialization = ['ELECTRONICS_ELECTRICAL', 'OTHER_ENGINEERING'].includes(user.specialization)
 
   const toggleSidebar = () => {
     setSidebarCollapsed((collapsed) => {
@@ -41,7 +42,7 @@ function LayoutContent() {
         if (!res.ok) return
         const sessions = await res.json()
         if (Array.isArray(sessions) && sessions.length > 0) {
-          const active = sessions.find((s: any) => s.status === 'started')
+          const active = sessions.find((s: any) => s.status === 'started' && s.liveParticipants?.length > 0)
           if (active) {
             const isJunior = active.junior?.id === user.id
             const peerName = isJunior ? active.senior?.name : active.junior?.name
@@ -50,9 +51,8 @@ function LayoutContent() {
               topic: active.topic,
               mentorName: peerName || 'Mentor'
             })
-          } else {
-            setLiveMeeting(null)
           }
+          else setLiveMeeting(null)
         } else {
           setLiveMeeting(null)
         }
@@ -76,7 +76,7 @@ function LayoutContent() {
     { path: '/resume', label: 'Resume Builder', icon: FileText },
     { path: '/connect', label: 'Senior Connect', icon: Users },
     { path: '/interview', label: 'AI Interview', icon: MessageSquare },
-    { path: '/algorank', label: 'AlgoRank', icon: Code },
+    ...(!isNonSoftwareSpecialization ? [{ path: '/algorank', label: 'AlgoRank', icon: Code }] : []),
     { path: '/roadmaps', label: 'Roadmaps', icon: Map },
     ...(user.role === 'ADMIN'
       ? [{ path: '/admin/mentor-applications', label: 'Admin review', icon: ShieldCheck }]

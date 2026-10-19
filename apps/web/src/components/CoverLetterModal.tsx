@@ -7,9 +7,15 @@ interface CoverLetterModalProps {
   resumeId: string;
 }
 
+const getTodayDateInput = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
 const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) => {
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
+  const [letterDate, setLetterDate] = useState(getTodayDateInput);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
@@ -29,7 +35,7 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ resumeId, companyName, jobTitle, notes })
+        body: JSON.stringify({ resumeId, companyName, jobTitle, letterDate, notes })
       });
 
       if (response.ok) {
@@ -174,6 +180,7 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
   const resetModal = () => {
     setCompanyName("");
     setJobTitle("");
+    setLetterDate(getTodayDateInput());
     setNotes("");
     setCoverLetter(null);
     setLoading(false);
@@ -216,6 +223,17 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder="e.g., Google"
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Letter Date
+                </label>
+                <input
+                  type="date"
+                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-primary outline-none"
+                  value={letterDate}
+                  onChange={(e) => setLetterDate(e.target.value)}
                 />
               </div>
               <div>

@@ -1,4 +1,10 @@
 **/node_modules
+node_modules/
+**/node_modules/
+**/node_modules/**
+/node_modules
+/node_modules/@careerhub
+/node_modules/@careerhub/**
 **/dist
 **/build
 **/.vite

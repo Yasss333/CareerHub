@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import puppeteer from 'puppeteer';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -23,7 +24,7 @@ const authenticate = (req, res, next) => {
   }
 };
 
-// Generate PDF from resume (placeholder - PDF generation to be implemented)
+// Generate a downloadable PDF from a resume.
 router.post('/:id/pdf', authenticate, async (req, res) => {
   try {
     const resume = await prisma.resume.findFirst({
@@ -37,19 +38,41 @@ router.post('/:id/pdf', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Resume not found' });
     }
 
-    // PDF generation placeholder
-    // For now, return HTML content that can be printed to PDF
-    const htmlContent = generateResumeHTML(resume);
-    
-    res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Content-Disposition', `inline; filename="${resume.title.replace(/\s+/g, '_')}_resume.html"`);
-    res.send(htmlContent);
-    
+    const pdf = await generateResumePdf(resume);
+    const filename = `${resume.title.replace(/[^a-z0-9_-]+/gi, '_') || 'resume'}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdf.length);
+    return res.send(pdf);
   } catch (error) {
     console.error('PDF generation error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    return res.status(500).json({ error: 'Failed to generate PDF' });
   }
 });
+
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+})[character]);
+
+export const generateResumePdf = async (resume) => {
+  const browser = await puppeteer.launch({
+    headless: true,
+    ...(process.env.PUPPETEER_EXECUTABLE_PATH ? { executablePath: process.env.PUPPETEER_EXECUTABLE_PATH } : {}),
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(generateResumeHTML(resume), { waitUntil: 'networkidle0' });
+    const contentHeight = await page.evaluate(() => Math.max(document.body.scrollHeight, document.documentElement.scrollHeight));
+    const printableHeight = ((297 - 24) * 96) / 25.4;
+    const scale = Math.min(1, printableHeight / Math.max(contentHeight, 1));
+    if (scale < 1) await page.addStyleTag({ content: `body { zoom: ${scale}; }` });
+    return await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true });
+  } finally {
+    await browser.close();
+  }
+};
 
 // Helper function to generate HTML for resume
 function generateResumeHTML(resume) {
@@ -59,31 +82,34 @@ function generateResumeHTML(resume) {
   const education = resume.education || [];
   const skills = resume.skills || [];
   
+  const accentColor = /^#[\da-f]{3}(?:[\da-f]{3})?$/i.test(resume.accentColor || '') ? resume.accentColor : '#3B82F6';
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>${resume.title}</title>
+  <title>${escapeHtml(resume.title)}</title>
   <style>
+    @page { size: A4; margin: 12mm; }
     body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
       color: #333;
+      font-size: 10pt;
+      line-height: 1.4;
     }
     .header {
       text-align: center;
       margin-bottom: 30px;
-      border-bottom: 2px solid ${resume.accentColor || '#3B82F6'};
-      padding-bottom: 20px;
+      border-bottom: 2px solid ${accentColor};
+      padding-bottom: 12px;
+      margin-bottom: 18px;
     }
     .name {
       font-size: 28px;
       font-weight: bold;
-      color: ${resume.accentColor || '#3B82F6'};
-      margin-bottom: 10px;
+      color: ${accentColor};
+      margin-bottom: 6px;
     }
     .contact-info {
       font-size: 14px;
@@ -95,14 +121,14 @@ function generateResumeHTML(resume) {
     .section-title {
       font-size: 18px;
       font-weight: bold;
-      color: ${resume.accentColor || '#3B82F6'};
-      margin-bottom: 15px;
+      color: ${accentColor};
+      margin-bottom: 8px;
       text-transform: uppercase;
       border-bottom: 1px solid #ddd;
-      padding-bottom: 5px;
+      padding-bottom: 3px;
     }
     .item {
-      margin-bottom: 15px;
+      margin-bottom: 9px;
     }
     .item-title {
       font-weight: bold;
@@ -123,7 +149,7 @@ function generateResumeHTML(resume) {
       gap: 8px;
     }
     .skill {
-      background: ${resume.accentColor || '#3B82F6'}20;
+      background: ${accentColor}20;
       padding: 5px 10px;
       border-radius: 4px;
       font-size: 14px;
@@ -133,26 +159,27 @@ function generateResumeHTML(resume) {
       line-height: 1.6;
     }
     @media print {
-      body { margin: 0; }
+      body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .section, .item { break-inside: avoid; }
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="name">${personalInfo.fullName || 'Your Name'}</div>
+    <div class="name">${escapeHtml(personalInfo.fullName || 'Your Name')}</div>
     <div class="contact-info">
-      ${personalInfo.email ? `${personalInfo.email} | ` : ''}
-      ${personalInfo.phone ? `${personalInfo.phone} | ` : ''}
-      ${personalInfo.location ? personalInfo.location : ''}
-      ${personalInfo.linkedin ? `<br/>LinkedIn: ${personalInfo.linkedin}` : ''}
-      ${personalInfo.website ? `<br/>Website: ${personalInfo.website}` : ''}
+      ${personalInfo.email ? `${escapeHtml(personalInfo.email)} | ` : ''}
+      ${personalInfo.phone ? `${escapeHtml(personalInfo.phone)} | ` : ''}
+      ${personalInfo.location ? escapeHtml(personalInfo.location) : ''}
+      ${personalInfo.linkedin ? `<br/>LinkedIn: ${escapeHtml(personalInfo.linkedin)}` : ''}
+      ${personalInfo.website ? `<br/>Website: ${escapeHtml(personalInfo.website)}` : ''}
     </div>
   </div>
 
   ${resume.professionSummary ? `
   <div class="section">
     <div class="section-title">Professional Summary</div>
-    <div class="summary">${resume.professionSummary}</div>
+    <div class="summary">${escapeHtml(resume.professionSummary)}</div>
   </div>
   ` : ''}
 
@@ -161,9 +188,9 @@ function generateResumeHTML(resume) {
     <div class="section-title">Experience</div>
     ${experience.map(exp => `
       <div class="item">
-        <div class="item-title">${exp.position || 'Position'}</div>
-        <div class="item-subtitle">${exp.company || 'Company'} | ${exp.startDate || ''} - ${exp.isCurrent ? 'Present' : (exp.endDate || '')}</div>
-        <div class="item-description">${exp.description || ''}</div>
+        <div class="item-title">${escapeHtml(exp.position || 'Position')}</div>
+        <div class="item-subtitle">${escapeHtml(exp.company || 'Company')} | ${escapeHtml(exp.startDate || '')} - ${exp.isCurrent ? 'Present' : escapeHtml(exp.endDate || '')}</div>
+        <div class="item-description">${escapeHtml(exp.description || '')}</div>
       </div>
     `).join('')}
   </div>
@@ -174,9 +201,9 @@ function generateResumeHTML(resume) {
     <div class="section-title">Projects</div>
     ${projects.map(project => `
       <div class="item">
-        <div class="item-title">${project.name || 'Project Name'}</div>
-        <div class="item-subtitle">${project.type || 'Project Type'}</div>
-        <div class="item-description">${project.description || ''}</div>
+        <div class="item-title">${escapeHtml(project.name || 'Project Name')}</div>
+        <div class="item-subtitle">${escapeHtml(project.type || 'Project Type')}</div>
+        <div class="item-description">${escapeHtml(project.description || '')}</div>
       </div>
     `).join('')}
   </div>
@@ -187,9 +214,9 @@ function generateResumeHTML(resume) {
     <div class="section-title">Education</div>
     ${education.map(edu => `
       <div class="item">
-        <div class="item-title">${edu.degree || 'Degree'}</div>
-        <div class="item-subtitle">${edu.institution || 'Institution'} | ${edu.field || 'Field'}</div>
-        ${edu.gpa ? `<div class="item-subtitle">GPA: ${edu.gpa}</div>` : ''}
+        <div class="item-title">${escapeHtml(edu.degree || 'Degree')}</div>
+        <div class="item-subtitle">${escapeHtml(edu.institution || 'Institution')} | ${escapeHtml(edu.field || 'Field')}</div>
+        ${edu.gpa ? `<div class="item-subtitle">GPA: ${escapeHtml(edu.gpa)}</div>` : ''}
       </div>
     `).join('')}
   </div>
@@ -199,16 +226,11 @@ function generateResumeHTML(resume) {
   <div class="section">
     <div class="section-title">Skills</div>
     <div class="skills">
-      ${skills.map(skill => `<div class="skill">${skill}</div>`).join('')}
+      ${skills.map(skill => `<div class="skill">${escapeHtml(skill)}</div>`).join('')}
     </div>
   </div>
   ` : ''}
   
-  <script>
-    window.onload = function() {
-      window.print();
-    }
-  </script>
 </body>
 </html>
   `;

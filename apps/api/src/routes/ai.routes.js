@@ -174,7 +174,7 @@ Be strict but fair. Consider skills, experience, education, and projects. Do not
 // Generate cover letter
 router.post('/cover-letter', authenticate, async (req, res) => {
   try {
-    const { resumeId, companyName, jobTitle, notes } = req.body;
+    const { resumeId, companyName, jobTitle, letterDate, notes } = req.body;
     const userId = req.user.id;
 
     if (!resumeId || !companyName) {
@@ -189,10 +189,21 @@ router.post('/cover-letter', authenticate, async (req, res) => {
       return res.status(404).json({ message: "Resume not found" });
     }
 
-    const systemPrompt = `You are a professional cover letter writer. Write a concise, confident cover letter tailored to the job description. Use the user's experience, skills, and projects from the resume. Be specific, avoid generic phrases. Do not mention AI. Keep it to 3-4 paragraphs. Format it as plain text with line breaks.`;
+    const requestedDate = typeof letterDate === 'string' ? letterDate.trim() : '';
+    const dateValue = requestedDate || new Date().toISOString().slice(0, 10);
+    const parsedDate = new Date(`${dateValue}T00:00:00.000Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dateValue) {
+      return res.status(400).json({ message: "letterDate must be a valid YYYY-MM-DD date" });
+    }
+    const formattedDate = new Intl.DateTimeFormat('en-US', {
+      month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC'
+    }).format(parsedDate);
+
+    const systemPrompt = `You are a professional cover letter writer. Write a concise, confident cover letter tailored to the job description. Use the user's experience, skills, and projects from the resume. Be specific, avoid generic phrases. Do not mention AI. Keep it to 3-4 paragraphs. Format it as plain text with line breaks and put the exact supplied letter date on the first line.`;
 
     let userPrompt = `Resume Data:\n${JSON.stringify(resume, null, 2)}\n\n`;
     userPrompt += `Company: ${companyName}\n`;
+    userPrompt += `Letter date (include exactly on the first line): ${formattedDate}\n`;
     if (jobTitle) userPrompt += `Job Title: ${jobTitle}\n`;
     if (notes) userPrompt += `Additional Notes: ${notes}\n`;
     userPrompt += `Write a cover letter.`;
@@ -205,7 +216,9 @@ router.post('/cover-letter', authenticate, async (req, res) => {
       ],
     });
 
-    const coverLetter = response.choices[0].message.content;
+    const generatedLetter = String(response.choices[0].message.content || '').trim();
+    const letterBody = generatedLetter.replace(/^(?:date:\s*)?(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}\s*\r?\n+/i, '');
+    const coverLetter = `${formattedDate}\n\n${letterBody}`;
     return res.status(200).json({ coverLetter });
   } catch (error) {
     console.error("Cover Letter Error:", error);

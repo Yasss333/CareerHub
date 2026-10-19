@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { calculatePriScore, isAlgoRankIncluded } from '../services/pri.service.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -57,7 +58,7 @@ const calculatePri = async (userId) => {
   const [userStats, totalProblems, resumes] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { totalProblemsSolved: true },
+      select: { totalProblemsSolved: true, specialization: true },
     }),
     prisma.problem.count(),
     prisma.resume.findMany({
@@ -69,6 +70,7 @@ const calculatePri = async (userId) => {
   const algoRankScore = totalProblems > 0
     ? Math.min(100, Math.round(((userStats?.totalProblemsSolved || 0) / Math.max(1, Math.min(totalProblems, 25))) * 100))
     : 0;
+  const algoRankIncluded = isAlgoRankIncluded(userStats?.specialization);
   let resumeScore = 0;
   for (const resume of resumes) {
     let currentScore = 0;
@@ -82,10 +84,11 @@ const calculatePri = async (userId) => {
   }
 
   return {
-    score: Number((0.45 * interviewScore + 0.40 * algoRankScore + 0.15 * resumeScore).toFixed(2)),
+    score: calculatePriScore({ interviewScore, algoRankScore, resumeScore, specialization: userStats?.specialization }),
     interviewScore,
-    algoRankScore,
+    algoRankScore: algoRankIncluded ? algoRankScore : 0,
     resumeScore,
+    algoRankIncluded,
     hasRealInterview: interviewScores.length > 0,
     interviewCount: interviewScores.length,
     latestInterviewScore: interviewScores[0] ?? null,
