@@ -1,5 +1,11 @@
 # CareerHub Dashboard Progress
 
+## Follow-up: cross-module activity streak
+- [x] Count meaningful resume, roadmap, interview, mentorship, and accepted problem-solving activity toward the user's daily streak
+- [x] Keep streak updates idempotent within a day and preserve the longest streak
+
+Implementation note: A shared UTC-day service updates the existing streak fields without a schema migration. Same-day idempotency and consecutive-day increment are verified with a mocked Prisma client; database-backed flow checks remain pending.
+
 ## Follow-up: verified, database-derived PRI
 - [ ] Remove sample scores/history and show zero until actual source data is available
 - [ ] Disable student-entered scores and derive daily snapshots from verified database data

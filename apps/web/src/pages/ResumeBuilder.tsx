@@ -257,7 +257,46 @@ export default function ResumeBuilder() {
   };
 
   const handleDownload = () => {
-    window.print();
+    const resumeDocument = document.querySelector<HTMLElement>('.resume-print-document');
+    if (!resumeDocument) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to download your resume.');
+      return;
+    }
+
+    printWindow.opener = null;
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((style) => style.outerHTML)
+      .join('\n');
+    printWindow.onload = () => {
+      const page = printWindow.document.querySelector<HTMLElement>('.resume-print-document');
+      const content = page?.firstElementChild as HTMLElement | null;
+      if (page && content && content.scrollHeight > page.clientHeight) {
+        const scale = page.clientHeight / content.scrollHeight;
+        content.style.zoom = String(scale);
+        content.style.width = `${100 / scale}%`;
+      }
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
+    printWindow.document.write(`<!doctype html>
+      <html><head><meta charset="utf-8"><title>Resume</title>${styles}
+      <style>
+        @page { size: A4; margin: 0; }
+        html, body { width: 210mm; height: 297mm; margin: 0; background: #fff; }
+        body { color: #1f2937; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .resume-print-document { width: 210mm; height: 297mm; overflow: hidden; box-sizing: border-box; background: #fff; }
+        .resume-print-document > div { width: 100% !important; max-width: none !important; min-height: 100% !important; height: auto !important; margin: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: #fff !important; }
+        @media print {
+          html, body { width: 210mm; height: 297mm; margin: 0 !important; }
+          .resume-print-document { page-break-after: avoid; }
+          .resume-print-document section { break-inside: avoid; }
+        }
+      </style></head><body>${resumeDocument.outerHTML}</body></html>`);
+    printWindow.document.close();
   };
 
   // AI Summary Enhancement
@@ -437,7 +476,7 @@ export default function ResumeBuilder() {
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-4 print:hidden">
         {/* Back to Dashboard Button */}
         <Link
-          to="/resumes"
+          to="/"
           className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-2 text-xs font-semibold text-slate-600 shadow-xs transition-all hover:border-cyan-300 hover:bg-emerald-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-muted"
         >
           <ArrowLeft className="size-4" />
@@ -1294,7 +1333,7 @@ export default function ResumeBuilder() {
           }`}
         >
           <div className="sticky top-6 rounded-2xl border border-gray-200 bg-slate-100 p-4 shadow-xl dark:border-border dark:bg-slate-900 print:m-0 print:border-none print:p-0 print:shadow-none">
-            <div className="mx-auto max-w-[850px] overflow-hidden rounded-sm bg-white shadow-2xl dark:bg-card print:shadow-none">
+            <div className="resume-print-document mx-auto max-w-[850px] overflow-hidden rounded-sm bg-white shadow-2xl dark:bg-card print:shadow-none">
               {getTemplateComponent()}
             </div>
           </div>

@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { buildRunnable, safeRunCodeWithPiston, getLanguageConfig } from '../libs/piston.js';
+import { recordActivityStreak } from '../services/activity-streak.service.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -87,37 +88,7 @@ const updateUserRankingStats = async (userId) => {
 
     const averageSolveTime = solveTimeCount > 0 ? totalSolveTime / solveTimeCount : null;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { lastSolvedDate: true, currentStreak: true, longestStreak: true }
-    });
-
-    let currentStreak = user?.currentStreak || 0;
-    let longestStreak = user?.longestStreak || 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const lastSolved = user?.lastSolvedDate ? new Date(user.lastSolvedDate) : null;
-    lastSolved?.setHours(0, 0, 0, 0);
-
-    if (lastSolved) {
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      if (lastSolved.getTime() === yesterday.getTime()) {
-        currentStreak++;
-      } else if (lastSolved.getTime() === today.getTime()) {
-        // already solved today, keep streak
-      } else {
-        currentStreak = 1;
-      }
-    } else {
-      currentStreak = 1;
-    }
-
-    if (currentStreak > longestStreak) {
-      longestStreak = currentStreak;
-    }
+    const { currentStreak } = await recordActivityStreak(prisma, userId);
 
     const normalizedProblems = Math.min(totalSolved / 100, 1) * 50;
     const normalizedAcceptance = (acceptanceRate / 100) * 25;
@@ -131,9 +102,6 @@ const updateUserRankingStats = async (userId) => {
         totalProblemsSolved: totalSolved,
         acceptanceRate,
         averageSolveTime,
-        currentStreak,
-        longestStreak,
-        lastSolvedDate: new Date(),
         rankingScore
       }
     });
@@ -1029,6 +997,7 @@ router.get('/leaderboard', optionalAuth, async (req, res) => {
         averageSolveTime: true,
         currentStreak: true,
         longestStreak: true,
+        lastSolvedDate: true,
         rankingScore: true,
         createdAt: true
       },
@@ -1083,6 +1052,17 @@ router.get('/ranking/user/:userId', optionalAuth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const lastActivity = user.lastSolvedDate ? new Date(user.lastSolvedDate) : null;
+    lastActivity?.setUTCHours(0, 0, 0, 0);
+    const isStreakActive = lastActivity && lastActivity >= yesterday && lastActivity <= today;
+    const currentStreak = isStreakActive ? user.currentStreak : 0;
+    const rankingUser = { ...user };
+    delete rankingUser.lastSolvedDate;
 
     const usersWithHigherScore = await prisma.user.count({
       where: { role: 'USER', rankingScore: { gt: user.rankingScore } }
@@ -1207,7 +1187,7 @@ router.get('/ranking/me', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      user: { ...user, rank: usersWithHigherScore + 1 }
+      user: { ...rankingUser, currentStreak, rank: usersWithHigherScore + 1 }
     });
   } catch (error) {
     console.error('Error fetching my ranking:', error);

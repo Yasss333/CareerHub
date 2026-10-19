@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import openai from '../config/ai.js';
+import { recordActivityStreak } from '../services/activity-streak.service.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -440,6 +441,7 @@ ${resumeText}
         education: parsedData.education || [],
       }
     });
+    await recordActivityStreak(prisma, userId);
 
     if (!newResume || !newResume.id) {
       return res.status(400).json({ message: "Failed to create resume in database" });

@@ -226,7 +226,7 @@ All routes require JWT authentication via `Authorization: Bearer <token>` header
 - Test mentorship flow from discovery to session completion
 - Test authentication across all endpoints
 - Test concurrent session booking (no double-booking)
-- Test feedback submission by junior users only
+- Test one-time feedback submission by each session participant and verify only student reviews affect mentor ratings
 - Test senior profile visibility to junior users
 
 ## Dependencies

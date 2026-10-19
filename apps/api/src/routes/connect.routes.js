@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import openai from '../config/ai.js';
 import { generateLiveKitToken, isLiveKitConfigured } from '../services/livekit.service.js';
+import { recordActivityStreak } from '../services/activity-streak.service.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -1266,6 +1267,11 @@ router.post('/sessions/:id/complete', authenticate, async (req, res) => {
         sessionCount: { increment: 1 }
       }
     });
+
+    await Promise.all([
+      recordActivityStreak(prisma, session.juniorId),
+      recordActivityStreak(prisma, session.seniorId)
+    ]);
     
     res.json(updatedSession);
   } catch (error) {
@@ -1489,7 +1495,7 @@ router.get('/sessions/:id/livekit-token', authenticate, async (req, res) => {
 // FEEDBACK ROUTES
 // ============================================
 
-// Submit session feedback (junior only)
+// Submit session feedback from either participant after the session is completed.
 router.post('/sessions/:id/feedback', authenticate, async (req, res) => {
   try {
     const { rating, comment, tags } = req.body;
@@ -1501,7 +1507,7 @@ router.post('/sessions/:id/feedback', authenticate, async (req, res) => {
     const session = await prisma.sessionBooking.findFirst({
       where: {
         id: req.params.id,
-        juniorId: req.user.id
+        OR: [{ juniorId: req.user.id }, { seniorId: req.user.id }]
       }
     });
     
@@ -1511,6 +1517,30 @@ router.post('/sessions/:id/feedback', authenticate, async (req, res) => {
     
     if (session.status !== 'completed') {
       return res.status(400).json({ error: 'Can only submit feedback for completed sessions' });
+    }
+
+    const cleanComment = comment ? String(comment).trim() : '';
+    const cleanTags = Array.isArray(tags) ? tags.filter((tag) => tag && String(tag).trim()).map((tag) => String(tag).trim()) : [];
+    const storedFeedback = session.feedback && typeof session.feedback === 'object' && !Array.isArray(session.feedback)
+      ? session.feedback
+      : {};
+
+    if (session.seniorId === req.user.id) {
+      if (storedFeedback.mentorFeedback) {
+        return res.status(409).json({ error: 'Student feedback already submitted for this session' });
+      }
+
+      const mentorFeedback = {
+        rating: Number(rating),
+        comment: cleanComment,
+        tags: cleanTags,
+        submittedAt: new Date()
+      };
+      await prisma.sessionBooking.update({
+        where: { id: req.params.id },
+        data: { feedback: { ...storedFeedback, mentorFeedback } }
+      });
+      return res.status(201).json({ mentorFeedback });
     }
     
     const existing = await prisma.sessionFeedback.findFirst({
@@ -1524,8 +1554,8 @@ router.post('/sessions/:id/feedback', authenticate, async (req, res) => {
       data: {
         bookingId: req.params.id,
         rating: Number(rating),
-        comment: comment ? String(comment).trim() : '',
-        tags: Array.isArray(tags) ? tags.filter((t) => t && String(t).trim()).map((t) => String(t).trim()) : []
+        comment: cleanComment,
+        tags: cleanTags
       }
     });
     
@@ -1534,9 +1564,10 @@ router.post('/sessions/:id/feedback', authenticate, async (req, res) => {
       where: { id: req.params.id },
       data: {
         feedback: {
+          ...storedFeedback,
           rating: Number(rating),
-          comment: comment ? String(comment).trim() : '',
-          tags: Array.isArray(tags) ? tags : [],
+          comment: cleanComment,
+          tags: cleanTags,
           submittedAt: new Date()
         }
       }
@@ -1859,6 +1890,13 @@ router.put('/sessions/:id/reschedule', authenticate, async (req, res) => {
       'session_rescheduled',
       'Session Rescheduled',
       `Session has been rescheduled to ${newStart.toLocaleString()}`,
+      { bookingId: session.id, newTime: newStart.toISOString() }
+    );
+    await createNotification(
+      req.user.id,
+      'session_rescheduled',
+      'Session Reschedule Confirmed',
+      `You rescheduled the session to ${newStart.toLocaleString()}`,
       { bookingId: session.id, newTime: newStart.toISOString() }
     );
 

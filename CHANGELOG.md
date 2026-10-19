@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Fixed resume editor dashboard navigation and isolated resume PDF printing to a single-page A4 document; cover-letter PDFs now use a clean print layout without browser-added page headers or footers.
+- Fixed landing-page Explore Modules hover contrast with a visible multicolor gradient.
+- Enabled mentors to submit student feedback after completed sessions and ensured direct rescheduling sends confirmation notifications to both participants.
 - Removed fabricated PRI defaults and sample trend data from dashboard and mentor session summaries. PRI components now use user-specific records, default to zero, reject client-supplied scores, and upsert one server-derived UTC-day snapshot per user.
 - Made mentor resume parsing evidence-based, with only current account profile fields used as fallbacks; removed generated title, company, location, experience, biography, and expertise defaults.
 - Changed accepted-session rescheduling to require the other participant's approval, leaving the current booking unchanged until approval and rechecking time/conflicts before applying it.
@@ -18,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed legacy resume test feature from `ResumeBuilder.tsx` as requested, focusing the workspace on content editing and live preview
 
 ### Added
+- Added a shared UTC-day activity streak across resume creation/import/duplication, roadmap creation and milestone progress, accepted AlgoRank solves, completed interviews, and completed mentorship sessions; the displayed streak expires after a day without activity.
 - Automated database seeding for deployed AlgoRank:
   - Added programmatic `seedDatabase(client)` export in `apps/api/prisma/seed.js` creating 500+ curated and categorized DSA problems, demo admin (`admin@algorank.com`), and recruiter accounts.
   - Added self-healing database auto-seeding check in `apps/api/src/index.js` on API startup when `problem.count() === 0`.

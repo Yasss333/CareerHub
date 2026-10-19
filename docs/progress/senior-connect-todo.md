@@ -1,5 +1,11 @@
 # Senior Connect - Implementation Progress
 
+## Follow-up: bilateral feedback and reschedule notifications
+- [x] Allow mentors to submit feedback for students after completed sessions
+- [x] Notify both participants when a session is rescheduled
+
+Implementation note: Completed-session feedback is now available independently to mentors and students; mentor feedback does not affect mentor ratings. Direct reschedules and approval-based requests notify both parties. API syntax and web build pass; authenticated database-backed end-to-end checks remain pending.
+
 ## Follow-up: booking, reschedule approval, and session UX
 - [ ] Require participant approval before changing an accepted session's scheduled time
 - [ ] Use consistent timezone handling and reject past slots/bookings at all entry points

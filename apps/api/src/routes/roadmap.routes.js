@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import roadmapTemplates from '../templates/roadmap-templates.js';
 import { generatePersonalizedRoadmap, generateResources, customizeRoadmap, generateCustomRoadmap } from '../libs/roadmap-ai.js';
 import { getFreeResourcesForTopics } from '../libs/roadmap-resources.js';
+import { recordActivityStreak } from '../services/activity-streak.service.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -152,6 +153,7 @@ router.post('/', authenticate, async (req, res) => {
         progress: 0
       }
     });
+    await recordActivityStreak(prisma, req.user.id);
 
     res.status(201).json({ success: true, roadmap });
   } catch (error) {
@@ -261,6 +263,7 @@ router.post('/:id/milestones', authenticate, async (req, res) => {
 
     // Update roadmap progress
     await updateRoadmapProgress(req.params.id);
+    if (!milestone.isCompleted) await recordActivityStreak(prisma, req.user.id);
 
     res.status(201).json({ success: true, milestone });
   } catch (error) {
@@ -370,6 +373,7 @@ router.put('/:id/milestones/:milestoneId/complete', authenticate, async (req, re
 
     // Update roadmap progress
     await updateRoadmapProgress(req.params.id);
+    if (!milestone.isCompleted) await recordActivityStreak(prisma, req.user.id);
 
     res.json({ success: true, milestone: updated });
   } catch (error) {
@@ -401,6 +405,7 @@ router.post('/generate-custom', authenticate, async (req, res) => {
       resources: [],
       progress: 0
     } });
+    await recordActivityStreak(prisma, req.user.id);
     for (const milestone of personalized.milestones) {
       await prisma.roadmapMilestone.create({ data: {
         roadmapId: roadmap.id,
@@ -449,6 +454,7 @@ router.post('/generate', authenticate, async (req, res) => {
         progress: 0
       }
     });
+    await recordActivityStreak(prisma, req.user.id);
 
     // Create milestones from template
     for (const milestone of personalized.milestones) {

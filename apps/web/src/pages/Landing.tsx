@@ -403,7 +403,7 @@ export default function Landing() {
               <Button
                 size="lg"
                 variant="outline"
-                className="rounded-full px-7 text-sm sm:text-base border-[#32324A] bg-[#12121C]/90 hover:bg-[#161622] text-white"
+                className="rounded-full border-[#7465C8] bg-gradient-to-r from-violet-800 via-blue-800 to-emerald-700 px-7 text-sm text-white shadow-[0_8px_28px_-12px_rgba(45,212,191,0.65)] transition-all hover:border-cyan-300 hover:from-violet-600 hover:via-blue-600 hover:to-emerald-500 hover:text-white hover:shadow-[0_10px_32px_-10px_rgba(45,212,191,0.8)] sm:text-base"
               >
                 Explore Modules
               </Button>

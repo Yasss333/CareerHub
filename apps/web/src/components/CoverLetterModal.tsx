@@ -98,11 +98,13 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
             <title>Cover Letter</title>
             <style>
               * { margin: 0; padding: 0; box-sizing: border-box; }
+              @page { size: A4; margin: 0; }
               body {
                 font-family: 'Georgia', 'Times New Roman', serif;
-                padding: 50px;
-                max-width: 800px;
-                margin: 0 auto;
+                width: 210mm;
+                min-height: 297mm;
+                padding: 22mm 24mm;
+                margin: 0;
                 line-height: 1.8;
                 color: #1a1a1a;
                 background: white;
@@ -123,7 +125,8 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
                 margin-bottom: 30px;
               }
               @media print {
-                body { padding: 40px; }
+                html, body { width: 210mm; min-height: 297mm; margin: 0; }
+                body { padding: 22mm 24mm; }
                 .letter p { page-break-inside: avoid; }
               }
             </style>
@@ -133,13 +136,16 @@ const CoverLetterModal = ({ isOpen, onClose, resumeId }: CoverLetterModalProps) 
               ${coverLetter.split("\n").map(line => {
                 const trimmed = line.trim();
                 if (!trimmed) return "<br/>";
+                const escaped = trimmed.replace(/[&<>"']/g, (character) => ({
+                  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                })[character]!);
                 if (trimmed.match(/^(Sincerely|Yours|Best|Regards)/i)) {
-                  return `<p class="signature">${trimmed}</p>`;
+                  return `<p class="signature">${escaped}</p>`;
                 }
                 if (trimmed.match(/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}/)) {
-                  return `<p class="date">${trimmed}</p>`;
+                  return `<p class="date">${escaped}</p>`;
                 }
-                return `<p>${trimmed}</p>`;
+                return `<p>${escaped}</p>`;
               }).join("")}
             </div>
           </body>

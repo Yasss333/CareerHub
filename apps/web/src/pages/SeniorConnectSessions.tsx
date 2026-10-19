@@ -15,7 +15,7 @@ interface Session {
   notes: string
   status: string
   jitsiRoomUrl: string
-  feedback: { rating: number } | null
+  feedback: { rating?: number; mentorFeedback?: { rating: number; comment?: string } } | null
   junior: {
     id: string
     name: string
@@ -43,11 +43,12 @@ interface Session {
 
 interface FeedbackModalProps {
   session: Session
+  isMentor: boolean
   onClose: () => void
   onSubmitted: () => void
 }
 
-function FeedbackModal({ session, onClose, onSubmitted }: FeedbackModalProps) {
+function FeedbackModal({ session, isMentor, onClose, onSubmitted }: FeedbackModalProps) {
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
   const [tags, setTags] = useState('')
@@ -92,14 +93,14 @@ function FeedbackModal({ session, onClose, onSubmitted }: FeedbackModalProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Leave Feedback</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{isMentor ? 'Student Feedback' : 'Leave Feedback'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
-          How was your session with {session.senior.name}?
+          {isMentor ? `Share feedback about ${session.junior.name}'s session.` : `How was your session with ${session.senior.name}?`}
         </p>
 
         {error && (
@@ -110,7 +111,7 @@ function FeedbackModal({ session, onClose, onSubmitted }: FeedbackModalProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Rating *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{isMentor ? 'Student performance *' : 'Rating *'}</label>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -134,7 +135,7 @@ function FeedbackModal({ session, onClose, onSubmitted }: FeedbackModalProps) {
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={4}
-              placeholder="What did you like? What could be improved?"
+              placeholder={isMentor ? 'Share constructive feedback for the student...' : 'What did you like? What could be improved?'}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -820,13 +821,23 @@ export default function SeniorConnectSessions() {
                     Chat
                   </button>
 
-                  {role === 'Junior' && session.status === 'completed' && !session.feedback && (
+                  {role === 'Junior' && session.status === 'completed' && !session.feedback?.rating && (
                     <button
                       onClick={() => setFeedbackSession(session)}
                       className="flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors text-sm"
                     >
                       <Star className="w-4 h-4 text-amber-500" />
                       Leave Feedback
+                    </button>
+                  )}
+
+                  {role === 'Senior' && session.status === 'completed' && !session.feedback?.mentorFeedback && (
+                    <button
+                      onClick={() => setFeedbackSession(session)}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/15 transition-colors text-sm"
+                    >
+                      <Star className="w-4 h-4 text-amber-500" />
+                      Give Student Feedback
                     </button>
                   )}
 
@@ -888,6 +899,7 @@ export default function SeniorConnectSessions() {
       {feedbackSession && (
         <FeedbackModal
           session={feedbackSession}
+          isMentor={getRoleLabel(feedbackSession) === 'Senior'}
           onClose={() => setFeedbackSession(null)}
           onSubmitted={() => {
             setFeedbackSession(null)

@@ -1,5 +1,11 @@
 # Resume Builder - Implementation Progress
 
+## Follow-up: print export and dashboard navigation
+- [x] Print only the resume as a professional single-page A4 document without browser-added page headers or footers
+- [x] Return the resume editor's Back to Dashboard action to the authenticated dashboard route
+
+Implementation note: Resume printing now uses an isolated A4 print window and scales long content to one page; cover letters use zero page margins. The web production build passes; actual browser PDF rendering remains unverified.
+
 ## Follow-up: import authentication and mentor resume parsing
 - [ ] Keep Back navigation authenticated and fix 401s for PDF and pasted-text imports
 - [ ] Correct mentor resume parsing and remove fabricated fallback values

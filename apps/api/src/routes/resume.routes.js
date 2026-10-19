@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import ImageKit from '@imagekit/nodejs';
 import multer from 'multer';
 import fs from 'fs';
+import { recordActivityStreak } from '../services/activity-streak.service.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -151,6 +152,7 @@ router.post('/', authenticate, async (req, res) => {
     const resume = await prisma.resume.create({
       data: resumeData
     });
+    await recordActivityStreak(prisma, req.user.id);
     
     // No need to parse JSON fields - PostgreSQL handles them natively
     const parsedResume = {
@@ -312,6 +314,7 @@ router.post('/:id/duplicate', authenticate, async (req, res) => {
         public: originalResume.public
       }
     });
+    await recordActivityStreak(prisma, req.user.id);
     
     // No need to parse JSON fields - PostgreSQL handles them natively
     const parsedResume = {

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
+import { recordActivityStreak } from '../services/activity-streak.service.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -235,6 +236,7 @@ router.post('/sessions/:id/evaluate', authenticate, async (req, res) => {
         feedback: { overallScore: Math.max(0, Math.min(100, Number(evaluations.overallScore))), overallFeedback: String(evaluations.overallFeedback || ''), strengths: cleanList(evaluations.strengths), areasToImprove: cleanList(evaluations.areasToImprove) }
       } });
     });
+    await recordActivityStreak(prisma, req.user.id);
     await clearMlSession(session.id);
     return res.json({ session: await ownedSession(session.id, req.user.id) });
   } catch (error) {

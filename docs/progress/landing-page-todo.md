@@ -1,5 +1,10 @@
 # Landing Page Integration TODO
 
+## Follow-up: module CTA hover visibility
+- [x] Keep the Explore Modules button visibly distinct on hover
+
+Implementation note: Added a violet-to-teal gradient with a brighter hover state to preserve contrast over the dark landing background. Web production build passes.
+
 ## Scope
 Integrate the committed CareerHub landing prototype into the main `apps/web` application.
 
