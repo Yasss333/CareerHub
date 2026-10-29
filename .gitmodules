@@ -1,0 +1,3 @@
+[submodule "legacy/ai-mock-interview-platform-2"]
+	path = legacy/ai-mock-interview-platform-2
+	url = https://github.com/LuckyLalwani/ai-mock-interview-platform-2.git
