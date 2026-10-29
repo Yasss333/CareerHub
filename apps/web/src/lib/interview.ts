@@ -42,8 +42,19 @@ export interface InterviewSession {
   microphoneEnabled: boolean
   questions?: InterviewQuestion[]
   emotionResults?: Array<{ id: string; modality: string; result: Record<string, unknown>; createdAt: string }>
-  proctoringEvents?: Array<{ id: string; eventType: string; severity: string; createdAt: string }>
+  proctoringEvents?: Array<{ id: string; eventType: string; severity: string; createdAt: string; details?: Record<string, unknown> }>
 }
+
+export interface InterviewCapabilities {
+  available: boolean
+  face: boolean
+  voice: boolean
+  text: boolean
+  transcription: boolean
+  proctoring: boolean
+}
+
+export const getInterviewCapabilities = () => api<InterviewCapabilities>('/interview/capabilities')
 
 export const getInterview = (id: string) => api<{ session: InterviewSession }>(`/interview/sessions/${id}`)
 export const listInterviews = () => api<{ sessions: InterviewSession[] }>('/interview/sessions')

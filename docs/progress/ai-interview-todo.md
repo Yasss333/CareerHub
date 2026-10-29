@@ -3,11 +3,35 @@
 ## Overview
 This document tracks the implementation progress of the AI Interview module migration from Supabase to CareerHub.
 
+## Reference parity integration — 2026-10-30
+
+Reference: `legacy/ai-mock-interview-platform-2` at `34204e6`.
+Preserve CareerHub accounts, Express ownership checks, Prisma storage, and navigation while porting the reference capabilities.
+
+- [x] Clone the requested reference and inspect interview/ML contracts.
+- [x] Replace fabricated ML and verification responses with real results and explicit unavailable states.
+- [x] Wire ML health, transcription, face/voice/text, fusion, and session-scoped proctoring contracts; live deployment acceptance remains pending.
+- [x] Respect media consent, release devices, and support typed-answer fallback.
+- [x] Port quick practice, voice transcription, fusion feedback, and evidence-based results/history.
+- [x] Verify API ownership/consent/lifecycle and upstream failures with isolated boundaries, frontend build, and browser interview flows (62 Node, 7 Python, 6 isolated browser regressions, plus live API/browser/provider passes).
+- [ ] Verify deployed ML contract and camera/microphone flows with the supplied deployment URLs.
+
+Do not migrate production data or test AlgoRank execution. Never save raw media or report invented scores. The Cloud Run ML URL is configured; the user confirmed no service token is required and requested direct inference without health/schema discovery. Real question generation, answer save, evaluation, result reload, and temporary-account cleanup passed. Direct text/fusion inference passed; synthetic voice/transcription responses establish reachability but not accuracy. Deployed identity isolation and real media acceptance remain pending. See `docs/ai-interview-integration.md` for the contract and acceptance checklist.
+
 ## MVP migration execution
 
+## Deep functional QA — requested 2026-10-30
+
+- [x] Expand authentication, ownership, invalid input, media consent/upload, lifecycle, concurrency, and upstream-failure cases.
+- [x] Exercise browser refresh/resume, repeated actions, failed saves/evaluations, hostile text, and deletion/cancel behavior.
+- [x] Validate the live API/database/OpenRouter journey and direct ML proxies with temporary-account cleanup.
+- [x] Record executed coverage, reproducible defects, fixes, and remaining hardware/deployment limits in the workspace outputs/careerhub-functional-qa.html report.
+
+This pass is functional/adversarial-user QA. Code execution remains excluded. Cloud Run is public and uses direct requests with a 120-second timeout; no health/schema probes are required by the user.
+
 ### P0 — Contract and privacy baseline
-- [ ] Document session lifecycle, API contract, field mapping, modality fallbacks, and consent/data-retention rules
-- [ ] Keep experimental behavioral competency scores out of PRI
+- [x] Document session lifecycle, API contract, field mapping, modality fallbacks, and consent/data-retention rules in `docs/ai-interview-integration.md`
+- [x] Keep experimental behavioral competency scores out of PRI; dashboard uses validated answer scores, including zero
 
 ### P1 — Frontend migration first
 - [x] Build setup, session, results, and history pages against fixtures

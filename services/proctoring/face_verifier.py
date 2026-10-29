@@ -15,6 +15,7 @@ from PIL import Image
 import torch
 import torch.nn.functional as F
 from facenet_pytorch import MTCNN, InceptionResnetV1
+from session_cache import prune_expired, refresh_embedding
 
 
 class FaceVerifier:
@@ -77,11 +78,11 @@ class FaceVerifier:
     def _get_session_embedding(self, session_id: str) -> Optional[np.ndarray]:
         now = time.time()
         with self._sessions_lock:
-            expired = [key for key, (_, expires_at) in self._sessions.items() if expires_at <= now]
-            for key in expired:
-                self._sessions.pop(key, None)
-            value = self._sessions.get(session_id)
-            return value[0] if value else None
+            return refresh_embedding(self._sessions, session_id, now, self.session_ttl_seconds)
+
+    def clear_expired_sessions(self) -> None:
+        with self._sessions_lock:
+            prune_expired(self._sessions, time.time())
 
     def _load_image(self, image_input: Union[str, bytes, np.ndarray, Image.Image]) -> Image.Image:
         """

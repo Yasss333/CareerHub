@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { calculatePriScore, isAlgoRankIncluded } from '../services/pri.service.js';
+import { getInterviewAnswerScore } from '../services/interview-evaluation.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -46,10 +47,7 @@ const calculatePri = async (userId) => {
     take: 10,
   });
   const interviewScores = completedInterviews
-    .map((session) => {
-      const score = Number(session.feedback?.overallScore ?? session.feedback?.overall_score ?? session.feedback?.score ?? 0);
-      return Number.isFinite(score) && score > 0 ? score : null;
-    })
+    .map((session) => getInterviewAnswerScore(session.feedback))
     .filter((score) => score !== null);
   const interviewScore = interviewScores.length
     ? Math.round(interviewScores.reduce((sum, value) => sum + value, 0) / interviewScores.length)

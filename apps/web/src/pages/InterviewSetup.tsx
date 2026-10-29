@@ -1,8 +1,9 @@
 import { FormEvent, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Camera, Clock3, Loader2, Mic, ShieldCheck, Sparkles } from 'lucide-react'
 import { api } from '../lib/api'
 import { InterviewSession, generateInterviewQuestions } from '../lib/interview'
+import { interviewPresets } from '../lib/interview-presets'
 
 const types = [
   ['technical', 'Technical'], ['behavioral', 'Behavioral'], ['system_design', 'System design'], ['mixed', 'Mixed practice']
@@ -10,14 +11,16 @@ const types = [
 
 export default function InterviewSetup() {
   const navigate = useNavigate()
-  const [type, setType] = useState('technical')
-  const [topics, setTopics] = useState('Data structures, problem solving')
+  const [searchParams] = useSearchParams()
+  const preset = interviewPresets.find((item) => item.id === searchParams.get('preset'))
+  const [type, setType] = useState(preset?.type || 'technical')
+  const [topics, setTopics] = useState(preset?.topics || 'Data structures, problem solving')
   const [role, setRole] = useState('')
   const [experienceLevel, setExperienceLevel] = useState('Entry level')
   const [difficulty, setDifficulty] = useState('medium')
-  const [plannedDuration, setPlannedDuration] = useState(20)
-  const [cameraConsent, setCameraConsent] = useState(true)
-  const [microphoneConsent, setMicrophoneConsent] = useState(true)
+  const [plannedDuration, setPlannedDuration] = useState(preset ? 10 : 20)
+  const [cameraConsent, setCameraConsent] = useState(false)
+  const [microphoneConsent, setMicrophoneConsent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 

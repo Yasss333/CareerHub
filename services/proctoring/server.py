@@ -1,6 +1,7 @@
 from pathlib import Path
 from dotenv import load_dotenv
 import io
+import asyncio
 import threading
 import time
 import shutil
@@ -13,6 +14,8 @@ import librosa
 from pydantic import BaseModel
 from fastapi import FastAPI, File, UploadFile, Form, Header, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
+from transcription import transcribe
 
 from fusion_engine_new import FusionEngine
 from face_verifier import FaceVerifier
@@ -47,6 +50,8 @@ fusion_engine = FusionEngine()
 
 def require_service_auth(x_interview_service_token: str = Header(default="")):
     expected = os.getenv("INTERVIEW_ML_TOKEN", "")
+    if not expected:
+        raise HTTPException(status_code=503, detail="ML service authentication is not configured")
     if expected and not hmac.compare_digest(x_interview_service_token, expected):
         raise HTTPException(status_code=401, detail="Unauthorized service request")
 
@@ -90,6 +95,27 @@ def load_models():
         f"voice={voice_model is not None}, text={text_predictor is not None}, "
         f"verifier={face_verifier is not None}\n"
     )
+
+
+@app.on_event('startup')
+async def start_session_expiry():
+    async def expire_idle_sessions():
+        while True:
+            await asyncio.sleep(30)
+            if face_verifier is not None:
+                face_verifier.clear_expired_sessions()
+    app.state.expiry_task = asyncio.create_task(expire_idle_sessions())
+
+
+@app.on_event('shutdown')
+async def stop_session_expiry():
+    task = getattr(app.state, 'expiry_task', None)
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 @app.get("/")
@@ -278,6 +304,27 @@ async def predict_text(request: dict):
     except Exception as e:
         print(f"[ML Service] Text prediction error: {e}")
         return {"success": False, "error": str(e)}
+
+
+transcription_slots = threading.BoundedSemaphore(2)
+
+
+@app.post('/transcribe', dependencies=[Depends(require_service_auth)])
+async def transcribe_audio(file: UploadFile = File(...)):
+    content_type = (file.content_type or '').split(';')[0]
+    if content_type not in {'audio/webm', 'audio/mp4', 'audio/wav', 'audio/ogg', 'audio/mpeg', 'audio/x-wav'}:
+        raise HTTPException(status_code=415, detail='Unsupported audio format')
+    audio = await file.read(10 * 1024 * 1024 + 1)
+    if len(audio) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail='Audio exceeds the 10 MB limit')
+    if not transcription_slots.acquire(blocking=False):
+        raise HTTPException(status_code=503, detail='Transcription is busy; please retry')
+    try:
+        return await run_in_threadpool(transcribe, audio, content_type)
+    except Exception:
+        raise HTTPException(status_code=503, detail='Transcription is currently unavailable')
+    finally:
+        transcription_slots.release()
 
 
 class FusionRequest(BaseModel):
