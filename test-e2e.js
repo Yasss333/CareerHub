@@ -18,9 +18,9 @@ const hasUsableAIKey = Boolean(
 const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 const password = `CareerHub-${runId}-Test!`
 const testAccounts = [
-  { email: `careerhub-e2e-junior-${runId}@example.com`, name: 'E2E Junior' },
-  { email: `careerhub-e2e-mentor-${runId}@example.com`, name: 'E2E Mentor' },
-  { email: `careerhub-e2e-admin-${runId}@example.com`, name: 'E2E Admin' }
+  { email: `careerhub-e2e-junior-${runId}@example.com`, name: 'E2E Junior', specialization: 'CS_SOFTWARE' },
+  { email: `careerhub-e2e-mentor-${runId}@example.com`, name: 'E2E Mentor', specialization: 'CS_SOFTWARE' },
+  { email: `careerhub-e2e-admin-${runId}@example.com`, name: 'E2E Admin', specialization: 'CS_SOFTWARE' }
 ]
 const tests = []
 let juniorToken
@@ -522,7 +522,7 @@ async function run() {
       body: {
         seniorId: mentorId,
         availabilitySlotId,
-        scheduledTime: `${date}T10:00:00`,
+        scheduledTime: `${date}T10:00:00Z`,
         duration: 45,
         topic: 'E2E mentorship session'
       }
@@ -537,7 +537,7 @@ async function run() {
       body: {
         seniorId: mentorId,
         availabilitySlotId,
-        scheduledTime: `${date}T10:00:00`,
+        scheduledTime: `${date}T10:00:00Z`,
         duration: 45,
         topic: 'Duplicate E2E booking'
       }
@@ -624,7 +624,9 @@ async function run() {
 }
 
 async function cleanup() {
-  const userIds = [juniorId, mentorId, adminId].filter(Boolean)
+  const createdIds = [juniorId, mentorId, adminId].filter(Boolean)
+  const ownedAccounts = await prisma.user.findMany({ where: { id: { in: createdIds }, email: { in: testAccounts.map((account) => account.email) } }, select: { id: true } })
+  const userIds = ownedAccounts.map((account) => account.id)
 
   try {
     if (generatedRoadmapId) {
@@ -681,9 +683,11 @@ async function main() {
     ...tests.map((test) => `| ${test.name} | ${test.status} | ${test.message.replaceAll('|', '\\|')} |`)
   ].join('\n')
 
-  writeFileSync('test-report.md', `${report}\n`)
+  const reportPath = process.env.E2E_REPORT_PATH || 'test-report.md'
+  writeFileSync(reportPath, `${report}\n`)
+  if (process.env.E2E_JSON_PATH) writeFileSync(process.env.E2E_JSON_PATH, JSON.stringify(tests, null, 2))
   console.log(`\nTotal checks: ${tests.length}; passed: ${passed}; failed: ${failed}`)
-  console.log('Report saved to test-report.md')
+  console.log('Report saved to ' + reportPath)
 
   if (failed > 0) process.exitCode = 1
 }

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Restored administrator approval for mentor signup/profile applications, hid unapproved mentors from discovery/booking, preserved approved profile edits, and fixed the bulk-availability callback.
+- Rejected malformed account/resume/roadmap input, restricted private-roadmap recommendations to their owner, and made API port-binding failures explicit.
+- Made availability batches atomic, validated slot dates/times/timezones, used the slot timezone consistently in booking, and prevented concurrent double booking with serializable transactions.
+- Prevented delayed initial resume/interview loads from overwriting typed edits, resumed fully answered interviews at their final question, and corrected unchanged-resume dirty detection.
+- Updated ImageKit upload authorization to the installed SDK helper API and corrected unsupported accordion props.
+- Replaced invented interview emotion scores, identity matches, and report defaults with verified model output and explicit unavailable states. Fixed media-consent handling, hidden submission errors, evaluation retries, and concurrent question generation.
 - Replaced the placeholder resume HTML response with an authenticated A4 PDF download, fixed the browser print fallback, and made cover-letter dates selectable with a guaranteed current-date default.
 - Fixed false live-call alerts by deriving meeting state from verified LiveKit participants; added 30-minute client inactivity disconnect, five-minute empty-room cleanup, and a 24-hour hard session cap.
 - Made AlgoRank optional for Electronics/Electrical and Other Engineering candidates, with specialization-aware PRI weights and a full-scale normalized score.
@@ -25,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed legacy resume test feature from `ResumeBuilder.tsx` as requested, focusing the workspace on content editing and live preview
 
 ### Added
+- Integrated Quick Mock presets, server transcription with optional Groq/local Whisper, persisted multimodal fusion, and session-isolated proctoring contracts from the `ai-mock-interview-platform-2` reference. Added isolated API, browser, and transcription regression checks; deployed-service acceptance remains pending environment configuration.
 - Added optional candidate specialization selection at registration and persisted it through a nullable `User.specialization` enum field; existing accounts remain compatible and retain their current AlgoRank visibility.
 - Added a shared UTC-day activity streak across resume creation/import/duplication, roadmap creation and milestone progress, accepted AlgoRank solves, completed interviews, and completed mentorship sessions; the displayed streak expires after a day without activity.
 - Automated database seeding for deployed AlgoRank:
