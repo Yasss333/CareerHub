@@ -145,13 +145,16 @@ export default function ResumeBuilder() {
     { id: 'skills', name: 'Skills', icon: Sparkles }
   ];
 
+  const loadVersionRef = useRef(0);
   useEffect(() => {
     if (resumeId && token) {
       loadExistingResume(resumeId);
     }
+    return () => { loadVersionRef.current += 1; };
   }, [resumeId, token]);
 
   const loadExistingResume = async (id: string) => {
+    const version = ++loadVersionRef.current;
     try {
       setIsLoading(true);
       const response = await fetch(`/api/resume/${id}`, {
@@ -159,8 +162,9 @@ export default function ResumeBuilder() {
       });
       if (!response.ok) throw new Error('Failed to load resume');
       const data = await response.json();
+      if (version !== loadVersionRef.current) return;
       if (data) {
-        setResumeData({
+        const loaded: ResumeData = {
           id: data.id,
           title: data.title || 'Untitled-resume',
           profile: data.profile || 'General',
@@ -173,15 +177,17 @@ export default function ResumeBuilder() {
           template: data.template || 'classic',
           accentColor: data.accentColor || '#3B82F6',
           public: Boolean(data.public)
-        });
-        setSavedSnapshot(JSON.stringify(data));
+        };
+        setResumeData(loaded);
+        setSavedSnapshot(JSON.stringify(loaded));
         setSaveFeedback(null);
       }
     } catch (err) {
+      if (version !== loadVersionRef.current) return;
       console.error('Error loading resume:', err);
       setSaveFeedback({ type: 'error', message: 'Could not load resume. Please try again.' });
     } finally {
-      setIsLoading(false);
+      if (version === loadVersionRef.current) setIsLoading(false);
     }
   };
 

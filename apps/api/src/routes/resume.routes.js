@@ -1,4 +1,5 @@
 import express from 'express';
+import { validateResumeInput } from '../services/input-validation.service.js';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import ImageKit from '@imagekit/nodejs';
@@ -47,7 +48,7 @@ router.get('/imagekit-auth', authenticate, async (req, res) => {
   }
   
   try {
-    const authenticationParameters = imagekit.getAuthenticationParameters();
+    const authenticationParameters = imagekit.helper.getAuthenticationParameters();
     res.json(authenticationParameters);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get ImageKit auth parameters' });
@@ -134,19 +135,20 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create new resume
 router.post('/', authenticate, async (req, res) => {
   try {
+    const input = validateResumeInput(req.body);
     const resumeData = {
       userId: req.user.id,
-      title: req.body.title || 'Untitled-resume',
-      template: req.body.template || 'classic',
-      accentColor: req.body.accentColor || '#3B82F6',
-      professionSummary: req.body.professionSummary || '',
-      skills: req.body.skills || [],
-      personalInfo: req.body.personalInfo || {},
-      experience: req.body.experience || [],
-      projects: req.body.projects || [],
-      education: req.body.education || [],
-      profile: req.body.profile || '',
-      public: req.body.public || false
+      title: input.title || 'Untitled-resume',
+      template: input.template || 'classic',
+      accentColor: input.accentColor || '#3B82F6',
+      professionSummary: input.professionSummary || '',
+      skills: input.skills || [],
+      personalInfo: input.personalInfo || {},
+      experience: input.experience || [],
+      projects: input.projects || [],
+      education: input.education || [],
+      profile: input.profile || '',
+      public: input.public || false
     };
     
     const resume = await prisma.resume.create({
@@ -166,6 +168,7 @@ router.post('/', authenticate, async (req, res) => {
     
     res.status(201).json(parsedResume);
   } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
     console.error('Resume creation error:', error);
     res.status(500).json({ error: 'Failed to create resume' });
   }
@@ -185,7 +188,7 @@ router.put('/:id', authenticate, upload.single('image'), async (req, res) => {
       return res.status(404).json({ error: 'Resume not found' });
     }
     
-    let resumeData = req.body;
+    let resumeData = validateResumeInput(req.body);
     const image = req.file;
     const removeBackground = req.body.removeBackground;
     
@@ -254,6 +257,7 @@ router.put('/:id', authenticate, upload.single('image'), async (req, res) => {
     
     res.json(parsedResume);
   } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
     console.error('Resume update error:', error);
     res.status(500).json({ error: 'Failed to update resume' });
   }

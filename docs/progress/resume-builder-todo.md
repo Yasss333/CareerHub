@@ -1,5 +1,11 @@
 # Resume Builder - Implementation Progress
 
+## Functional QA — 2026-10-30
+- [x] Validate typed resume fields and preserve owner scoping.
+- [x] Regress create/edit/reload, hostile text rendering, duplicate/delete, real PDF, ATS, and cover-letter generation.
+- [x] Ignore stale initial loads and normalize the saved snapshot to prevent false unsaved warnings.
+- [x] Correct ImageKit signing for the installed SDK; actual stored-photo upload acceptance remains separate.
+
 ## Follow-up: resume PDF and cover-letter date
 - [x] Make resume PDF generation reliable and return a downloadable PDF
 - [x] Allow a cover-letter date override and default it to today

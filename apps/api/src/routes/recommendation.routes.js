@@ -1,5 +1,6 @@
 import express from 'express'
 import jwt from 'jsonwebtoken'
+import { PrismaClient } from '@prisma/client'
 import {
   getProblemRecommendationsForRoadmap,
   getResumeSkillSuggestions,
@@ -9,6 +10,7 @@ import {
 } from '../services/recommendation.service.js'
 
 const router = express.Router()
+const prisma = new PrismaClient()
 const JWT_SECRET = process.env.JWT_SECRET || 'careerhub-super-secret-jwt-key-2024'
 
 const authenticate = (req, res, next) => {
@@ -22,8 +24,16 @@ const authenticate = (req, res, next) => {
   }
 }
 
+const requireOwnedRoadmap = async (req, res, next) => {
+  try {
+    const roadmap = await prisma.roadmap.findFirst({ where: { id: req.params.roadmapId, userId: req.user.id }, select: { id: true } })
+    if (!roadmap) return res.status(404).json({ error: 'Roadmap not found' })
+    return next()
+  } catch { return res.status(500).json({ error: 'Could not verify roadmap access' }) }
+}
+
 // Get problem recommendations for a roadmap
-router.get('/problems/:roadmapId', authenticate, async (req, res) => {
+router.get('/problems/:roadmapId', authenticate, requireOwnedRoadmap, async (req, res) => {
   try {
     const problems = await getProblemRecommendationsForRoadmap(req.user.id, req.params.roadmapId)
     res.json({ problems })
@@ -34,7 +44,7 @@ router.get('/problems/:roadmapId', authenticate, async (req, res) => {
 })
 
 // Get resume skill suggestions for a roadmap
-router.get('/resume-skills/:roadmapId', authenticate, async (req, res) => {
+router.get('/resume-skills/:roadmapId', authenticate, requireOwnedRoadmap, async (req, res) => {
   try {
     const skills = await getResumeSkillSuggestions(req.user.id, req.params.roadmapId)
     res.json({ skills })
@@ -45,7 +55,7 @@ router.get('/resume-skills/:roadmapId', authenticate, async (req, res) => {
 })
 
 // Get mentor recommendations for a roadmap
-router.get('/mentors/:roadmapId', authenticate, async (req, res) => {
+router.get('/mentors/:roadmapId', authenticate, requireOwnedRoadmap, async (req, res) => {
   try {
     const mentors = await getMentorRecommendations(req.user.id, req.params.roadmapId)
     res.json({ mentors })

@@ -142,7 +142,7 @@ export default function Register() {
                 <div className="mt-2.5 p-2.5 bg-primary/5 rounded-lg border border-primary/20 text-xs text-primary flex items-center gap-2">
                   <Sparkles className="w-4 h-4 shrink-0 text-primary" />
                   <span>
-                    Instant Mentor Access: No waiting for admin approval. You can auto-fill your profile with your resume right after sign-up!
+                    Complete your mentor profile after sign-up. An administrator will review your application before you can offer mentoring.
                   </span>
                 </div>
               )}

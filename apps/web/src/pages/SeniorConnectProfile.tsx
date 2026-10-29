@@ -96,6 +96,7 @@ export default function SeniorConnectProfile() {
   const navigate = useNavigate()
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
   const [profile, setProfile] = useState<SeniorProfile | null>(null)
+  const canManageAvailability = currentUser.role === 'ADMIN' || (profile?.user?.isAlumniMentor === true && profile.user.mentorApprovalStatus === 'APPROVED')
   const [slots, setSlots] = useState<AvailabilitySlot[]>([])
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [hasProfile, setHasProfile] = useState(false)
@@ -120,7 +121,7 @@ export default function SeniorConnectProfile() {
     domain: 'Fullstack',
     role: '',
     bio: '',
-    experience: 3,
+    experience: 0,
     location: '',
     expertise: [] as string[],
     achievements: [] as string[],
@@ -515,6 +516,8 @@ export default function SeniorConnectProfile() {
           </div>
         )}
       </div>
+
+      {profile?.user?.mentorApprovalStatus === 'PENDING' && <div role="status" className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">Your mentor application is pending administrator review. You can update your profile here. Availability and mentoring become available after approval; until then, sign in as a User.</div>}
 
       {/* Notifications */}
       {error && (
@@ -954,7 +957,7 @@ export default function SeniorConnectProfile() {
         <div className="flex items-center justify-between pt-4 border-t border-border">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Topmate-style instant activation (No admin approval needed)
+            {canManageAvailability ? 'Mentor access approved' : 'Administrator approval is required before mentoring'}
           </div>
 
           <button
@@ -963,12 +966,13 @@ export default function SeniorConnectProfile() {
             className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Saving...' : hasProfile ? 'Save & Update Profile' : 'Publish Mentor Profile'}
+            {saving ? 'Saving...' : canManageAvailability ? 'Save & Update Profile' : 'Submit for review'}
           </button>
         </div>
       </form>
 
       {/* AVAILABILITY SLOTS MANAGER */}
+      {canManageAvailability && (
       <div className="bg-card text-card-foreground rounded-2xl shadow-sm border border-border p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div>
@@ -1137,11 +1141,13 @@ export default function SeniorConnectProfile() {
         </div>
       </div>
 
+      )}
+
       {showBulkModal && (
         <BulkAvailabilityModal
           isOpen={showBulkModal}
           onClose={() => setShowBulkModal(false)}
-          onSubmit={handleBulkAdd}
+          onAdd={handleBulkAdd}
         />
       )}
     </div>

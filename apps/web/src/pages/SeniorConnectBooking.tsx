@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { Calendar, Clock, MessageSquare, X, Star } from 'lucide-react'
+import { slotDateTime } from '../../../../packages/shared/src/utils/slot-time.js'
 
 interface SeniorProfile {
   id: string
@@ -27,11 +28,11 @@ interface Slot {
   startTime: string
   endTime: string
   booked: boolean
+  timezone: string
 }
 
 const toDateInputValue = (date: string) => {
-  const d = new Date(date)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return date.slice(0, 10)
 }
 
 export default function SeniorConnectBooking() {
@@ -93,8 +94,8 @@ export default function SeniorConnectBooking() {
 
   const handleSlotSelect = (slot: Slot) => {
     setSelectedSlotId(slot.id)
-    const start = new Date(`${toDateInputValue(slot.date)}T${slot.startTime}`)
-    const end = new Date(`${toDateInputValue(slot.date)}T${slot.endTime}`)
+    const start = slotDateTime(slot.date, slot.startTime, slot.timezone)
+    const end = slotDateTime(slot.date, slot.endTime, slot.timezone)
     const mins = Math.round((end.getTime() - start.getTime()) / 60000)
     if (mins > 0) setDuration(Math.min(Math.max(mins, 15), 120))
   }
@@ -110,17 +111,17 @@ export default function SeniorConnectBooking() {
     if (selectedSlotId) {
       const slot = slots.find((s) => s.id === selectedSlotId)
       if (!slot) return
-      scheduledTime = `${toDateInputValue(slot.date)}T${slot.startTime}`
+      scheduledTime = slotDateTime(slot.date, slot.startTime, slot.timezone).toISOString()
       availabilitySlotId = slot.id
       const start = new Date(scheduledTime)
-      const end = new Date(`${toDateInputValue(slot.date)}T${slot.endTime}`)
+      const end = slotDateTime(slot.date, slot.endTime, slot.timezone)
       dur = Math.round((end.getTime() - start.getTime()) / 60000)
     } else {
       if (!manualDate || !manualTime) {
         setError('Select an availability slot, or provide a date and time')
         return
       }
-      scheduledTime = `${manualDate}T${manualTime}`
+      scheduledTime = new Date(`${manualDate}T${manualTime}`).toISOString()
     }
 
     if (!topic) {
@@ -255,7 +256,7 @@ export default function SeniorConnectBooking() {
                           }`}
                         >
                           <Clock className="w-3.5 h-3.5" />
-                          {slot.startTime} - {slot.endTime}
+                          {slot.startTime} - {slot.endTime} ({slot.timezone || 'UTC'})
                         </button>
                       ))}
                   </div>
@@ -267,7 +268,7 @@ export default function SeniorConnectBooking() {
 
         <div className="border-t border-gray-200 pt-6">
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Or enter a custom time (mentor will confirm)
+            Or enter a custom time in your local timezone (mentor will confirm)
           </label>
           <div className="grid sm:grid-cols-2 gap-4">
             <input

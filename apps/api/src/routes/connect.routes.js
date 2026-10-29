@@ -1,4 +1,6 @@
 import express from 'express';
+import { slotDateTime } from '../../../../packages/shared/src/utils/slot-time.js';
+import { mentorApplicationState, canManageMentorFeatures } from '../services/mentor-approval.service.js';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import openai from '../config/ai.js';
@@ -36,7 +38,7 @@ const requireAlumniMentor = async (req, res, next) => {
         })
       : null;
 
-    if (!user || (!user.isAlumniMentor && user.role !== 'MENTOR' && user.role !== 'ADMIN')) {
+    if (!canManageMentorFeatures(user)) {
       return res.status(403).json({ error: 'Mentor access is required' });
     }
 
@@ -76,14 +78,14 @@ const resolveSeniorUserId = async (seniorId) => {
   const user = await prisma.user.findFirst({
     where: {
       id: seniorId,
-      OR: [{ isAlumniMentor: true }, { role: 'MENTOR' }, { seniorProfile: { isNot: null } }]
+      isAlumniMentor: true, mentorApprovalStatus: 'APPROVED'
     },
     select: { id: true }
   });
   if (user) return user.id;
 
-  const profile = await prisma.seniorProfile.findUnique({
-    where: { id: seniorId },
+  const profile = await prisma.seniorProfile.findFirst({
+    where: { id: seniorId, user: { isAlumniMentor: true, mentorApprovalStatus: 'APPROVED' } },
     select: { userId: true }
   });
   if (profile) return profile.userId;
@@ -92,12 +94,8 @@ const resolveSeniorUserId = async (seniorId) => {
 };
 
 // Build a full DateTime from an ISO date (or Date) plus a "HH:MM" time string
-const buildDateTime = (date, time) => {
-  const d = new Date(date);
-  const parts = String(time).split(':').map((n) => parseInt(n, 10));
-  d.setHours(parts[0] || 0, parts[1] || 0, 0, 0);
-  return d;
-};
+const buildDateTime = slotDateTime;
+const requestError = (status, message) => Object.assign(new Error(message), { status });
 
 const toMinutes = (time) => {
   const parts = String(time).split(':').map((n) => parseInt(n, 10));
@@ -119,7 +117,7 @@ const sameDateTime = (a, b) => {
 
 const dateOnly = (date) => {
   const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
+  d.setUTCHours(0, 0, 0, 0);
   return d;
 };
 
@@ -141,7 +139,7 @@ router.get('/seniors', async (req, res) => {
   try {
     const { domain, expertise, search, limit } = req.query;
     
-    const where = {};
+    const where = { user: { isAlumniMentor: true, mentorApprovalStatus: 'APPROVED' } };
     
     if (domain) {
       where.domain = domain;
@@ -306,16 +304,16 @@ const upsertProfile = async (req, res) => {
     if (timezone !== undefined) userData.timezone = timezone;
 
     const profileData = {
-      title: title !== undefined ? String(title).trim() : '',
-      company: company !== undefined ? String(company).trim() : '',
-      domain: domain !== undefined ? String(domain).trim() : '',
-      role: role !== undefined ? String(role).trim() : '',
-      bio: bio !== undefined ? String(bio).trim() : '',
-      experience: experience !== undefined ? Math.max(0, parseInt(experience, 10) || 0) : 0,
-      location: location !== undefined ? String(location).trim() : '',
+      title: title !== undefined ? String(title).trim() : undefined,
+      company: company !== undefined ? String(company).trim() : undefined,
+      domain: domain !== undefined ? String(domain).trim() : undefined,
+      role: role !== undefined ? String(role).trim() : undefined,
+      bio: bio !== undefined ? String(bio).trim() : undefined,
+      experience: experience !== undefined ? Math.max(0, parseInt(experience, 10) || 0) : undefined,
+      location: location !== undefined ? String(location).trim() : undefined,
       expertise: Array.isArray(expertise) ? expertise.filter((e) => e && String(e).trim()).map((e) => String(e).trim()) : undefined,
       achievements: Array.isArray(achievements) ? achievements.filter((a) => a && String(a).trim()).map((a) => String(a).trim()) : undefined,
-      hourlyRate: hourlyRate !== undefined ? Math.max(0, parseInt(hourlyRate, 10) || 0) : 0
+      hourlyRate: hourlyRate !== undefined ? Math.max(0, parseInt(hourlyRate, 10) || 0) : undefined
     };
     if (availability !== undefined) {
       if (!['available', 'limited', 'booked'].includes(availability)) {
@@ -331,17 +329,13 @@ const upsertProfile = async (req, res) => {
       });
       if (!currentUser) throw new Error('User account not found');
 
-      // Topmate-style: auto-approved and promoted to MENTOR role!
-      const mentorApprovalStatus = 'APPROVED';
-      const roleUpdate = currentUser.role === 'ADMIN' ? {} : { role: 'MENTOR' };
+      const approvalState = mentorApplicationState(currentUser);
 
       const updatedUser = await transaction.user.update({
         where: { id: req.user.id },
         data: {
           ...userData,
-          isAlumniMentor: true,
-          mentorApprovalStatus: 'APPROVED',
-          ...roleUpdate
+          ...approvalState
         },
         select: {
           id: true,
@@ -360,13 +354,12 @@ const upsertProfile = async (req, res) => {
         create: {
           userId: req.user.id,
           ...profileData,
-          title: profileData.title || '',
-          experience: profileData.experience || 0,
-          location: profileData.location || ''
+          title: profileData.title || '', company: profileData.company || '', domain: profileData.domain || '', role: profileData.role || '', bio: profileData.bio || '',
+          experience: profileData.experience || 0, location: profileData.location || '', expertise: profileData.expertise || [], achievements: profileData.achievements || []
         }
       });
 
-      return { profile, user: updatedUser, mentorApprovalStatus: 'APPROVED' };
+      return { profile, user: updatedUser, mentorApprovalStatus: approvalState.mentorApprovalStatus };
     });
     
     res.json(result);
@@ -617,6 +610,7 @@ router.get('/availability/:seniorId', async (req, res) => {
       date: s.date,
       startTime: s.startTime,
       endTime: s.endTime,
+      timezone: s.timezone,
       booked: s.isBooked
     })));
   } catch (error) {
@@ -626,22 +620,27 @@ router.get('/availability/:seniorId', async (req, res) => {
 });
 
 // Validate and reject overlapping slots for a senior
-const assertNoAvailabilityConflict = async (seniorId, date, startTime, endTime, excludeId) => {
+const assertNoAvailabilityConflict = async (seniorId, date, startTime, endTime, excludeId, timezone = 'UTC', database = prisma) => {
   if (!endTime || toMinutes(startTime) >= toMinutes(endTime)) {
-    return { error: 'startTime must be earlier than endTime' };
+    return { error: 'startTime must be earlier than endTime', status: 400 };
   }
   
-  const sameDateSlots = await prisma.availabilitySlot.findMany({
+  let start, end;
+  try { start = slotDateTime(date, startTime, timezone); end = slotDateTime(date, endTime, timezone); }
+  catch (error) { return { error: error.message, status: 400 }; }
+  if (start <= new Date()) return { error: 'Slots must start in the future', status: 400 };
+  const sameDateSlots = await database.availabilitySlot.findMany({
     where: {
       seniorId,
-      date: dateOnly(date),
+      date: { gte: new Date(dateOnly(date).getTime() - 2 * 86400000), lte: new Date(dateOnly(date).getTime() + 2 * 86400000) },
       ...(excludeId ? { id: { not: excludeId } } : {})
     }
   });
   
-  const overlap = sameDateSlots.some((slot) =>
-    slotsOverlap(startTime, endTime, slot.startTime, slot.endTime)
-  );
+  const overlap = sameDateSlots.some((slot) => {
+    try { return dateOverlap(start, end, slotDateTime(slot.date, slot.startTime, slot.timezone), slotDateTime(slot.date, slot.endTime, slot.timezone)); }
+    catch { return slotsOverlap(startTime, endTime, slot.startTime, slot.endTime) && dateOnly(date).getTime() === dateOnly(slot.date).getTime(); }
+  });
   
   if (overlap) {
     return { error: 'Slot overlaps with an existing availability slot' };
@@ -660,47 +659,50 @@ router.post('/availability', authenticate, requireAlumniMentor, async (req, res)
       return res.status(400).json({ error: 'Provide a date, startTime and endTime (or a slots array)' });
     }
 
-    const created = [];
-    for (const item of list) {
-      const { date, startTime, endTime, timezone } = item;
-      if (!date || !startTime || !endTime) {
-        return res.status(400).json({ error: 'Each slot requires date, startTime and endTime' });
-      }
-
-      // Only today or future dates are allowed
-      if (dateOnly(date).getTime() < dateOnly(new Date()).getTime()) {
-        return res.status(400).json({ error: `Slots cannot be created for past dates: ${date}` });
-      }
-
-      const conflict = await assertNoAvailabilityConflict(req.user.id, date, startTime, endTime);
-      if (conflict) {
-        return res.status(409).json({ error: `${conflict.error}: ${date}` });
-      }
-
-      const slot = await prisma.availabilitySlot.create({
-        data: {
-          seniorId: req.user.id,
-          date: dateOnly(date),
-          startTime: String(startTime),
-          endTime: String(endTime),
-          timezone: timezone || 'UTC',
-          isBooked: false
+    const created = await prisma.$transaction(async (tx) => {
+      const created = [];
+      for (const item of list) {
+        const { date, startTime, endTime, timezone } = item;
+        if (!date || !startTime || !endTime) {
+          throw requestError(400, 'Each slot requires date, startTime and endTime');
         }
-      });
-      created.push(slot);
-    }
 
+        // Only today or future dates are allowed
+        if (dateOnly(date).getTime() < dateOnly(new Date()).getTime()) {
+          throw requestError(400, `Slots cannot be created for past dates: ${date}`);
+        }
+
+        const conflict = await assertNoAvailabilityConflict(req.user.id, date, startTime, endTime, undefined, timezone || 'UTC', tx);
+        if (conflict) {
+          throw requestError(conflict.status || 409, `${conflict.error}: ${date}`);
+        }
+
+        const slot = await tx.availabilitySlot.create({
+          data: {
+            seniorId: req.user.id,
+            date: dateOnly(date),
+            startTime: String(startTime),
+            endTime: String(endTime),
+            timezone: timezone || 'UTC',
+            isBooked: false
+          }
+        });
+        created.push(slot);
+      }
+
+      return created;
+    }, { isolationLevel: 'Serializable', timeout: 15000 });
     res.status(201).json(created);
   } catch (error) {
     console.error('Create availability error:', error);
-    res.status(500).json({ error: 'Failed to create availability slot' });
+    res.status(error.code === 'P2034' ? 409 : error.status || 500).json({ error: error.code === 'P2034' ? 'Availability changed. Please retry.' : error.status ? error.message : 'Failed to create availability slot' });
   }
 });
 
 // Update availability slot
 router.put('/availability/:id', authenticate, requireAlumniMentor, async (req, res) => {
   try {
-    const { date, startTime, endTime } = req.body;
+    const { date, startTime, endTime, timezone } = req.body;
     
     const slot = await prisma.availabilitySlot.findFirst({
       where: {
@@ -726,14 +728,15 @@ router.put('/availability/:id', authenticate, requireAlumniMentor, async (req, r
       return res.status(400).json({ error: 'Slots cannot be moved to past dates' });
     }
 
-    const conflict = await assertNoAvailabilityConflict(req.user.id, nextDate, nextStart, nextEnd, req.params.id);
+    const nextTimezone = timezone === undefined ? slot.timezone : timezone;
+    const conflict = await assertNoAvailabilityConflict(req.user.id, nextDate, nextStart, nextEnd, req.params.id, nextTimezone);
     if (conflict) {
-      return res.status(409).json({ error: conflict.error });
+      return res.status(conflict.status || 409).json({ error: conflict.error });
     }
     
     const updated = await prisma.availabilitySlot.update({
       where: { id: req.params.id },
-      data: { date: nextDate, startTime: nextStart, endTime: nextEnd }
+      data: { date: nextDate, startTime: nextStart, endTime: nextEnd, timezone: nextTimezone }
     });
     
     res.json(updated);
@@ -973,119 +976,112 @@ router.post('/sessions', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Cannot book a session in the past. Please pick a future date and time.' });
     }
 
-    let slot = null;
-    if (availabilitySlotId) {
-      // Verify the chosen slot belongs to the senior and matches the requested time
-      slot = await prisma.availabilitySlot.findFirst({
-        where: { id: availabilitySlotId, seniorId: seniorUserId }
-      });
-      if (!slot) {
-        return res.status(404).json({ error: 'Availability slot not found' });
-      }
-      if (slot.isBooked) {
-        return res.status(409).json({ error: 'Slot is no longer available' });
-      }
-      const slotStart = buildDateTime(slot.date, slot.startTime);
-      const slotEnd = buildDateTime(slot.date, slot.endTime);
-      if (!sameDateTime(slotStart, requestedStart) || !sameDateTime(slotEnd, requestedEnd)) {
-        return res.status(400).json({ error: 'Scheduled time does not match the selected slot' });
-      }
-    }
-    
-    // Conflict detection: no overlapping active bookings for the senior
-    const seniorBookings = await prisma.sessionBooking.findMany({
-      where: {
-        seniorId: seniorUserId,
-        status: { in: ['pending', 'accepted', 'started'] }
-      },
-      select: { scheduledTime: true, duration: true }
-    });
-    const seniorConflict = seniorBookings.some((b) => {
-      const bStart = new Date(b.scheduledTime);
-      const bEnd = new Date(bStart.getTime() + b.duration * 60000);
-      return dateOverlap(requestedStart, requestedEnd, bStart, bEnd);
-    });
-    if (seniorConflict) {
-      return res.status(409).json({ error: 'Senior already has a session at this time' });
-    }
-    
-    // Conflict detection for the junior
-    const juniorBookings = await prisma.sessionBooking.findMany({
-      where: {
-        juniorId: req.user.id,
-        status: { in: ['pending', 'accepted', 'started'] }
-      },
-      select: { scheduledTime: true, duration: true }
-    });
-    const juniorConflict = juniorBookings.some((b) => {
-      const bStart = new Date(b.scheduledTime);
-      const bEnd = new Date(bStart.getTime() + b.duration * 60000);
-      return dateOverlap(requestedStart, requestedEnd, bStart, bEnd);
-    });
-    if (juniorConflict) {
-      return res.status(409).json({ error: 'You already have a session at this time' });
-    }
-    
-    // Mark the availability slot as booked
-    if (slot) {
-      await prisma.availabilitySlot.update({
-        where: { id: slot.id },
-        data: { isBooked: true }
-      });
-    }
-    
-    // Generate Jitsi meeting details
-    const bookingId = Date.now().toString(36) + Math.random().toString(36).substr(2);
-    const jitsiRoomName = `seniorconnect-session-${bookingId}`;
-    const jitsiRoomUrl = `https://meet.jit.si/${jitsiRoomName}`;
-    
-    const session = await prisma.sessionBooking.create({
-      data: {
-        juniorId: req.user.id,
-        seniorId: seniorUserId,
-        availabilitySlotId: slot ? slot.id : null,
-        scheduledTime: requestedStart,
-        duration: dur,
-        topic: String(topic).trim(),
-        notes: notes ? String(notes).trim() : '',
-        status: 'pending',
-        jitsiRoomName,
-        jitsiRoomUrl
-      },
-      include: {
-        junior: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-            university: true
-          }
-        },
-        senior: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-            title: true,
-            company: true
-          }
+    const session = await prisma.$transaction(async (tx) => {
+      let slot = null;
+      if (availabilitySlotId) {
+        // Verify the chosen slot belongs to the senior and matches the requested time
+        slot = await tx.availabilitySlot.findFirst({
+          where: { id: availabilitySlotId, seniorId: seniorUserId }
+        });
+        if (!slot) {
+          throw requestError(404, 'Availability slot not found');
+        }
+        if (slot.isBooked) {
+          throw requestError(409, 'Slot is no longer available');
+        }
+        const slotStart = buildDateTime(slot.date, slot.startTime, slot.timezone);
+        const slotEnd = buildDateTime(slot.date, slot.endTime, slot.timezone);
+        if (!sameDateTime(slotStart, requestedStart) || !sameDateTime(slotEnd, requestedEnd)) {
+          throw requestError(400, 'Scheduled time does not match the selected slot');
         }
       }
-    });
     
-    res.status(201).json(session);
+      // Conflict detection: no overlapping active bookings for the senior
+      const seniorBookings = await tx.sessionBooking.findMany({
+        where: {
+          seniorId: seniorUserId,
+          status: { in: ['pending', 'accepted', 'started'] }
+        },
+        select: { scheduledTime: true, duration: true }
+      });
+      const seniorConflict = seniorBookings.some((b) => {
+        const bStart = new Date(b.scheduledTime);
+        const bEnd = new Date(bStart.getTime() + b.duration * 60000);
+        return dateOverlap(requestedStart, requestedEnd, bStart, bEnd);
+      });
+      if (seniorConflict) {
+        throw requestError(409, 'Senior already has a session at this time');
+      }
+    
+      // Conflict detection for the junior
+      const juniorBookings = await tx.sessionBooking.findMany({
+        where: {
+          juniorId: req.user.id,
+          status: { in: ['pending', 'accepted', 'started'] }
+        },
+        select: { scheduledTime: true, duration: true }
+      });
+      const juniorConflict = juniorBookings.some((b) => {
+        const bStart = new Date(b.scheduledTime);
+        const bEnd = new Date(bStart.getTime() + b.duration * 60000);
+        return dateOverlap(requestedStart, requestedEnd, bStart, bEnd);
+      });
+      if (juniorConflict) {
+        throw requestError(409, 'You already have a session at this time');
+      }
+    
+      // Mark the availability slot as booked
+      if (slot) {
+        const reserved = await tx.availabilitySlot.updateMany({ where: { id: slot.id, isBooked: false }, data: { isBooked: true } });
+        if (reserved.count !== 1) throw requestError(409, 'Slot is no longer available');
+      }
+    
+      // Generate Jitsi meeting details
+      const bookingId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+      const jitsiRoomName = `seniorconnect-session-${bookingId}`;
+      const jitsiRoomUrl = `https://meet.jit.si/${jitsiRoomName}`;
 
-    // Create notification for senior
-    await createNotification(
-      seniorUserId,
-      'session_request',
-      'New Session Request',
-      `${req.user.name || 'A junior'} wants to book a session with you on ${topic}`,
-      { bookingId: session.id, juniorId: req.user.id }
-    );
+      const session = await tx.sessionBooking.create({
+        data: {
+          juniorId: req.user.id,
+          seniorId: seniorUserId,
+          availabilitySlotId: slot ? slot.id : null,
+          scheduledTime: requestedStart,
+          duration: dur,
+          topic: String(topic).trim(),
+          notes: notes ? String(notes).trim() : '',
+          status: 'pending',
+          jitsiRoomName,
+          jitsiRoomUrl
+        },
+        include: {
+          junior: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+              university: true
+            }
+          },
+          senior: {
+            select: {
+              id: true,
+              name: true,
+              avatar: true,
+              title: true,
+              company: true
+            }
+          }
+        }
+      });
+    
+      await tx.notification.create({ data: { userId: seniorUserId, type: 'session_request', title: 'New Session Request', message: `${req.user.name || 'A junior'} wants to book a session with you on ${topic}`, data: { bookingId: session.id, juniorId: req.user.id } } });
+      return session;
+    }, { isolationLevel: 'Serializable', timeout: 15000 });
+    res.status(201).json(session);
   } catch (error) {
     console.error('Create session error:', error);
-    res.status(500).json({ error: 'Failed to create session' });
+    res.status(error.code === 'P2034' ? 409 : error.status || 500).json({ error: error.code === 'P2034' ? 'Booking availability changed. Please retry.' : error.status ? error.message : 'Failed to create session' });
   }
 });
 

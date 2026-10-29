@@ -148,6 +148,8 @@ app.use('/api/recommendations', recommendationRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Malformed JSON body' });
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request body exceeds the 2 MB limit' });
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
@@ -168,7 +170,12 @@ const ensureDatabaseSeeded = async () => {
   }
 };
 
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', (error) => {
+  if (error) {
+    console.error(`CareerHub API could not listen on port ${PORT}: ${error.code || error.message}`);
+    process.exit(1);
+    return;
+  }
   console.log(`CareerHub API running on port ${PORT}`);
   ensureDatabaseSeeded();
 });

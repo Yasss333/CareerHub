@@ -1,5 +1,14 @@
 # Senior Connect - Implementation Progress
 
+## Deep functional QA — 2026-10-30
+- [x] Restore administrator approval for mentor registration and profile applications; reject pending/rejected mentor actions.
+- [x] Regress approval/rejection, approved profile edits, booking conflicts, concurrent booking, session permissions, rescheduling, feedback, notifications, and meeting token authorization.
+- [x] Verify fixes with temporary accounts and preserve existing approved mentors.
+
+Verification: expanded live API pass 133/133 and baseline 12/12 check groups pass with scoped cleanup. Slot times use explicit IANA timezones; bulk creation and booking reservations use serializable transactions. Physical-device meeting quality is a separate acceptance item.
+
+Reproduction: the all-module E2E test observed automatic promotion when a regular user saved a mentor profile. The user explicitly authorized fixing mentor approval and other discovered bugs.
+
 ## Follow-up: live room presence and stale-call cleanup
 - [x] Notify participants only after a verified LiveKit room join
 - [x] Show waiting state from participant presence, not booking role

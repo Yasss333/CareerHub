@@ -136,7 +136,7 @@ router.post('/', authenticate, async (req, res) => {
   try {
     const { title, description, roleType, skillLevel, topics, resources, isPublic } = req.body;
 
-    if (!title || !roleType) {
+    if (typeof title !== 'string' || !title.trim() || typeof roleType !== 'string' || !roleType.trim()) {
       return res.status(400).json({ error: 'Title and role type are required' });
     }
 

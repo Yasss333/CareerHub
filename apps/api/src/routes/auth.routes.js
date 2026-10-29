@@ -1,4 +1,6 @@
 import express from 'express';
+import { parseRegistration, parseLogin } from '../services/input-validation.service.js';
+import { mentorRegistrationState } from '../services/mentor-approval.service.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
@@ -71,15 +73,15 @@ const verifyToken = (token) => {
 // Register new user
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, role, specialization } = req.body;
+    const { email, password, name, role, specialization } = parseRegistration(req.body);
     const isMentor = role === 'MENTOR';
     if (!isMentor && !candidateSpecializations.includes(specialization)) {
       return res.status(400).json({ error: 'Choose a valid candidate specialization' });
     }
     
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } }
     });
     
     if (existingUser) {
@@ -89,9 +91,7 @@ router.post('/register', async (req, res) => {
     // Hash password
     const passwordHash = await hashPassword(password);
     
-    const assignedRole = isMentor ? 'MENTOR' : 'USER';
-    const isAlumniMentor = isMentor;
-    const mentorApprovalStatus = isMentor ? 'APPROVED' : 'NONE';
+    const { role: assignedRole, isAlumniMentor, mentorApprovalStatus } = mentorRegistrationState(isMentor);
 
     // Create user
     const user = await prisma.user.create({
@@ -106,15 +106,7 @@ router.post('/register', async (req, res) => {
         ...(isMentor ? {
           seniorProfile: {
             create: {
-              title: 'Senior Mentor',
-              company: 'Tech Enterprise',
-              domain: 'Fullstack',
-              role: 'Senior Engineer',
-              bio: 'Passionate about mentoring junior developers in interview prep, code quality, and career progression.',
-              location: 'Remote',
-              experience: 3,
-              expertise: ['Career Guidance', 'System Design', 'Code Reviews'],
-              achievements: ['Industry Mentor'],
+              title: '', company: '', domain: '', role: '', bio: '', location: '', experience: 0, expertise: [], achievements: [],
               hourlyRate: 0
             }
           }
@@ -140,6 +132,8 @@ router.post('/register', async (req, res) => {
       token
     });
   } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
+    if (error.code === 'P2002') return res.status(409).json({ error: 'User already exists' });
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Failed to register user' });
   }
@@ -148,15 +142,15 @@ router.post('/register', async (req, res) => {
 // Login user
 router.post('/login', async (req, res) => {
   try {
-    const { email, password, accountType } = req.body;
+    const { email, password, accountType } = parseLogin(req.body);
 
     if (accountType !== undefined && !['USER', 'ADMIN', 'MENTOR'].includes(accountType)) {
       return res.status(400).json({ error: 'Invalid account type' });
     }
     
     // Find user
-    const user = await prisma.user.findUnique({
-      where: { email }
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } }
     });
     
     if (!user) {
@@ -189,6 +183,7 @@ router.post('/login', async (req, res) => {
       token
     });
   } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
     console.error('Login error:', error);
     res.status(500).json({ error: 'Failed to login' });
   }

@@ -1105,7 +1105,7 @@ export default function Landing() {
             </h2>
           </div>
 
-          <Accordion type="single" collapsible className="max-w-3xl mx-auto" data-reveal>
+          <Accordion className="max-w-3xl mx-auto" data-reveal>
             {FAQS.map((faq) => (
               <AccordionItem key={faq.id} value={faq.id} className="border-b border-[#242433]">
                 <AccordionTrigger className="text-base sm:text-lg font-semibold text-white py-5 hover:text-[#A78BFA]">
