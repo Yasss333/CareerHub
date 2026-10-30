@@ -1,7 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="18" fill="#7C3AED"/>
-  <path d="M31 46V40C31 36 33 33 36 30L46 20" stroke="#99F6E4" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M18 45V36C18 31.6 21.6 28 26 28H30L46 18M35 18H46V29" stroke="white" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="18" cy="45" r="4" fill="white"/>
-  <circle cx="31" cy="46" r="4" fill="#99F6E4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="careerhub-gradient" x1="51" y1="11" x2="461" y2="501" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6366F1"/>
+      <stop offset=".45" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#careerhub-gradient)">
+    <path d="M256 11 51 133v179c0 78 53 134 146 170V282h23l-46-82-47 82h23v118c-32-27-51-58-51-88V160l157-93 158 93v152c0 30-19 61-52 88V282h23l-46-82-47 82h23v200c93-36 146-92 146-170V133L256 11Z"/>
+    <path d="m256 105 47 82h-23v308q-24 12-48 0V187h-23l47-82Z"/>
+  </g>
 </svg>

@@ -17,10 +17,16 @@ Integrate the committed CareerHub landing prototype into the main `apps/web` app
 - [x] Remove academic and campus-specific branding and project credits
 
 ## Custom brand and developer credit
-- [x] Replace CH initials with one custom SVG path-and-arrow mark across active branding surfaces and favicon.
+- [x] Replace CH initials with one shared SVG mark across active branding surfaces and favicon.
 - [x] Add a landing-footer developer credit linking to https://github.com/Yasss333.
 - [x] Verify desktop/mobile rendering, asset loading and frontend build.
 
-Design: reuse CareerHub violet with a small teal route, clean silhouette, no motion, readable at favicon size. Keep existing layout and typography.
+Design: use the supplied shield and three rising arrows with the existing indigo/violet/purple primary-button gradient, transparent background, and crisp SVG edges. Keep existing layout and typography.
 
 Verified at 320, 390, 768 and 1440 px: landing, login, registration and dashboard branding; SVG and favicon load; GitHub credit has the exact URL and safe new-tab attributes; no browser runtime exceptions. TypeScript and production build pass.
+
+## Supplied shield logo revision
+- [x] Replace the first custom mark with the user-supplied shield and three rising arrows, recreated as SVG.
+- [x] Apply the existing primary-button gradient (#6366f1 → #8b5cf6 → #a855f7), preserving transparency and proportions.
+- [x] Verify all branding surfaces, SVG/favicon loading, responsive layout, TypeScript and production build.
+- [ ] Merge to main and push to GitHub.
