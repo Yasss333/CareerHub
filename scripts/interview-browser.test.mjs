@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 
 // Every /api request is intercepted. These browser checks never reach the production database or ML service.
-async function withInterviewBrowser(run, staleLoadDelay = 0) {
+async function withInterviewBrowser(run, staleLoadDelay = 0, allowDevices = false) {
   const browser = await puppeteer.launch({
     headless: true,
     executablePath: process.env.INTERVIEW_TEST_BROWSER || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -13,16 +13,20 @@ async function withInterviewBrowser(run, staleLoadDelay = 0) {
   await page.setViewport({ width: 1440, height: 1000 });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.evaluateOnNewDocument(() => {
+  await page.evaluateOnNewDocument((allowDevices) => {
     localStorage.setItem('token', 'isolated-browser-fixture-token');
     localStorage.setItem('user', JSON.stringify({ id: 'fixture-candidate', name: 'Test Candidate', role: 'USER' }));
     window.__mediaRequests = 0;
-    Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { value: async () => {
+    const capture=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    window.__deviceStreams=[];
+    window.__captureErrors=[];
+    Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { value: async (...args) => {
       window.__mediaRequests += 1;
+      if(allowDevices){try{const stream=await capture(...args);window.__deviceStreams.push(stream);return stream;}catch(error){window.__captureErrors.push({name:error.name,message:error.message});throw error;}}
       throw new DOMException('Test device denied', 'NotAllowedError');
     } });
     Object.defineProperty(window, 'speechSynthesis', { value: undefined });
-  });
+  },allowDevices);
   let session = {
     id: 'fixture-session', type: 'technical', topics: ['Databases'], role: 'Engineer', difficulty: 'medium', plannedDuration: 10,
     status: 'in_progress', startedAt: new Date().toISOString(), createdAt: new Date().toISOString(),
@@ -31,6 +35,7 @@ async function withInterviewBrowser(run, staleLoadDelay = 0) {
     emotionResults: [], proctoringEvents: [],
   };
   let failEvaluation = false;
+  let failConsent = false;
   let sessionReads = 0;
   let resumeReads = 0;
   await page.setRequestInterception(true);
@@ -52,6 +57,9 @@ async function withInterviewBrowser(run, staleLoadDelay = 0) {
       const body = JSON.parse(request.postData());
       session = { ...session, ...body, cameraEnabled: body.consent.camera, microphoneEnabled: body.consent.microphone };
       data = { session }; status = 201;
+    } else if(url.pathname.endsWith('/consent')){
+      if(failConsent){status=503;data={error:'Consent save unavailable. Please retry.'};}
+      else {const body=JSON.parse(request.postData());session={...session,...(body.camera?{cameraEnabled:true}:{}),...(body.microphone?{microphoneEnabled:true}:{})};data={session};}
     } else if (url.pathname.endsWith('/answer')) {
       session.questions[0].answerText = JSON.parse(request.postData()).answerText;
       data = { question: session.questions[0] };
@@ -76,9 +84,10 @@ async function withInterviewBrowser(run, staleLoadDelay = 0) {
     throw new Error(`Button not found: ${text}`);
   };
   try {
-    await run({ page, session, clickText, setFailEvaluation: (value) => { failEvaluation = value; } });
+    await run({ page, session, clickText, setFailEvaluation: (value) => { failEvaluation = value; }, setFailConsent: value=>{failConsent=value;} });
     assert.deepEqual(errors, [], 'interview pages must not throw runtime errors');
   } catch (error) {
+    console.error('Device errors:',await page.evaluate(()=>window.__captureErrors));
     console.error('Browser failure at:', page.url(), (await page.$eval('body', (element) => element.textContent)).slice(-1600));
     throw error;
   } finally { await browser.close(); }
@@ -111,6 +120,30 @@ test('quick mock setup defaults to explicit consent and text-only interviews com
   await page.setViewport({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'report must fit a mobile viewport');
   if (process.env.INTERVIEW_TEST_SCREENSHOT) await page.screenshot({ path: process.env.INTERVIEW_TEST_SCREENSHOT, fullPage: true });
+}));
+
+test('consent-off session can enable camera and microphone after explicit confirmation', {timeout:120000},()=>withInterviewBrowser(async({page,clickText})=>{
+  await page.goto('http://127.0.0.1:5173/interview/session/fixture-session',{waitUntil:'networkidle0'});
+  await page.type('textarea','Keep this draft while enabling devices.',{delay:10});
+  assert.equal(await page.evaluate(()=>window.__mediaRequests),0);
+  await page.click('button[title="Turn on camera"]');await page.waitForSelector('[role="dialog"]');
+  assert.equal(await page.evaluate(()=>window.__mediaRequests),0);await clickText('Cancel');assert.equal(await page.evaluate(()=>window.__mediaRequests),0);
+  await page.click('button[title="Turn on camera"]');await clickText('Enable camera');
+  await page.waitForFunction(()=>document.querySelector('video')?.videoWidth>0);
+  await page.click('button[title="Unmute microphone"]');await clickText('Enable microphone');
+  await page.waitForFunction(()=>window.__deviceStreams.some(s=>s.getAudioTracks().some(t=>t.readyState==='live')));
+  assert.equal(await page.$eval('textarea',n=>n.value),'Keep this draft while enabling devices.');
+  await page.reload({waitUntil:'networkidle0'});await page.waitForFunction(()=>document.querySelector('video')?.videoWidth>0);
+  assert.equal(await page.$eval('button[title="Mute microphone"]',n=>n.disabled),false);
+},0,true));
+
+test('device consent save errors remain retryable and never start capture before saving', {timeout:120000},()=>withInterviewBrowser(async({page,clickText,setFailConsent})=>{
+  await page.goto('http://127.0.0.1:5173/interview/session/fixture-session',{waitUntil:'networkidle0'});setFailConsent(true);
+  await page.click('button[title="Turn on camera"]');await clickText('Enable camera');
+  await page.waitForFunction(()=>document.querySelector('[role="alert"]')?.textContent.includes('Consent save unavailable'));
+  assert.equal(await page.evaluate(()=>window.__mediaRequests),0);setFailConsent(false);await clickText('Enable camera');
+  await page.waitForFunction(()=>document.body.textContent.includes('Camera permission denied'));
+  assert.ok(await page.$('textarea'));assert.equal(await page.$eval('button[title="Turn on camera"]',n=>n.disabled),false);
 }));
 
 test('a stale initial request cannot erase text entered after the latest load', {timeout:120000},()=>withInterviewBrowser(async({page})=>{

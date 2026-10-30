@@ -3,6 +3,22 @@
 ## Overview
 This document tracks the implementation progress of the AI Interview module migration from Supabase to CareerHub.
 
+## Mid-interview device consent fix — 2026-10-30
+- [x] Let a candidate grant camera/microphone consent during an active owned session, with an explicit explanation before capture.
+- [x] Regress consent-off to device-on, cancel, permission denial, refresh persistence, ownership, and closed-session guards.
+
+Reproduction: controls are disabled when setup consent was declined, so the user cannot turn devices on later. Earlier hardware tests started with consent enabled and missed this transition.
+
+Verification: 31 interview Node tests passed; the browser consent-off transition (including draft preservation, cancel and refresh) passed on its focused rerun. Other browser cases passed in the broader run; that run had an intermittent synthetic-camera acquisition failure in the transition case. Consent-save failure/retry and browser permission denial passed. The live API/database pass verified both grants persisted, closed-session rejection and scoped cleanup (4 checks). TypeScript and the production frontend build passed.
+
+## Camera and voice acceptance — 2026-10-30
+- [x] Exercise physical camera/microphone locally with user participation; retain no raw physical media.
+- [x] Verify camera toggles, recording/mute/unmute, spoken questions, stream cleanup, and permission/device failures.
+- [x] Send known synthetic speech through the real interview transcription/voice pipeline and verify saved answers/results.
+- [x] Document actual device/provider results and any remaining limits separately from simulated tests.
+
+Results: 7 physical-device checks, 9 simulated/controlled UI checks, 7 real provider/lifecycle checks, and the permission-denial regression passed. User confirmed audible question playback. Real generated-speech transcription, voice inference, face no-face quality gating, saved answer, AI evaluation, report and cleanup passed. No physical media was saved or uploaded. Deployed identity isolation and real-face model accuracy remain unverified. Report: workspace outputs/ai-interview-device-qa.html.
+
 ## Reference parity integration — 2026-10-30
 
 Reference: `legacy/ai-mock-interview-platform-2` at `34204e6`.

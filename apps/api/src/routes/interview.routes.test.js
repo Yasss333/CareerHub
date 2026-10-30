@@ -27,6 +27,23 @@ test('analysis requires authentication', () => withApi({ database: database() },
   assert.equal(response.status, 401);
 }));
 
+test('an active owner can grant device consent without enabling the other device', async()=>{
+  const session={...activeSession,cameraEnabled:false,microphoneEnabled:false};const db=database(session);
+  db.interviewSession.updateMany=async({where,data})=>{assert.equal(where.userId,'candidate-a');assert.equal(where.status,'in_progress');Object.assign(session,data);return {count:1};};
+  await withApi({database:db},async(url,headers)=>{
+    const grant=body=>fetch(`${url}/sessions/session-a/consent`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    assert.equal((await grant({camera:true})).status,200);assert.equal(session.cameraEnabled,true);assert.ok(session.cameraConsentAt instanceof Date);assert.equal(session.microphoneEnabled,false);
+    const timestamp=session.cameraConsentAt;assert.equal((await grant({microphone:true})).status,200);assert.equal(session.microphoneEnabled,true);assert.ok(session.microphoneConsentAt instanceof Date);assert.equal(session.cameraConsentAt,timestamp);
+    for(const body of [{camera:'true'},{camera:false},{},null,{camera:true,role:'ADMIN'}])assert.equal((await grant(body)).status,400);
+  });
+});
+
+test('device consent cannot change a foreign or closed interview',async()=>{
+  for(const session of [{...activeSession,userId:'candidate-b'},{...activeSession,status:'completed'},{...activeSession,status:'abandoned'}])await withApi({database:database(session)},async(url,headers)=>{
+    const response=await fetch(`${url}/sessions/session-a/consent`,{method:'PATCH',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({camera:true})});assert.equal(response.status,session.userId==='candidate-b'?404:409);
+  });
+});
+
 test('a signed token without a candidate id cannot bypass ownership scoping', () => withApi({ database: database() }, async (url) => {
   const token = jwt.sign({ role: 'USER' }, process.env.JWT_SECRET || 'careerhub-super-secret-jwt-key-2024');
   const response = await fetch(`${url}/sessions/session-a/analysis/text`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });

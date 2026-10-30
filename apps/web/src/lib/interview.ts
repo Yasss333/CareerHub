@@ -57,6 +57,7 @@ export interface InterviewCapabilities {
 export const getInterviewCapabilities = () => api<InterviewCapabilities>('/interview/capabilities')
 
 export const getInterview = (id: string) => api<{ session: InterviewSession }>(`/interview/sessions/${id}`)
+export const grantInterviewDeviceConsent = (id: string, device: 'camera' | 'microphone') => api<{ session: InterviewSession }>(`/interview/sessions/${id}/consent`, { method: 'PATCH', body: { [device]: true } })
 export const listInterviews = () => api<{ sessions: InterviewSession[] }>('/interview/sessions')
 export const generateInterviewQuestions = (id: string) => api<{ session: InterviewSession }>(`/interview/sessions/${id}/questions`, { method: 'POST', body: {} })
 export const saveInterviewAnswer = (id: string, answerText: string) => api<{ question: InterviewQuestion }>(`/interview/questions/${id}/answer`, { method: 'PUT', body: { answerText } })

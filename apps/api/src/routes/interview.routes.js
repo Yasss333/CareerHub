@@ -160,6 +160,28 @@ export function createInterviewRouter({ database = new PrismaClient(), analyze =
     }
   });
 
+  router.patch('/sessions/:id/consent', authenticate, async (req, res) => {
+    try {
+      const body = req.body;
+      if (!body || typeof body !== 'object' || Array.isArray(body) || !Object.keys(body).length || Object.entries(body).some(([key, value]) => !['camera', 'microphone'].includes(key) || value !== true)) {
+        return res.status(400).json({ error: 'Explicitly enable camera or microphone consent' });
+      }
+      const session = await requireOwned(req, res);
+      if (!session) return;
+      if (session.status !== 'in_progress') return res.status(409).json({ error: 'This interview is no longer active' });
+      const data = {
+        ...(body.camera ? { cameraEnabled: true, cameraConsentAt: session.cameraConsentAt || new Date() } : {}),
+        ...(body.microphone ? { microphoneEnabled: true, microphoneConsentAt: session.microphoneConsentAt || new Date() } : {})
+      };
+      const updated = await prisma.interviewSession.updateMany({ where: { id: session.id, userId: req.user.id, status: 'in_progress' }, data });
+      if (!updated.count) return res.status(409).json({ error: 'This interview is no longer active' });
+      return res.json({ session: await ownedSession(session.id, req.user.id) });
+    } catch (error) {
+      console.error('Update interview consent failed:', error);
+      return res.status(500).json({ error: 'Could not enable the device. Please retry.' });
+    }
+  });
+
   router.post('/sessions/:id/questions', authenticate, async (req, res) => {
     try {
       const session = await requireOwned(req, res);

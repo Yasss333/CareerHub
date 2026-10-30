@@ -56,6 +56,7 @@ The bundled service includes session isolation, token authentication, bounded up
 ## API and lifecycle
 
 - `POST /api/interview/sessions`: creates an owned `in_progress` session with explicit saved consent.
+- `PATCH /api/interview/sessions/:id/consent`: explicitly grants `{camera:true}` and/or `{microphone:true}` for an active owned session. Records server timestamps and preserves the other device's consent. Device-off/mute controls stop capture without revoking the recorded grant. Consent-off controls open an explanation before saving consent or requesting browser access; failed saves can be retried without starting capture.
 - `POST /api/interview/sessions/:id/questions`: generates questions once; concurrent requests share work and a serializable transaction rechecks persistence.
 - `PUT /api/interview/questions/:id/answer`: saves a nonempty answer and attempts optional text analysis.
 - `POST /api/interview/sessions/:id/analysis/:modality`: handles face, voice, text, fusion, transcription, and face registration/verification. Ownership, active status, consent, media size/type, and question ownership are checked.

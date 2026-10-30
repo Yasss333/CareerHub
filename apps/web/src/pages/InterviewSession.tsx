@@ -24,6 +24,7 @@ import {
   evaluateInterview,
   generateInterviewQuestions,
   getInterview,
+  grantInterviewDeviceConsent,
   getInterviewCapabilities,
   InterviewCapabilities,
   InterviewQuestion,
@@ -108,6 +109,9 @@ export default function InterviewSessionPage() {
     (location.state as { generationError?: string } | null)?.generationError || ''
   )
   const [showEndModal, setShowEndModal] = useState(false)
+  const [deviceConsent, setDeviceConsent] = useState<'camera' | 'microphone' | null>(null)
+  const [enablingDevice, setEnablingDevice] = useState(false)
+  const [deviceConsentError, setDeviceConsentError] = useState('')
   const [showTextEditor, setShowTextEditor] = useState(false)
 
   // AI & Voice phase: 'idle' | 'speaking' | 'listening'
@@ -867,7 +871,7 @@ export default function InterviewSessionPage() {
 
   // Toggle Microphone
   const toggleMic = () => {
-    if (!session?.microphoneEnabled) { setShowTextEditor(true); return }
+    if (!session?.microphoneEnabled) { setDeviceConsentError(''); setDeviceConsent('microphone'); return }
     if (isMicMuted) {
       isMicMutedRef.current = false
       setIsMicMuted(false)
@@ -881,7 +885,7 @@ export default function InterviewSessionPage() {
 
   // Toggle Camera
   const toggleCamera = () => {
-    if (!session?.cameraEnabled) return
+    if (!session?.cameraEnabled) { setDeviceConsentError(''); setDeviceConsent('camera'); return }
     if (isCameraActive) {
       void saveProctorEvent(id, 'camera_off').catch(() => undefined)
       setProctorStatus('Camera off')
@@ -889,6 +893,27 @@ export default function InterviewSessionPage() {
     } else {
       void startCamera()
     }
+  }
+
+  const enableConsentedDevice = async () => {
+    if (!deviceConsent || enablingDevice) return
+    const device = deviceConsent
+    setEnablingDevice(true)
+    setDeviceConsentError('')
+    try {
+      const { session: updated } = await grantInterviewDeviceConsent(id, device)
+      sessionRef.current = updated
+      setSession(updated)
+      setDeviceConsent(null)
+      if (device === 'microphone') {
+        isMicMutedRef.current = false
+        setIsMicMuted(false)
+        startListening()
+      }
+      // Camera starts through the consent-dependent effect after the UI updates.
+    } catch (err) {
+      setDeviceConsentError(err instanceof Error ? err.message : 'Could not enable the device. Please retry.')
+    } finally { setEnablingDevice(false) }
   }
 
   useEffect(() => {
@@ -1150,7 +1175,7 @@ export default function InterviewSessionPage() {
               <button
                 type="button"
                 onClick={toggleCamera}
-                disabled={!session.cameraEnabled}
+                disabled={enablingDevice || saving || ending}
                 className="mt-1 inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow hover:opacity-90"
               >
                 <Camera className="size-3.5" />
@@ -1174,7 +1199,7 @@ export default function InterviewSessionPage() {
           <div className="absolute bottom-3 left-3 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
               <ShieldCheck className="size-3.5 text-primary" />
-              <span>{session.cameraEnabled ? proctorStatus : 'Camera coaching declined'}</span>
+              <span>{session.cameraEnabled ? proctorStatus : 'Camera off · enable when ready'}</span>
             </div>
 
             {facialEmotion?.emotion && (
@@ -1301,7 +1326,7 @@ export default function InterviewSessionPage() {
         <button
           type="button"
           onClick={toggleMic}
-          disabled={!session.microphoneEnabled}
+          disabled={enablingDevice || saving || ending}
           className={`flex size-11 items-center justify-center rounded-xl border transition-all ${
             isMicMuted
               ? 'border-destructive/40 bg-destructive/15 text-destructive hover:bg-destructive/25'
@@ -1316,7 +1341,7 @@ export default function InterviewSessionPage() {
         <button
           type="button"
           onClick={toggleCamera}
-                disabled={!session.cameraEnabled}
+          disabled={enablingDevice || saving || ending}
           className={`flex size-11 items-center justify-center rounded-xl border transition-all ${
             !isCameraActive
               ? 'border-destructive/40 bg-destructive/15 text-destructive hover:bg-destructive/25'
@@ -1387,6 +1412,22 @@ export default function InterviewSessionPage() {
           <PhoneOff className="size-5" />
         </button>
       </div>
+
+      {deviceConsent && (
+        <div role="dialog" aria-modal="true" aria-labelledby="device-consent-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md space-y-4 rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <h3 id="device-consent-title" className="text-lg font-bold">Enable {deviceConsent}?</h3>
+            <p className="text-sm leading-6 text-muted-foreground">{deviceConsent === 'camera'
+              ? 'This starts your camera preview. Frames are sent to the interview analysis service for optional camera coaching while the camera is on. You can turn it off at any time.'
+              : 'This records your microphone and sends audio for transcription and optional voice coaching. You can mute at any time.'} Your browser may also ask for device permission.</p>
+            {deviceConsentError && <p role="alert" className="text-sm text-destructive">{deviceConsentError}</p>}
+            <div className="flex justify-end gap-3">
+              <button type="button" disabled={enablingDevice} onClick={() => setDeviceConsent(null)} className="rounded-xl border border-border px-4 py-2">Cancel</button>
+              <button type="button" disabled={enablingDevice} onClick={() => void enableConsentedDevice()} className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground">{enablingDevice ? 'Enabling...' : `Enable ${deviceConsent}`}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal for Ending Call */}
       {showEndModal && (

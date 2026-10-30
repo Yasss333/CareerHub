@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Allow candidates to enable camera or microphone during interviews initially started without media consent; controls now request explicit consent and persist it before capture instead of remaining disabled.
 - Restored administrator approval for mentor signup/profile applications, hid unapproved mentors from discovery/booking, preserved approved profile edits, and fixed the bulk-availability callback.
 - Rejected malformed account/resume/roadmap input, restricted private-roadmap recommendations to their owner, and made API port-binding failures explicit.
 - Made availability batches atomic, validated slot dates/times/timezones, used the slot timezone consistently in booking, and prevented concurrent double booking with serializable transactions.
