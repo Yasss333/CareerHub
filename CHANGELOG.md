@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added a custom CareerHub path-and-arrow logo across the landing page, dashboards, authentication screens and favicon, plus a landing-footer developer credit linking to Yasss333 on GitHub.
 - Added device preflight and entire-monitor sharing for proctored interviews, browser monitoring with stop/recovery and server continuation leases, a separate candidate introduction, and visual performance analytics.
 - Added a dedicated administrator workspace for account activity, mentor approval/removal, interviews, roadmap milestones, feedback and problem management, with database-role enforcement and an audit trail for mentor removal.
 - Added Report a bug / suggestion from every signed-in interface, private feedback history, and administrator triage with reporter-visible updates and JSON export. Reports use durable PostgreSQL JSON, bounded input/context, duplicate-safe retries and account-based submission limits.

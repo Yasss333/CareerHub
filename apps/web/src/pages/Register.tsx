@@ -1,3 +1,4 @@
+import CareerHubLogo from '../components/CareerHubLogo'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { UserCheck, GraduationCap, Sparkles } from 'lucide-react'
@@ -81,9 +82,7 @@ export default function Register() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-2xl">CH</span>
-          </div>
+          <CareerHubLogo className="mx-auto mb-4 size-16" />
           <h1 className="text-3xl font-bold text-gray-900">CareerHub</h1>
           <p className="text-gray-600 mt-2">Create your account</p>
         </div>

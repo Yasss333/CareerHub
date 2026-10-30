@@ -3,6 +3,7 @@ import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell, Moon, Sun, Ma
 import { useState, useEffect } from 'react'
 import NotificationsPanel from './NotificationsPanel'
 import ReportFeedback from './ReportFeedback'
+import CareerHubLogo from './CareerHubLogo'
 import { DarkModeProvider, useDarkMode } from '../contexts/DarkModeContext'
 
 function LayoutContent() {
@@ -114,9 +115,7 @@ function LayoutContent() {
               {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </button>
             <Link to={user.role === 'ADMIN' ? '/admin' : user.role === 'MENTOR' ? '/mentor' : '/'} aria-label="CareerHub home" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">CH</span>
-              </div>
+              <CareerHubLogo />
               <span className="hidden text-xl font-bold text-foreground min-[360px]:inline">CareerHub</span>
             </Link>
           </div>

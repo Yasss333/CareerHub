@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import '../landing.css';
+import CareerHubLogo from '../components/CareerHubLogo';
 import {
   ArrowRight,
   Code,
@@ -12,7 +13,6 @@ import {
   Menu,
   X,
   Trophy,
-  Terminal,
   TrendingUp,
   Bell,
   Search,
@@ -185,15 +185,6 @@ function CosmicStardustCanvas() {
       ref={canvasRef}
       className="absolute inset-0 pointer-events-none z-10 w-full h-full"
     />
-  );
-}
-
-/* ─── Career Hub Logo Icon ─── */
-function CareerHubLogo({ className = 'w-7 h-7' }: { className?: string }) {
-  return (
-    <div className={`rounded-xl ln-btn-primary grid place-items-center font-bold text-white shadow-md ${className}`}>
-      CH
-    </div>
   );
 }
 
@@ -1259,6 +1250,11 @@ export default function Landing() {
 
           <div className="border-t border-[#242433] mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs sm:text-sm text-[#6E6E85] gap-4">
             <div>&copy; {new Date().getFullYear()} Career Hub</div>
+            <a href="https://github.com/Yasss333" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-sm text-[#9A9AAE] transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A78BFA]">
+              <GitBranch className="size-4" aria-hidden="true" />
+              <span>Developed by <span className="font-medium text-[#DDD6FE]">Yasss333</span></span>
+              <ArrowRight className="size-3.5 -rotate-45" aria-hidden="true" />
+            </a>
           </div>
         </div>
       </footer>
