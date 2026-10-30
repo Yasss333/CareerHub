@@ -28,6 +28,12 @@ services:
         sync: false
       - key: INTERVIEW_ML_TOKEN
         sync: false
+      - key: INTERVIEW_ML_DISCOVERY_MODE
+        value: direct
+      - key: INTERVIEW_ML_TIMEOUT_MS
+        value: "120000"
+      - key: INTERVIEW_ML_SESSION_SCOPED
+        value: "false"
       - key: OPENROUTER_API_KEY
         sync: false
       - key: MODEL_NAME

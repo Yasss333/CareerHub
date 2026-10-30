@@ -34,6 +34,12 @@ The standalone reference frontend URL is useful for visual acceptance but is not
 
 ## Deployed ML contract
 
+### Render configuration check
+
+The deployed frontend proxies `/api` to `https://careerhub-bdjp.onrender.com`. Set ML environment variables on **that Render service**, not only on Vercel or in a local `.env`. For the supplied public service, use `INTERVIEW_ML_URL=https://ai-mock-ml-service-129155535988.us-central1.run.app`, `INTERVIEW_ML_DISCOVERY_MODE=direct`, `INTERVIEW_ML_TIMEOUT_MS=120000`, `INTERVIEW_ML_SESSION_SCOPED=false`, and no `INTERVIEW_ML_TOKEN`; save and redeploy Render. Values such as `ml` are invalid URLs. The blueprint leaves the URL/token to be entered in Render and supplies the direct-mode/timeout/isolation defaults.
+
+On 2026-10-30, a scoped production diagnostic returned HTTP 503 `Interview analysis service is not configured`; the reported completed session had three answered questions and zero emotion records despite camera/microphone consent. After the user corrected Render settings and redeployed, the deployed Vercel API returned direct-mode capabilities and HTTP 200 real text-model output. With explicit user approval, three text-emotion records and one fusion record were recovered for that interview; the actual report helper exposes the recovered results. Recovery did not modify answers or evaluation scores. Temporary diagnostic accounts were removed. Correct the Render environment before repeating a live interview. Stored answers support text-only recovery with explicit approval for transmitting those private answers to the configured ML destination; facial/voice results cannot be recovered without raw media, which CareerHub does not retain.
+
 All calls originate on the API server. A configured token is sent in `X-Interview-Service-Token`; public direct mode omits it. Direct mode makes inference requests without health or schema probes, per the user’s instruction. Use HTTPS outside localhost. Supported endpoints:
 
 | ML endpoint | Request | Expected output |
