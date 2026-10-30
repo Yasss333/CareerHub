@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { getInterview, InterviewSession } from '../lib/interview'
+import InterviewAnalytics from '../components/InterviewAnalytics'
 import { summarizeInterviewAnalysis } from '../lib/interview-analysis'
 
 const percentage = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? `${Math.round(value * 100)}%` : 'Not available'
@@ -46,9 +47,7 @@ export default function InterviewResults() {
       <div className="flex gap-2"><Link to="/interview/setup" className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold"><RotateCcw className="size-4" />Practice again</Link><button onClick={() => void remove()} disabled={deleting} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 text-sm disabled:opacity-50"><Trash2 className="size-4" />{deleting ? 'Deleting…' : 'Delete'}</button></div>
     </header>
     {session.status === 'in_progress' && <p className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">This interview has not been evaluated. <Link className="font-semibold text-primary underline" to={`/interview/session/${id}`}>Resume interview</Link></p>}
-    <section className="grid gap-4 sm:grid-cols-3">
-      {[['Answer score', typeof feedback?.overallScore === 'number' ? `${Math.round(feedback.overallScore)}%` : 'Not evaluated'], ['Answers saved', `${session.questions?.filter((q) => q.answerText?.trim()).length || 0} / ${session.questions?.length || 0}`], ['Duration', typeof session.durationSeconds === 'number' ? `${Math.floor(session.durationSeconds / 60)}m ${session.durationSeconds % 60}s` : 'Not recorded']].map(([label, value]) => <article key={label} className="rounded-2xl border border-border bg-card p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-3 text-2xl font-bold text-card-foreground">{value}</p></article>)}
-    </section>
+    <InterviewAnalytics session={session} />
     <section className="rounded-3xl border border-border bg-card p-6 sm:p-8">
       <h2 className="text-xl font-bold text-card-foreground">AI coach feedback</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{feedback?.overallFeedback || 'Feedback is not available yet. Finish and evaluate the interview to receive coaching.'}</p>
       <div className="mt-6 grid gap-6 sm:grid-cols-2">{[['Strengths', feedback?.strengths], ['Areas to improve', feedback?.areasToImprove]].map(([label, entries]) => <div key={label as string}><h3 className="font-semibold text-card-foreground">{label}</h3>{Array.isArray(entries) && entries.length ? <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground">{entries.map((entry, index) => <li key={index}>{entry}</li>)}</ul> : <p className="mt-2 text-sm text-muted-foreground">No feedback recorded.</p>}</div>)}</div>

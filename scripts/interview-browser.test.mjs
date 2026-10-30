@@ -57,6 +57,8 @@ async function withInterviewBrowser(run, staleLoadDelay = 0, allowDevices = fals
       const body = JSON.parse(request.postData());
       session = { ...session, ...body, cameraEnabled: body.consent.camera, microphoneEnabled: body.consent.microphone };
       data = { session }; status = 201;
+    } else if(url.pathname.endsWith('/introduction')){
+      session.candidateIntroduction=JSON.parse(request.postData()).text;session.introductionCompletedAt=new Date().toISOString();data={session};
     } else if(url.pathname.endsWith('/consent')){
       if(failConsent){status=503;data={error:'Consent save unavailable. Please retry.'};}
       else {const body=JSON.parse(request.postData());session={...session,...(body.camera?{cameraEnabled:true}:{}),...(body.microphone?{microphoneEnabled:true}:{})};data={session};}
@@ -99,10 +101,14 @@ test('quick mock setup defaults to explicit consent and text-only interviews com
   await page.waitForSelector('input[type="checkbox"]');
   assert.deepEqual(await page.$$eval('input[type="checkbox"]', (elements) => elements.map((element) => element.checked)), [false, false]);
   assert.match(await page.$eval('textarea', (element) => element.value), /SQL/);
+  await clickText('Practice interview');
   await clickText('Start interview');
   await page.waitForFunction(() => location.pathname.includes('/interview/session/'));
   const answerEditor = 'textarea[placeholder="Type or refine your response here..."]';
   await page.waitForSelector(answerEditor);
+  await page.type(answerEditor, 'I am a test candidate practicing databases.');
+  await clickText('Begin Questions');
+  await page.waitForFunction(() => !document.body.textContent.includes('Begin Questions'));
   await page.type(answerEditor, 'An index improves reads but adds storage and write costs.');
   assert.match(await page.$eval(answerEditor, (element) => element.value), /storage and write costs/);
   setFailEvaluation(true);
@@ -172,12 +178,9 @@ test('an answered interview resumes at the final question for evaluation retry',
   assert.match(await page.$eval('main',n=>n.textContent),/Question 2 of 2/);
 }));
 
-test('device denial offers typed answers and never shows false identity verification', { timeout: 120000 }, () => withInterviewBrowser(async ({ page, clickText }) => {
-  const origin = process.env.INTERVIEW_TEST_ORIGIN || 'http://127.0.0.1:5173';
-  await page.goto(`${origin}/interview/setup`, { waitUntil: 'networkidle0' });
-  const checkboxes = await page.$$('input[type="checkbox"]');
-  for (const checkbox of checkboxes) await checkbox.click();
-  await clickText('Start interview');
+test('device denial offers typed answers and never shows false identity verification', { timeout: 120000 }, () => withInterviewBrowser(async ({ page, session }) => {
+  session.cameraEnabled = true; session.microphoneEnabled = true; session.monitoringMode = 'practice';
+  await page.goto('http://127.0.0.1:5173/interview/session/fixture-session', {waitUntil: 'networkidle0'});
   await page.waitForFunction(() => document.body.textContent.includes('Microphone access is unavailable'));
   assert.ok(await page.$('textarea'));
   assert.ok(await page.evaluate(() => window.__mediaRequests) >= 1);
@@ -199,7 +202,7 @@ test('the report renders saved model evidence and fusion without replacing the a
   assert.match(text, /63%/);
   assert.match(text, /72.3/);
   assert.match(text, /Last check matched/);
-  assert.match(text, /Answer score0%/);
+  assert.ok(await page.$('[aria-label="Answer score 0 out of 100"]'));
   await page.setViewport({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   if (process.env.INTERVIEW_TEST_SCREENSHOT) await page.screenshot({ path: process.env.INTERVIEW_TEST_SCREENSHOT, fullPage: true });

@@ -21,7 +21,7 @@ function LayoutContent() {
   }
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
-  const settingsPath = user.role === 'MENTOR' ? '/mentor/settings' : '/settings'
+  const settingsPath = user.role === 'ADMIN' ? '/admin/settings' : user.role === 'MENTOR' ? '/mentor/settings' : '/settings'
   const feedbackPath = user.role === 'MENTOR' ? '/mentor/feedback' : user.role === 'ADMIN' ? '/admin/feedback' : '/feedback'
   const isNonSoftwareSpecialization = ['ELECTRONICS_ELECTRICAL', 'OTHER_ENGINEERING'].includes(user.specialization)
 
@@ -34,7 +34,7 @@ function LayoutContent() {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    if (!token) return
+    if (!token || user.role === 'ADMIN') return
 
     const checkLiveMeetings = async () => {
       try {
@@ -42,9 +42,9 @@ function LayoutContent() {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (!res.ok) return
-        const sessions = await res.json()
+        const sessions: Array<{id: string; topic: string; status: string; liveParticipants?: unknown[]; junior?: {id: string; name?: string}; senior?: {id: string; name?: string}}> = await res.json()
         if (Array.isArray(sessions) && sessions.length > 0) {
-          const active = sessions.find((s: any) => s.status === 'started' && s.liveParticipants?.length > 0)
+          const active = sessions.find((s) => s.status === 'started' && s.liveParticipants?.length > 0)
           if (active) {
             const isJunior = active.junior?.id === user.id
             const peerName = isJunior ? active.senior?.name : active.junior?.name
@@ -66,9 +66,20 @@ function LayoutContent() {
     checkLiveMeetings()
     const timer = setInterval(checkLiveMeetings, 5000)
     return () => clearInterval(timer)
-  }, [user.id])
+  }, [user.id, user.role])
 
-  const navItems = user.role === 'MENTOR'
+  const navItems = user.role === 'ADMIN' && location.pathname.startsWith('/admin') ? [
+    {path: '/admin', label: 'Admin overview', icon: ShieldCheck},
+    {path: '/admin/users', label: 'People', icon: Users},
+    {path: '/admin/mentors', label: 'Mentors', icon: Users},
+    {path: '/admin/mentor-applications', label: 'Mentor applications', icon: ShieldCheck},
+    {path: '/admin/interviews', label: 'Interview activity', icon: Video},
+    {path: '/admin/progress', label: 'Learning progress', icon: Map},
+    {path: '/admin/feedback', label: 'User feedback', icon: MessageSquare},
+    {path: '/admin/problems', label: 'Problem library', icon: Code},
+    {path: '/admin/audit', label: 'Admin activity', icon: FileText},
+    {path: '/', label: 'Candidate workspace', icon: Home},
+  ] : user.role === 'MENTOR'
     ? [
         { path: '/mentor', label: 'Mentor sessions', icon: Users },
         { path: '/mentor/profile', label: 'Mentor profile', icon: Users },
@@ -102,7 +113,7 @@ function LayoutContent() {
             >
               {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </button>
-            <Link to={user.role === 'MENTOR' ? '/mentor' : '/'} aria-label="CareerHub home" className="flex items-center gap-2">
+            <Link to={user.role === 'ADMIN' ? '/admin' : user.role === 'MENTOR' ? '/mentor' : '/'} aria-label="CareerHub home" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold">CH</span>
               </div>

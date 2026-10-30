@@ -35,7 +35,7 @@ export default function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, accountType }),
+        body: JSON.stringify({ email, password, ...(accountType === 'USER' ? {} : {accountType}) }),
       })
 
       const data: AuthResponse = await response.json()
@@ -49,7 +49,7 @@ export default function Login() {
       localStorage.setItem('user', JSON.stringify(data.user))
 
       // Navigate to dashboard
-      navigate(data.user.role === 'MENTOR' ? '/mentor' : '/', { replace: true })
+      navigate(data.user.role === 'ADMIN' ? '/admin' : data.user.role === 'MENTOR' ? '/mentor' : '/', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {

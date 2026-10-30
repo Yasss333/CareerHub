@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import {InterviewMediaProvider} from './contexts/InterviewMediaContext'
 
 const Landing = lazy(() => import('./pages/Landing'))
 const Dashboard = lazy(() => import('./pages/DashboardNew'))
@@ -31,6 +32,7 @@ const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const AdminMentorApplications = lazy(() => import('./pages/AdminMentorApplications'))
 const Settings = lazy(() => import('./pages/Settings'))
+const AdminWorkspace = lazy(() => import('./pages/AdminWorkspace'))
 const Feedback = lazy(() => import('./pages/Feedback'))
 
 function AppRootLayout() {
@@ -49,7 +51,7 @@ function AppRootLayout() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter><InterviewMediaProvider>
       <Suspense fallback={(
         <div role="status" className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
           <span className="mr-3 size-5 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
@@ -60,6 +62,14 @@ function App() {
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['ADMIN']}><Layout /></ProtectedRoute>}>
+          <Route index element={<AdminWorkspace />} />
+          {['users', 'mentors', 'interviews', 'progress', 'audit'].map(path => <Route key={path} path={path} element={<AdminWorkspace />} />)}
+          <Route path="mentor-applications" element={<AdminMentorApplications />} />
+          <Route path="feedback" element={<Feedback adminView />} />
+          <Route path="problems" element={<AdminProblems />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
         <Route path="/mentor" element={
           <ProtectedRoute allowedRoles={['MENTOR']}>
             <Layout />
@@ -74,18 +84,12 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="settings" element={<Settings />} />
           <Route path="feedback" element={<Feedback />} />
-          <Route path="admin/feedback" element={<ProtectedRoute allowedRoles={['ADMIN']}><Feedback adminView /></ProtectedRoute>} />
           <Route path="resume" element={<ResumeList />} />
           <Route path="resume-builder/:resumeId" element={<ResumeBuilder />} />
           <Route path="connect" element={<SeniorConnect />} />
           <Route path="connect/booking/:seniorId" element={<SeniorConnectBooking />} />
           <Route path="connect/sessions" element={<SeniorConnectSessions />} />
           <Route path="connect/profile" element={<SeniorConnectProfile />} />
-          <Route path="admin/mentor-applications" element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
-              <AdminMentorApplications />
-            </ProtectedRoute>
-          } />
           <Route path="algorank" element={<AlgoRank />} />
           <Route path="algorank/problems/:id" element={<ProblemDetail />} />
           <Route path="algorank/problems/:id/solve" element={<ProblemEditor />} />
@@ -107,7 +111,7 @@ function App() {
         <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>
       </Suspense>
-    </BrowserRouter>
+    </InterviewMediaProvider></BrowserRouter>
   )
 }
 

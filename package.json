@@ -27,7 +27,9 @@
     "test:functional:browser:live": "node scripts/browser-functional-qa.mjs",
     "test:functional:providers:live": "node scripts/provider-functional-qa.mjs",
     "lint": "npm run lint --workspaces",
-    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules services/*/node_modules"
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules services/*/node_modules",
+    "test:admin": "node --test apps/api/src/routes/admin.routes.test.js apps/api/src/services/current-account.test.js",
+    "test:interview-admin:browser": "node scripts/interview-admin-browser-qa.mjs"
   },
   "dependencies": {
     "vite": "^8.3.3"

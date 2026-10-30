@@ -18,6 +18,8 @@ import {
   Volume2,
   X,
 } from 'lucide-react'
+import InterviewMonitoring from '../components/InterviewMonitoring'
+import {useInterviewMedia} from '../contexts/useInterviewMedia'
 import AIInterviewerAvatar from '../components/AIInterviewerAvatar'
 import {
   analyzeInterviewMedia,
@@ -30,6 +32,7 @@ import {
   InterviewQuestion,
   InterviewSession as SessionData,
   saveInterviewAnswer,
+  saveInterviewIntroduction,
   saveProctorEvent,
 } from '../lib/interview'
 import { api } from '../lib/api'
@@ -70,10 +73,17 @@ export default function InterviewSessionPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const media = useInterviewMedia()
+  const takeDevice = media.takeDevice
+  const [monitoringReady, setMonitoringReady] = useState(false)
+  const monitoringBlockedRef = useRef(false)
+  const [microphoneReady, setMicrophoneReady] = useState(false)
+
   // Interview session and questions
   const [session, setSession] = useState<SessionData | null>(null)
   const sessionRef = useRef<SessionData | null>(null)
   sessionRef.current = session
+  monitoringBlockedRef.current = session?.monitoringMode === 'proctored' && (!media.sharing || !monitoringReady)
   const disposedRef = useRef(false)
   const [capabilities, setCapabilities] = useState<InterviewCapabilities | null>(null)
   const [analysisNotice, setAnalysisNotice] = useState('')
@@ -136,6 +146,7 @@ export default function InterviewSessionPage() {
       setAvailableVoices(list)
       if (!selectedVoice && list.length) {
         const preferred =
+          list.find((v) => /Jenny|Aria|Ava|Zira|Samantha|Hazel|Susan|Sonia|Female/i.test(v.name)) ||
           list.find((v) => v.name.includes('Natural') || v.name.includes('Online')) ||
           list.find((v) => v.name.includes('Google') || v.name.includes('Jenny') || v.name.includes('Guy') || v.name.includes('Aria')) ||
           list.find((v) => v.name.includes('Samantha') || v.name.includes('Ava')) ||
@@ -192,7 +203,7 @@ export default function InterviewSessionPage() {
   const consecutiveSpeechFramesRef = useRef<number>(0)
 
   // Interruption Sensitivity: 'smart' (calibrated VAD) | 'tap' (tap-only for loud rooms)
-  const [interruptionMode, setInterruptionMode] = useState<'smart' | 'tap'>('smart')
+  const [interruptionMode] = useState<'smart' | 'tap'>('smart')
   const interruptionModeRef = useRef<'smart' | 'tap'>('smart')
   useEffect(() => {
     interruptionModeRef.current = interruptionMode
@@ -282,13 +293,20 @@ export default function InterviewSessionPage() {
     }
     setCameraPermission('loading')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: false,
-      })
+      let stream: MediaStream
+      try {
+        stream = takeDevice('camera') || await navigator.mediaDevices.getUserMedia({video: {width: {ideal: 1280}, height: {ideal: 720}, facingMode: 'user'}, audio: false})
+      } catch (err) {
+        if (!(err instanceof DOMException) || !['NotReadableError', 'AbortError', 'OverconstrainedError'].includes(err.name)) throw err
+        // Some devices need a moment to release the preflight capture handle.
+        await new Promise(resolve => setTimeout(resolve, 400))
+        if (disposedRef.current) return
+        stream = await navigator.mediaDevices.getUserMedia({video: true, audio: false})
+      }
       if (disposedRef.current || !sessionRef.current?.cameraEnabled) { stream.getTracks().forEach((track) => track.stop()); return }
       streamRef.current?.getTracks().forEach((track) => track.stop())
       streamRef.current = stream
+      stream.getVideoTracks().forEach(track => track.addEventListener('ended', () => {setIsCameraActive(false); setCameraPermission('denied'); void saveProctorEvent(id, 'camera_unavailable').catch(() => undefined)}, {once: true}))
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         try {
@@ -305,7 +323,7 @@ export default function InterviewSessionPage() {
       setIsCameraActive(false)
       void saveProctorEvent(id, 'camera_unavailable').catch(() => undefined)
     }
-  }, [id])
+  }, [id, takeDevice])
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -401,7 +419,7 @@ export default function InterviewSessionPage() {
 
   // Audio chunk recording for ML voice emotion with Calibrated Web Audio VAD
   const startVoiceRecording = useCallback(async () => {
-    if (!sessionRef.current?.microphoneEnabled || captureSuspendedRef.current || disposedRef.current || !navigator.mediaDevices?.getUserMedia || isMicMutedRef.current || recordingStartingRef.current) return
+    if (monitoringBlockedRef.current || !sessionRef.current?.microphoneEnabled || captureSuspendedRef.current || disposedRef.current || !navigator.mediaDevices?.getUserMedia || isMicMutedRef.current || recordingStartingRef.current) return
     if (mediaRecorderRef.current) {
       if (mediaRecorderRef.current.state === 'paused' && aiPhaseRef.current !== 'speaking') mediaRecorderRef.current.resume()
       if (mediaRecorderRef.current.state !== 'inactive') return
@@ -412,7 +430,7 @@ export default function InterviewSessionPage() {
       await recordingDoneRef.current
       if (disposedRef.current || isMicMutedRef.current) return
       // Enable hardware echo cancellation, noise suppression, and auto gain control
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const stream = takeDevice('microphone') || await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -421,7 +439,10 @@ export default function InterviewSessionPage() {
       })
 
       if (disposedRef.current || isMicMutedRef.current) { stream.getTracks().forEach((track) => track.stop()); return }
+      if (monitoringBlockedRef.current) {stream.getTracks().forEach(track => track.stop()); return}
       audioStreamRef.current = stream
+      setMicrophoneReady(true)
+      stream.getAudioTracks().forEach(track => track.addEventListener('ended', () => setMicrophoneReady(false), {once: true}))
 
       // Setup Web Audio VAD with bandpass filter isolating human speech (300Hz - 3400Hz)
       try {
@@ -530,12 +551,13 @@ export default function InterviewSessionPage() {
       recorder.start()
       if (aiPhaseRef.current === 'speaking') recorder.pause()
     } catch (recErr) {
+      setMicrophoneReady(false)
       console.warn('Voice recording error:', recErr)
       audioStreamRef.current?.getTracks().forEach((track) => track.stop())
       setShowTextEditor(true)
       setAnalysisNotice('Microphone access is unavailable. You can type your answer.')
     } finally { recordingStartingRef.current = false }
-  }, [id, capabilities])
+  }, [id, capabilities, takeDevice])
 
   const stopVoiceRecording = useCallback(() => {
     if (vadIntervalRef.current) {
@@ -561,7 +583,7 @@ export default function InterviewSessionPage() {
 
   // Speech Recognition (Speech-to-Text)
   const startListening = useCallback(() => {
-    if (disposedRef.current || captureSuspendedRef.current) return
+    if (disposedRef.current || captureSuspendedRef.current || monitoringBlockedRef.current) return
     if (isMicMutedRef.current || !sessionRef.current?.microphoneEnabled) {
       setShowTextEditor(true)
       setAiPhase('listening')
@@ -666,6 +688,7 @@ export default function InterviewSessionPage() {
   // Text-To-Speech (AI Speaking with Natural Voice Selection)
   const speakQuestion = useCallback(
     (textToSpeak: string) => {
+      if (monitoringBlockedRef.current) return
       if (!window.speechSynthesis) {
         aiPhaseRef.current = 'listening'
         setAiPhase('listening')
@@ -697,7 +720,7 @@ export default function InterviewSessionPage() {
       } else {
         const voices = window.speechSynthesis.getVoices()
         const naturalVoice =
-          voices.find(
+          voices.find(v => v.lang.startsWith('en') && /Jenny|Aria|Ava|Zira|Samantha|Hazel|Susan|Sonia|Female/i.test(v.name)) || voices.find(
             (v) =>
               v.lang.startsWith('en') &&
               (v.name.includes('Natural') ||
@@ -753,35 +776,49 @@ export default function InterviewSessionPage() {
   // A voice-list refresh must not reset an answer or repeat the active question.
   const speakQuestionRef = useRef(speakQuestion)
   speakQuestionRef.current = speakQuestion
+  const pendingSpeechRef = useRef('')
 
   // Trigger TTS whenever a new question is activated with conversational bridging
-  const currentQuestion = questions[currentIndex]
+  const introducing = !!session?.introductionRequired && !session.introductionCompletedAt
+  const currentQuestion: InterviewQuestion | undefined = introducing ? {
+    id: `introduction-${id}`, questionText: 'Hi, I’m Maya, your CareerHub interviewer. We’ll start with a brief introduction, then work through your interview questions. You can speak naturally, interrupt me, or type your answers. To begin, could you introduce yourself in about 45 to 60 seconds? Tell me about your background, a recent project, and what you’d like to do next.',
+    questionIndex: -1, category: 'Introductions', topic: 'Getting to know you', answerText: session?.candidateIntroduction || null, answeredAt: null,
+  } : questions[currentIndex]
 
+  // The activation key, not refreshed session/voice metadata, owns draft initialization.
+  const activationRef = useRef({question: currentQuestion, prefix: ''})
+  activationRef.current = {question: currentQuestion, prefix: introducing ? '' : currentIndex === 0
+    ? session?.introductionCompletedAt ? "Thank you for that introduction. Let's start with your first question: " : "Welcome to your interview. Let's start with your first question: "
+    : `Thank you for your answer. Let's move on to question ${currentIndex + 1}: `}
   useEffect(() => {
-    if (loading || questions.length === 0 || !currentQuestion?.questionText) return
-
+    const {question, prefix} = activationRef.current
+    if (loading || !question?.questionText) return
     captureSuspendedRef.current = false
-    // Initialize answer for this question
-    const existingAnswer = currentQuestion.answerText || ''
+    const existingAnswer = question.answerText || ''
     setAnswer(existingAnswer)
     transcriptRef.current = existingAnswer
     setTranscript(existingAnswer)
     setInterimTranscript('')
-
-    const conversationalPrefix =
-      currentIndex === 0
-        ? "Welcome to your interview. Let's start with your first question: "
-        : `Thank you for your answer. Let's move on to question ${currentIndex + 1}: `
-
     const timer = setTimeout(() => {
-      speakQuestionRef.current(`${conversationalPrefix}${currentQuestion.questionText}`)
+      const text = `${prefix}${question.questionText}`
+      if (monitoringBlockedRef.current) pendingSpeechRef.current = text
+      else {pendingSpeechRef.current = ''; speakQuestionRef.current(text)}
     }, 450)
+    return () => {clearTimeout(timer); window.speechSynthesis?.cancel()}
+  }, [currentQuestion?.id, loading])
 
-    return () => {
-      clearTimeout(timer)
-      window.speechSynthesis?.cancel()
+  useEffect(() => {
+    if (!monitoringBlockedRef.current && pendingSpeechRef.current) {
+      const text = pendingSpeechRef.current; pendingSpeechRef.current = ''; speakQuestionRef.current(text)
     }
-  }, [currentIndex, currentQuestion?.id, loading, questions.length])
+  }, [media.sharing, monitoringReady])
+
+  useEffect(() => {
+    if (!monitoringBlockedRef.current) return
+    window.speechSynthesis?.cancel()
+    aiPhaseRef.current = 'idle'; setAiPhase('idle')
+    void stopListening()
+  }, [media.sharing, monitoringReady, stopListening])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -797,6 +834,7 @@ export default function InterviewSessionPage() {
   // Advance to next question or complete interview
   const handleNextOrFinish = async () => {
     if (!currentQuestion || saving || ending) return
+    if (monitoringBlockedRef.current || session?.monitoringMode === 'proctored' && (!isCameraActive || isMicMuted || !microphoneReady)) {setError('Restore your camera, microphone and entire-screen sharing before continuing.'); return}
     captureSuspendedRef.current = true
     setSaving(true)
     setError('')
@@ -809,6 +847,10 @@ export default function InterviewSessionPage() {
       // 2. Persist answer to backend
       const submittedAnswer = answerRef.current.trim()
       if (!submittedAnswer) { setShowTextEditor(true); throw new Error('Speak or type an answer before continuing.') }
+      if (introducing) {
+        const {session: updatedSession} = await saveInterviewIntroduction(id, submittedAnswer)
+        setSession(updatedSession); setCurrentIndex(0); return
+      }
       const { question: savedQ } = await saveInterviewAnswer(currentQuestion.id, submittedAnswer)
 
       const updated = questions.map((item, idx) => (idx === currentIndex ? savedQ : item))
@@ -854,7 +896,10 @@ export default function InterviewSessionPage() {
     window.speechSynthesis?.cancel()
     try {
       await stopListening()
-      if (currentQuestion && answerRef.current.trim()) await saveInterviewAnswer(currentQuestion.id, answerRef.current.trim())
+      if (currentQuestion && answerRef.current.trim() && !monitoringBlockedRef.current) {
+        if (introducing) await saveInterviewIntroduction(id, answerRef.current.trim())
+        else await saveInterviewAnswer(currentQuestion.id, answerRef.current.trim())
+      }
       const { session: latest } = await getInterview(id)
       if (latest.questions?.some((question) => question.answerText?.trim())) {
         await evaluateInterview(id)
@@ -917,7 +962,7 @@ export default function InterviewSessionPage() {
   }
 
   useEffect(() => {
-    if (!session?.cameraEnabled || session.status !== 'in_progress') return
+    if (!session?.cameraEnabled || session.status !== 'in_progress' || session.monitoringMode === 'proctored') return
     let lastEventAt = 0
     const onVisibility = () => {
       if (!document.hidden || Date.now() - lastEventAt < 5000) return
@@ -926,7 +971,7 @@ export default function InterviewSessionPage() {
     }
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
-  }, [id, session?.cameraEnabled, session?.status])
+  }, [id, session?.cameraEnabled, session?.monitoringMode, session?.status])
 
   // Loading Screen
   if (loading) {
@@ -1003,12 +1048,14 @@ export default function InterviewSessionPage() {
     )
   }
 
-  const isLastQuestion = currentIndex === questions.length - 1
-  const progressPercent = Math.round(((currentIndex + 1) / questions.length) * 100)
+  const isLastQuestion = !introducing && currentIndex === questions.length - 1
+  const progressPercent = introducing ? 0 : Math.round(((currentIndex + 1) / questions.length) * 100)
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-4 pb-12 select-none">
       {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error} Your saved answers are retained; you can retry.</div>}
+      <InterviewMonitoring id={id} active={session.monitoringMode === 'proctored' && session.status === 'in_progress'} onReady={setMonitoringReady} onResume={() => speakQuestion(currentQuestion.questionText)} />
+      {session.monitoringMode === 'proctored' && (!isCameraActive || isMicMuted || !microphoneReady) && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm">Proctored mode requires your camera and microphone. Turn them on below; after sharing, select Replay & resume to start audio capture.</p>}
       {/* Top Video Call Header Bar */}
       <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card/90 px-4 py-3 shadow-xs backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -1058,7 +1105,7 @@ export default function InterviewSessionPage() {
 
           {/* Question Index Pill */}
           <div className="rounded-lg bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            Question {currentIndex + 1} of {questions.length}
+            {introducing ? 'Brief introduction' : `Question ${currentIndex + 1} of ${questions.length}`}
           </div>
 
           {/* End Call Button */}
@@ -1312,6 +1359,7 @@ export default function InterviewSessionPage() {
                   setTranscript(e.target.value)
                 }}
                 rows={4}
+                maxLength={introducing ? 4000 : 12000}
                 placeholder="Type or refine your response here..."
                 className="mt-1.5 w-full resize-y rounded-xl border border-border bg-background p-3 text-sm leading-6 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
@@ -1379,7 +1427,7 @@ export default function InterviewSessionPage() {
         {/* Next Question / Finish Interview CTA */}
         <button
           type="button"
-          disabled={saving || ending}
+          disabled={saving || ending || session.monitoringMode === 'proctored' && (monitoringBlockedRef.current || !isCameraActive || isMicMuted || !microphoneReady)}
           onClick={() => void handleNextOrFinish()}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 disabled:opacity-50"
         >
@@ -1395,7 +1443,7 @@ export default function InterviewSessionPage() {
             </>
           ) : (
             <>
-              <span>Next Question</span>
+              <span>{introducing ? 'Begin Questions' : 'Next Question'}</span>
               <ArrowRight className="size-4" />
             </>
           )}

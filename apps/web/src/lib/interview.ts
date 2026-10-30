@@ -40,6 +40,11 @@ export interface InterviewSession {
   } | null
   cameraEnabled: boolean
   microphoneEnabled: boolean
+  monitoringMode?: 'practice' | 'proctored'
+  screenConsentAt?: string | null
+  introductionRequired?: boolean
+  candidateIntroduction?: string | null
+  introductionCompletedAt?: string | null
   questions?: InterviewQuestion[]
   emotionResults?: Array<{ id: string; modality: string; result: Record<string, unknown>; createdAt: string }>
   proctoringEvents?: Array<{ id: string; eventType: string; severity: string; createdAt: string; details?: Record<string, unknown> }>
@@ -61,6 +66,7 @@ export const grantInterviewDeviceConsent = (id: string, device: 'camera' | 'micr
 export const listInterviews = () => api<{ sessions: InterviewSession[] }>('/interview/sessions')
 export const generateInterviewQuestions = (id: string) => api<{ session: InterviewSession }>(`/interview/sessions/${id}/questions`, { method: 'POST', body: {} })
 export const saveInterviewAnswer = (id: string, answerText: string) => api<{ question: InterviewQuestion }>(`/interview/questions/${id}/answer`, { method: 'PUT', body: { answerText } })
+export const saveInterviewIntroduction = (id: string, text: string) => api<{session: InterviewSession}>(`/interview/sessions/${id}/introduction`, {method: 'PUT', body: {text}})
 export const evaluateInterview = (id: string) => api<{ session: InterviewSession }>(`/interview/sessions/${id}/evaluate`, { method: 'POST', body: {} })
 
 export async function analyzeInterviewMedia(id: string, modality: string, media: Blob | Record<string, unknown>, filename = 'capture.bin') {

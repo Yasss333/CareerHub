@@ -8,9 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added device preflight and entire-monitor sharing for proctored interviews, browser monitoring with stop/recovery and server continuation leases, a separate candidate introduction, and visual performance analytics.
+- Added a dedicated administrator workspace for account activity, mentor approval/removal, interviews, roadmap milestones, feedback and problem management, with database-role enforcement and an audit trail for mentor removal.
 - Added Report a bug / suggestion from every signed-in interface, private feedback history, and administrator triage with reporter-visible updates and JSON export. Reports use durable PostgreSQL JSON, bounded input/context, duplicate-safe retries and account-based submission limits.
 
 ### Fixed
+- Require the current account role in problem-library authorization and remove the manual seed endpoint’s known default/query/JWT-secret bypass. Seed-key access now requires a separate explicitly configured strong header secret.
 - Allow candidates to enable camera or microphone during interviews initially started without media consent; controls now request explicit consent and persist it before capture instead of remaining disabled.
 - Restored administrator approval for mentor signup/profile applications, hid unapproved mentors from discovery/booking, preserved approved profile edits, and fixed the bulk-availability callback.
 - Rejected malformed account/resume/roadmap input, restricted private-roadmap recommendations to their owner, and made API port-binding failures explicit.

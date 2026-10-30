@@ -22,6 +22,10 @@ This document describes the PostgreSQL database schema for the CareerHub platfor
 
 ## Core Models
 
+### Interview preflight and admin audit
+
+InterviewSession adds monitoringMode (old sessions default to practice), screenConsentAt, introductionRequired, candidateIntroduction, and introductionCompletedAt. Introductions remain separate from scored InterviewQuestion rows. AdminAudit retains the actor, action, target, bounded reason and timestamp for mentor removal; deleting an actor nulls its relation while retaining the audit. Migration: 20261030110000_interview_preflight_admin. No raw screen images are saved.
+
 ### FeedbackReport
 
 User-owned bug/suggestion records store a validated `payload` as PostgreSQL JSONB, alongside status, a reporter-visible resolution note, and timestamps. The `(userId, requestId)` unique key deduplicates retries; status/date and owner/date indexes support the small review inbox. User deletion cascades to their reports. See `docs/feedback.md` for the submission and review contract.

@@ -32,7 +32,7 @@ export default function ProtectedRoute({
   }
 
   if (!allowedRoles.includes(role)) {
-    return <Navigate to={role === 'MENTOR' ? '/mentor' : '/'} replace />
+    return <Navigate to={role === 'ADMIN' ? '/admin' : role === 'MENTOR' ? '/mentor' : '/'} replace />
   }
 
   return <>{children}</>
