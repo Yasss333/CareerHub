@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { buildRunnable, safeRunCodeWithPiston, getLanguageConfig } from '../libs/piston.js';
+import {currentAccount, isSeedKeyAuthorized} from '../services/current-account.js';
 import { recordActivityStreak } from '../services/activity-streak.service.js';
 
 const router = express.Router();
@@ -9,7 +10,7 @@ const prisma = new PrismaClient();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'careerhub-super-secret-jwt-key-2024';
 
-const authenticate = (req, res, next) => {
+const authenticate = async (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
 
   if (!token) {
@@ -18,7 +19,8 @@ const authenticate = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    req.user = await currentAccount(prisma, decoded);
+    if (!req.user) return res.status(401).json({error: 'Account not found'});
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired token' });
@@ -26,12 +28,12 @@ const authenticate = (req, res, next) => {
 };
 
 // Optional auth: attaches user when a valid token is present, never rejects.
-const optionalAuth = (req, res, next) => {
+const optionalAuth = async (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
 
   if (token) {
     try {
-      req.user = jwt.verify(token, JWT_SECRET);
+      req.user = await currentAccount(prisma, jwt.verify(token, JWT_SECRET));
     } catch (error) {
       // ignore invalid tokens for public endpoints
     }
@@ -183,9 +185,7 @@ const problemListQuery = async (req, res) => {
 // Manual seed trigger (admin or x-seed-key)
 router.post('/seed', optionalAuth, async (req, res) => {
   try {
-    const seedKey = req.headers['x-seed-key'] || req.query.seedKey;
-    const expectedKey = process.env.SEED_SECRET || 'careerhub-seed-now';
-    const isKeyAuthorized = Boolean(seedKey && (seedKey === expectedKey || seedKey === JWT_SECRET));
+    const isKeyAuthorized = isSeedKeyAuthorized(req.headers['x-seed-key'], process.env.SEED_SECRET);
     const isAdmin = Boolean(req.user && req.user.role === 'ADMIN');
 
     if (!isAdmin && !isKeyAuthorized) {

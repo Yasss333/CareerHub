@@ -82,6 +82,7 @@ model User {
   availabilitySlots AvailabilitySlot[]
   notifications   Notification[]
   feedbackReports FeedbackReport[]
+  adminActions AdminAudit[]
   roadmaps       Roadmap[]
   achievements   Achievement[]
   sessionMessages SessionMessage[]
@@ -413,6 +414,18 @@ model FeedbackReport {
   @@index([userId, createdAt])
 }
 
+model AdminAudit {
+  id String @id @default(uuid())
+  actorId String?
+  action String
+  targetId String
+  details Json?
+  createdAt DateTime @default(now())
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
 // ============================================
 // AI INTERVIEW MODELS (Supabase → Prisma - Friend Handling)
 // ============================================
@@ -430,6 +443,11 @@ model InterviewSession {
   cameraConsentAt DateTime?
   microphoneEnabled Boolean @default(false)
   microphoneConsentAt DateTime?
+  monitoringMode String @default("practice")
+  screenConsentAt DateTime?
+  introductionRequired Boolean @default(false)
+  candidateIntroduction String?
+  introductionCompletedAt DateTime?
   modalityAvailability Json?
   status      String   @default("in_progress")
   startedAt   DateTime @default(now())

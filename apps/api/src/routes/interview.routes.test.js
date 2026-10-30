@@ -22,6 +22,35 @@ const database = (session = activeSession) => ({
   emotionResult: { create: () => assert.fail('must not persist unavailable or forbidden results') },
 });
 
+test('proctored creation requires explicit screen, camera and microphone consent', () => withApi({database: {interviewSession: {create: async ({data}) => data}}}, async (url, headers) => {
+  const create = async body => fetch(`${url}/sessions`, {method: 'POST', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({topics: ['Databases'], monitoringMode: 'proctored', ...body})});
+  for (const consent of [{}, {screen: true}, {camera: true, microphone: true}]) assert.equal((await create({consent})).status, 400);
+  const response = await create({consent: {screen: true, camera: true, microphone: true}, introductionRequired: true}); assert.equal(response.status, 201);
+  const {session} = await response.json(); assert.equal(session.monitoringMode, 'proctored'); assert.ok(session.screenConsentAt); assert.equal(session.introductionRequired, true);
+}));
+test('candidate introduction is owned, bounded, saved separately and rejects closed sessions', async () => {
+  const session = {...activeSession, introductionRequired: true}; const db = database(session);
+  db.interviewSession.updateMany = async ({data, where}) => {assert.equal(where.status, 'in_progress'); Object.assign(session, data); return {count: 1};};
+  await withApi({database: db}, async (url, headers) => {
+    const save = text => fetch(`${url}/sessions/session-a/introduction`, {method: 'PUT', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({text})});
+    assert.equal((await save('')).status, 400); assert.equal((await save('x'.repeat(4001))).status, 400);
+    assert.equal((await save('I am a backend engineer interested in reliable systems.')).status, 200);
+    assert.ok(session.introductionCompletedAt); assert.equal(session.questions, undefined);
+    session.status = 'completed'; assert.equal((await save('Another introduction')).status, 409);
+  });
+});
+test('screen monitoring requires screen consent and stores only server-assigned client event metadata', async () => {
+  const session = {...activeSession, screenConsentAt: new Date(), monitoringMode: 'proctored'}; const db = database(session); const rows = [];
+  db.proctoringEvent = {findFirst: async () => rows.at(-1), count: async () => rows.length, create: async ({data}) => {rows.push({...data, createdAt: new Date()}); return rows.at(-1);}};
+  await withApi({database: db}, async (url, headers) => {
+    const event = type => fetch(`${url}/sessions/session-a/proctor-events`, {method: 'POST', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({eventType: type, severity: 'critical', details: {screenshot: 'private pixels'}})});
+    assert.equal((await event('screen_started')).status, 201); assert.equal(rows[0].severity, 'info'); assert.deepEqual(rows[0].details, {source: 'client'});
+    assert.equal((await event('screen_heartbeat')).status, 429);
+    assert.equal((await event('VERIFIED')).status, 400);
+    session.screenConsentAt = null; assert.equal((await event('screen_stopped')).status, 403);
+  });
+});
+
 test('analysis requires authentication', () => withApi({ database: database() }, async (url) => {
   const response = await fetch(`${url}/sessions/session-a/analysis/text`, { method: 'POST' });
   assert.equal(response.status, 401);

@@ -101,13 +101,15 @@ export function createInterviewRouter({ database = new PrismaClient(), analyze =
 
   router.post('/sessions', authenticate, async (req, res) => {
     try {
-      const { type = 'custom', topics, role, experienceLevel, difficulty = 'medium', plannedDuration = 30, consent = {} } = req.body || {};
+      const { type = 'custom', topics, role, experienceLevel, difficulty = 'medium', plannedDuration = 30, consent = {}, monitoringMode = 'practice', introductionRequired = false } = req.body || {};
       const normalizedTopics = cleanList(topics, 10, 100);
       if (!normalizedTopics.length) return res.status(400).json({ error: 'Add at least one interview topic' });
       if (!['technical', 'behavioral', 'system_design', 'mixed', 'custom', 'quick'].includes(type)) return res.status(400).json({ error: 'Invalid interview type' });
       if (!['easy', 'medium', 'hard', 'mixed'].includes(difficulty)) return res.status(400).json({ error: 'Invalid difficulty' });
       const duration = Math.min(Math.max(Number.parseInt(plannedDuration, 10) || 30, 5), 120);
       if (!consent || typeof consent !== 'object' || Array.isArray(consent)) return res.status(400).json({ error: 'Invalid consent options' });
+      if (!['practice', 'proctored'].includes(monitoringMode) || typeof introductionRequired !== 'boolean') return res.status(400).json({error: 'Invalid interview options'});
+      if (monitoringMode === 'proctored' && !(consent.screen === true && consent.camera === true && consent.microphone === true)) return res.status(400).json({error: 'Proctored interviews require camera, microphone and entire-screen consent'});
       const cameraEnabled = consent.camera === true;
       const microphoneEnabled = consent.microphone === true;
       const session = await prisma.interviewSession.create({
@@ -123,6 +125,7 @@ export function createInterviewRouter({ database = new PrismaClient(), analyze =
           cameraConsentAt: cameraEnabled ? new Date() : null,
           microphoneEnabled,
           microphoneConsentAt: microphoneEnabled ? new Date() : null,
+          monitoringMode, introductionRequired, screenConsentAt: monitoringMode === 'proctored' ? new Date() : null,
           status: 'in_progress',
           modalityAvailability: { face: cameraEnabled, voice: microphoneEnabled, text: true }
         }
@@ -179,6 +182,33 @@ export function createInterviewRouter({ database = new PrismaClient(), analyze =
     } catch (error) {
       console.error('Update interview consent failed:', error);
       return res.status(500).json({ error: 'Could not enable the device. Please retry.' });
+    }
+  });
+
+  // A browser-event lease prevents accidental continuation after capture stops.
+  // It cannot establish identity or prove integrity against a modified client.
+  const requireScreenMonitoring = async (session, res) => {
+    if (session.monitoringMode !== 'proctored') return true;
+    const event = await prisma.proctoringEvent.findFirst({where: {sessionId: session.id, eventType: {in: ['screen_started', 'screen_heartbeat', 'screen_stopped']}}, orderBy: [{createdAt: 'desc'}, {id: 'desc'}]});
+    if (!event || event.eventType === 'screen_stopped' || Date.now() - new Date(event.createdAt).getTime() > 60000) {
+      res.status(409).json({error: 'Resume entire-screen sharing before continuing this proctored interview'}); return false;
+    }
+    return true;
+  };
+
+  router.put('/sessions/:id/introduction', authenticate, async (req, res) => {
+    try {
+      const text = req.body?.text;
+      if (typeof text !== 'string' || !text.trim() || text.length > 4000) return res.status(400).json({error: 'Introduce yourself in 1–4000 characters'});
+      const session = await requireOwned(req, res); if (!session) return;
+      if (session.status !== 'in_progress') return res.status(409).json({error: 'This interview is no longer active'});
+      if (!await requireScreenMonitoring(session, res)) return;
+      const result = await prisma.interviewSession.updateMany({where: {id: session.id, userId: req.user.id, status: 'in_progress'}, data: {candidateIntroduction: text.trim(), introductionCompletedAt: new Date()}});
+      if (!result.count) return res.status(409).json({error: 'This interview is no longer active'});
+      return res.json({session: await ownedSession(session.id, req.user.id)});
+    } catch (error) {
+      console.error('Save introduction failed:', error.code || error.name);
+      return res.status(500).json({error: 'Could not save your introduction. Please retry.'});
     }
   });
 
@@ -257,6 +287,8 @@ Ensure a balanced progression: start with an insightful technical warmup, advanc
       if (!answerText) return res.status(400).json({ error: 'Write or dictate an answer first' });
       const question = await prisma.interviewQuestion.findFirst({ where: { id: req.params.id, session: { userId: req.user.id, status: 'in_progress' } }, include: { session: true } });
       if (!question) return res.status(404).json({ error: 'Interview question not found' });
+      if (question.session?.introductionRequired && !question.session.introductionCompletedAt) return res.status(409).json({error: 'Complete your brief introduction first'});
+      if (!await requireScreenMonitoring(question.session || {}, res)) return;
       const updated = await prisma.interviewQuestion.update({ where: { id: question.id }, data: { answerText, answeredAt: new Date() } });
       try {
         const result = await analyze({ modality: 'text', sessionId: question.sessionId, body: { text: answerText } });
@@ -351,17 +383,21 @@ Ensure a balanced progression: start with an insightful technical warmup, advanc
       const session = await requireOwned(req, res);
       if (!session) return;
       if (session.status !== 'in_progress') return res.status(409).json({ error: 'This interview is no longer active' });
-      if (!session.cameraConsentAt) return res.status(403).json({ error: 'Camera consent is required for proctoring events' });
-      const eventType = typeof req.body?.eventType === 'string' ? req.body.eventType.trim().slice(0, 80) : '';
-      if (!['camera_unavailable', 'camera_off', 'tab_hidden', 'window_blur'].includes(eventType)) return res.status(400).json({ error: 'Unsupported client event type' });
-      const event = await prisma.proctoringEvent.create({
-        data: {
-          sessionId: session.id,
-          eventType,
-          severity: ['info', 'warning', 'critical'].includes(req.body?.severity) ? req.body.severity : 'info',
-          details: undefined
-        }
-      });
+      const eventType = typeof req.body?.eventType === 'string' ? req.body.eventType.trim() : '';
+      const screenEvent = ['screen_started', 'screen_heartbeat', 'screen_stopped'].includes(eventType);
+      const cameraEvent = ['camera_unavailable', 'camera_off'].includes(eventType);
+      const focusEvent = ['tab_hidden', 'window_blur', 'fullscreen_exited'].includes(eventType);
+      if (!screenEvent && !cameraEvent && !focusEvent) return res.status(400).json({error: 'Unsupported client event type'});
+      if ((screenEvent && !session.screenConsentAt) || (cameraEvent && !session.cameraConsentAt) || (focusEvent && !session.screenConsentAt && !session.cameraConsentAt)) return res.status(403).json({error: 'Monitoring consent is required'});
+      const latest = await prisma.proctoringEvent.findFirst({where: {sessionId: session.id, eventType}, orderBy: {createdAt: 'desc'}});
+      const minimumInterval = eventType === 'screen_heartbeat' ? 10000 : 2000;
+      if (latest && Date.now() - new Date(latest.createdAt).getTime() < minimumInterval) return res.status(429).json({error: 'Monitoring event already recorded'});
+      if (eventType === 'screen_heartbeat') {
+        const previous = await prisma.proctoringEvent.findFirst({where: {sessionId: session.id, eventType: {in: ['screen_started', 'screen_stopped']}}, orderBy: [{createdAt: 'desc'}, {id: 'desc'}]});
+        if (!previous || previous.eventType !== 'screen_started') return res.status(409).json({error: 'Start screen sharing first'});
+      }
+      if (await prisma.proctoringEvent.count({where: {sessionId: session.id}}) >= 1200) return res.status(429).json({error: 'Monitoring event limit reached'});
+      const event = await prisma.proctoringEvent.create({data: {sessionId: session.id, eventType, severity: eventType === 'screen_started' || eventType === 'screen_heartbeat' ? 'info' : 'warning', details: {source: 'client'}}});
       return res.status(201).json({ event });
     } catch (error) {
       console.error('Save proctoring event failed:', error);
