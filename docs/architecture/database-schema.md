@@ -22,6 +22,10 @@ This document describes the PostgreSQL database schema for the CareerHub platfor
 
 ## Core Models
 
+### FeedbackReport
+
+User-owned bug/suggestion records store a validated `payload` as PostgreSQL JSONB, alongside status, a reporter-visible resolution note, and timestamps. The `(userId, requestId)` unique key deduplicates retries; status/date and owner/date indexes support the small review inbox. User deletion cascades to their reports. See `docs/feedback.md` for the submission and review contract.
+
 ### User Model
 The central user model for authentication and profile management.
 

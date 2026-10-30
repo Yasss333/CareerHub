@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added Report a bug / suggestion from every signed-in interface, private feedback history, and administrator triage with reporter-visible updates and JSON export. Reports use durable PostgreSQL JSON, bounded input/context, duplicate-safe retries and account-based submission limits.
+
 ### Fixed
 - Allow candidates to enable camera or microphone during interviews initially started without media consent; controls now request explicit consent and persist it before capture instead of remaining disabled.
 - Restored administrator approval for mentor signup/profile applications, hid unapproved mentors from discovery/booking, preserved approved profile edits, and fixed the bulk-availability callback.

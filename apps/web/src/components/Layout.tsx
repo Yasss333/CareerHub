@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell, Moon, Sun, Map, ShieldCheck, Settings, PanelLeftClose, PanelLeftOpen, Video, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import NotificationsPanel from './NotificationsPanel'
+import ReportFeedback from './ReportFeedback'
 import { DarkModeProvider, useDarkMode } from '../contexts/DarkModeContext'
 
 function LayoutContent() {
@@ -21,6 +22,7 @@ function LayoutContent() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const settingsPath = user.role === 'MENTOR' ? '/mentor/settings' : '/settings'
+  const feedbackPath = user.role === 'MENTOR' ? '/mentor/feedback' : user.role === 'ADMIN' ? '/admin/feedback' : '/feedback'
   const isNonSoftwareSpecialization = ['ELECTRONICS_ELECTRICAL', 'OTHER_ENGINEERING'].includes(user.specialization)
 
   const toggleSidebar = () => {
@@ -70,6 +72,7 @@ function LayoutContent() {
     ? [
         { path: '/mentor', label: 'Mentor sessions', icon: Users },
         { path: '/mentor/profile', label: 'Mentor profile', icon: Users },
+        { path: feedbackPath, label: 'My feedback', icon: MessageSquare },
       ]
     : [
     { path: '/', label: 'Dashboard', icon: Home },
@@ -78,6 +81,7 @@ function LayoutContent() {
     { path: '/interview', label: 'AI Interview', icon: MessageSquare },
     ...(!isNonSoftwareSpecialization ? [{ path: '/algorank', label: 'AlgoRank', icon: Code }] : []),
     { path: '/roadmaps', label: 'Roadmaps', icon: Map },
+    { path: feedbackPath, label: user.role === 'ADMIN' ? 'User feedback' : 'My feedback', icon: MessageSquare },
     ...(user.role === 'ADMIN'
       ? [{ path: '/admin/mentor-applications', label: 'Admin review', icon: ShieldCheck }]
       : []),
@@ -98,11 +102,11 @@ function LayoutContent() {
             >
               {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </button>
-            <Link to={user.role === 'MENTOR' ? '/mentor' : '/'} className="flex items-center space-x-2">
+            <Link to={user.role === 'MENTOR' ? '/mentor' : '/'} aria-label="CareerHub home" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold">CH</span>
               </div>
-              <span className="text-xl font-bold text-foreground">CareerHub</span>
+              <span className="hidden text-xl font-bold text-foreground min-[360px]:inline">CareerHub</span>
             </Link>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -121,6 +125,7 @@ function LayoutContent() {
               <Bell className="w-5 h-5" />
             </button>
             <span className="hidden text-sm text-muted-foreground sm:inline">Welcome, {user.name || 'User'}</span>
+            <ReportFeedback historyPath={feedbackPath} />
             <button
               onClick={handleLogout}
               className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"

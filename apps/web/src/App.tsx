@@ -31,6 +31,7 @@ const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const AdminMentorApplications = lazy(() => import('./pages/AdminMentorApplications'))
 const Settings = lazy(() => import('./pages/Settings'))
+const Feedback = lazy(() => import('./pages/Feedback'))
 
 function AppRootLayout() {
   const location = useLocation()
@@ -67,10 +68,13 @@ function App() {
           <Route index element={<SeniorConnectSessions />} />
           <Route path="profile" element={<SeniorConnectProfile />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="feedback" element={<Feedback />} />
         </Route>
         <Route path="/" element={<AppRootLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="feedback" element={<Feedback />} />
+          <Route path="admin/feedback" element={<ProtectedRoute allowedRoles={['ADMIN']}><Feedback adminView /></ProtectedRoute>} />
           <Route path="resume" element={<ResumeList />} />
           <Route path="resume-builder/:resumeId" element={<ResumeBuilder />} />
           <Route path="connect" element={<SeniorConnect />} />

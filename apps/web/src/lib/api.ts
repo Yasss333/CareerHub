@@ -3,6 +3,7 @@ const getToken = (): string => localStorage.getItem('token') || ''
 export interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
+  signal?: AbortSignal
 }
 
 export async function api<T = any>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -13,6 +14,7 @@ export async function api<T = any>(path: string, options: ApiOptions = {}): Prom
 
   const response = await fetch(`/api${path}`, {
     method: options.method || 'GET',
+    signal: options.signal,
     headers,
     body: options.body !== undefined ? (isFormData ? options.body as FormData : JSON.stringify(options.body)) : undefined,
   })
