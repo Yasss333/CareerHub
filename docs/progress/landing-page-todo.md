@@ -29,4 +29,4 @@ Verified at 320, 390, 768 and 1440 px: landing, login, registration and dashboar
 - [x] Replace the first custom mark with the user-supplied shield and three rising arrows, recreated as SVG.
 - [x] Apply the existing primary-button gradient (#6366f1 → #8b5cf6 → #a855f7), preserving transparency and proportions.
 - [x] Verify all branding surfaces, SVG/favicon loading, responsive layout, TypeScript and production build.
-- [ ] Merge to main and push to GitHub.
+- [x] Merge to main and push to GitHub.
