@@ -15,6 +15,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import interviewRoutes from './routes/interview.routes.js';
 import achievementRoutes from './routes/achievement.routes.js';
 import recommendationRoutes from './routes/recommendation.routes.js';
+import feedbackRoutes from './routes/feedback.routes.js';
 import { cleanupStaleLiveSessions } from './services/livekit.service.js';
 
 const app = express();
@@ -134,6 +135,7 @@ app.get('/health/ready', async (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/feedback', feedbackRoutes);
 app.use(['/api/resume', '/api/ai', '/api/pdf', '/api/algorank', '/api/roadmaps', '/api/dashboard', '/api/interview'], denyMentorPlatformAccess);
 app.use('/api/resume', resumeRoutes);
 app.use('/api/connect', connectRoutes);
