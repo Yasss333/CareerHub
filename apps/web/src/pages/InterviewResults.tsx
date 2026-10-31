@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Loader2, RotateCcw, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { getInterview, InterviewSession } from '../lib/interview'
 import InterviewAnalytics from '../components/InterviewAnalytics'
@@ -14,6 +14,7 @@ export default function InterviewResults() {
   const [session, setSession] = useState<InterviewSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [downloading,setDownloading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -22,6 +23,21 @@ export default function InterviewResults() {
     finally { setLoading(false) }
   }, [id])
   useEffect(() => { void load() }, [load])
+
+  const download = async () => {
+    if (downloading) return
+    setDownloading(true); setError('')
+    try {
+      const response = await fetch(`/api/interview/sessions/${encodeURIComponent(id)}/report.pdf`, {headers:{Authorization:`Bearer ${localStorage.getItem('token') || ''}`}})
+      if (!response.ok) {const data = await response.json().catch(() => null); throw new Error(data?.error || 'Report download failed. Please retry.')}
+      if (!response.headers.get('Content-Type')?.includes('application/pdf')) throw new Error('Report download returned an invalid file. Please retry.')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a'); link.href = url; link.download = `careerhub-interview-${id}.pdf`; document.body.append(link); link.click(); link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url),1000)
+    } catch (err) {setError(err instanceof Error ? err.message : 'Report download failed')}
+    finally {setDownloading(false)}
+  }
 
   const remove = async () => {
     if (!window.confirm('Delete this interview and all saved answers and analysis?')) return
@@ -44,7 +60,7 @@ export default function InterviewResults() {
     {error && <p role="alert" className="rounded-xl border border-destructive/30 p-4 text-destructive">{error}</p>}
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-sm font-semibold capitalize text-primary">{session.status.replaceAll('_', ' ')}</p><h1 className="mt-2 text-3xl font-bold text-card-foreground">Interview performance report</h1><p className="mt-2 text-sm text-muted-foreground">{session.role || session.type.replaceAll('_', ' ')} · {session.topics.join(' · ')}</p></div>
-      <div className="flex gap-2"><Link to="/interview/setup" className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold"><RotateCcw className="size-4" />Practice again</Link><button onClick={() => void remove()} disabled={deleting} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 text-sm disabled:opacity-50"><Trash2 className="size-4" />{deleting ? 'Deleting…' : 'Delete'}</button></div>
+      <div className="flex flex-wrap gap-2">{session.status === 'completed' && <button type="button" onClick={() => void download()} disabled={downloading} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{downloading ? <Loader2 className="size-4 animate-spin"/> : <Download className="size-4"/>}{downloading ? 'Preparing PDF…' : 'Download report'}</button>}<Link to="/interview/setup" className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold"><RotateCcw className="size-4" />Practice again</Link><button onClick={() => void remove()} disabled={deleting} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 text-sm disabled:opacity-50"><Trash2 className="size-4" />{deleting ? 'Deleting…' : 'Delete'}</button></div>
     </header>
     {session.status === 'in_progress' && <p className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">This interview has not been evaluated. <Link className="font-semibold text-primary underline" to={`/interview/session/${id}`}>Resume interview</Link></p>}
     <InterviewAnalytics session={session} />

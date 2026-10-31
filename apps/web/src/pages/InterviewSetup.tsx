@@ -37,6 +37,8 @@ export default function InterviewSetup() {
     if ((proctored || cameraConsent) && !ready.camera) {setError('Enable camera consent and test your camera before joining.'); return}
     if ((proctored || microphoneConsent) && !ready.microphone) {setError('Enable microphone consent and test your microphone before joining.'); return}
     if (proctored && !media.sharing) {setError('Share an entire screen before joining a proctored interview.'); return}
+    // Fullscreen needs the Start click's user activation, before network awaits.
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) void document.documentElement.requestFullscreen().catch(() => undefined)
     setLoading(true); setError('')
     try {
       const { session } = await api<{ session: InterviewSession }>('/interview/sessions', { method: 'POST', body: { type, topics: topicList, role, experienceLevel, difficulty, plannedDuration, monitoringMode: proctored ? 'proctored' : 'practice', introductionRequired: true, consent: { camera: cameraConsent, microphone: microphoneConsent, screen: proctored && media.sharing } } })
@@ -48,7 +50,7 @@ export default function InterviewSetup() {
       }
       releasePreflight.current()
       navigate(`/interview/session/${session.id}`)
-    } catch (err) { setError(err instanceof Error ? err.message : 'Could not create your interview'); setLoading(false) }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not create your interview'); setLoading(false); if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined) }
   }
 
   return <div className="mx-auto max-w-4xl space-y-7 pb-10">

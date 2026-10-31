@@ -1,4 +1,5 @@
 import express from 'express';
+import {generateInterviewReportPdf} from '../services/interview-report.js';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { PrismaClient } from '@prisma/client';
@@ -7,7 +8,7 @@ import { validateInterviewEvaluation } from '../services/interview-evaluation.js
 import { requestInterviewAnalysis, getInterviewMlHealth } from '../services/interview-ml.service.js';
 import { recordActivityStreak } from '../services/activity-streak.service.js';
 
-export function createInterviewRouter({ database = new PrismaClient(), analyze = requestInterviewAnalysis, health = getInterviewMlHealth, completeJson, cleanupSession } = {}) {
+export function createInterviewRouter({ database = new PrismaClient(), analyze = requestInterviewAnalysis, health = getInterviewMlHealth, completeJson, cleanupSession, renderReport = generateInterviewReportPdf } = {}) {
   const router = express.Router();
   const prisma = database;
   const generationJobs = new Map();
@@ -34,6 +35,59 @@ export function createInterviewRouter({ database = new PrismaClient(), analyze =
   const ownedSession = (id, userId, include = {}) => prisma.interviewSession.findFirst({
     where: { id, userId },
     include: { questions: { orderBy: { questionIndex: 'asc' } }, emotionResults: { orderBy: { createdAt: 'asc' } }, proctoringEvents: { orderBy: { createdAt: 'asc' } }, ...include }
+  });
+
+  // Serialize writes per interview so lagged requests cannot race the duplicate check.
+  const eventJobs = new Map();
+  const focusEvents = ['window_blur', 'tab_hidden', 'fullscreen_exited'];
+  const cameraEvents = ['camera_off', 'camera_unavailable'];
+  const faceEvents = ['face_registered', 'face_verified', 'face_no_face', 'face_multiple_faces', 'face_unauthorized_face'];
+  const recordEvent = (data) => {
+    const previous = eventJobs.get(data.sessionId) || Promise.resolve();
+    const job = previous.catch(() => {}).then(async () => {
+      let group = [data.eventType];
+      if (['screen_started','screen_stopped'].includes(data.eventType)) group = ['screen_started','screen_stopped'];
+      else if (focusEvents.includes(data.eventType)) group = focusEvents;
+      else if (cameraEvents.includes(data.eventType)) group = cameraEvents;
+      else if (data.details.source === 'ml') group = faceEvents;
+      const latest = await prisma.proctoringEvent.findFirst({where:{sessionId:data.sessionId,eventType:{in:group}},orderBy:[{createdAt:'desc'},{id:'desc'}]});
+      const age = latest ? Date.now() - new Date(latest.createdAt).getTime() : Infinity;
+      if (data.details.source === 'ml' && latest?.eventType === data.eventType && latest.severity === data.severity) return null;
+      if (data.details.source === 'ml' && data.severity === 'warning') {
+        const recentWarning = await prisma.proctoringEvent.findFirst({where:{sessionId:data.sessionId,eventType:{in:faceEvents},severity:'warning'},orderBy:[{createdAt:'desc'},{id:'desc'}]});
+        if (recentWarning && Date.now()-new Date(recentWarning.createdAt).getTime() < 10000) {
+          if (latest?.eventType === data.eventType) return null;
+          // Preserve the classifier's latest status without counting lagged flips as new incidents.
+          data = {...data,severity:'info',details:{...data.details,coalesced:true}};
+        }
+      }
+      const cooldown = data.eventType === 'screen_heartbeat' || group === focusEvents || group === cameraEvents ? 10000 : 2000;
+      const repeated = group === focusEvents || group === cameraEvents || latest?.eventType === data.eventType;
+      if (data.details.source !== 'ml' && repeated && age < cooldown) return null;
+      if (await prisma.proctoringEvent.count({where:{sessionId:data.sessionId}}) >= 1200) return null;
+      return prisma.proctoringEvent.create({data});
+    });
+    eventJobs.set(data.sessionId, job);
+    return job.finally(() => {if (eventJobs.get(data.sessionId) === job) eventJobs.delete(data.sessionId);});
+  };
+
+  const reportJobs = new Map();
+  router.get('/sessions/:id/report.pdf', authenticate, async (req,res) => {
+    try {
+      const session = await ownedSession(req.params.id,req.user.id);
+      if (!session) return res.status(404).json({error:'Interview session not found'});
+      if (session.status !== 'completed') return res.status(409).json({error:'Finish and evaluate the interview before downloading its report'});
+      if (!reportJobs.has(session.id)) {
+        if (reportJobs.size >= 2) return res.status(429).json({error:'Reports are busy. Please retry shortly.'});
+        const job = Promise.resolve().then(() => renderReport(session));
+        reportJobs.set(session.id,job);
+        void job.finally(() => {if (reportJobs.get(session.id) === job) reportJobs.delete(session.id);}).catch(() => {});
+      }
+      const pdf = await reportJobs.get(session.id);
+      res.set('Cache-Control','private, no-store');
+      res.type('application/pdf').attachment(`careerhub-interview-${session.id.replace(/[^a-z0-9-]/gi,'')}.pdf`);
+      return res.send(pdf);
+    } catch (error) {console.error('Interview report generation failed:',error.message); return res.status(503).json({error:'Report download is unavailable. Please retry.'});}
   });
 
   const parseJson = (content) => {
@@ -360,17 +414,16 @@ Ensure a balanced progression: start with an insightful technical warmup, advanc
       if (result.success === true && ['face', 'voice', 'text', 'fusion'].includes(modality)) {
         await prisma.emotionResult.create({ data: { sessionId: session.id, questionId, modality, result } });
       }
+      let event = null;
       if (['face-register', 'face-verify'].includes(modality)) {
-        await prisma.proctoringEvent.create({
-          data: {
+        event = await recordEvent({
             sessionId: session.id,
             eventType: modality === 'face-register' && result.status === 'VERIFIED' ? 'face_registered' : 'face_' + result.status.toLowerCase(),
-            severity: ['UNAUTHORIZED_FACE', 'MULTIPLE_FACES'].includes(result.status) ? 'warning' : 'info',
+            severity: modality === 'face-verify' && result.status !== 'VERIFIED' || result.status === 'MULTIPLE_FACES' ? 'warning' : 'info',
             details: { source: 'ml', status: result.status, ...(typeof result.similarity === 'number' ? { similarity: result.similarity } : {}) },
-          }
         });
       }
-      return res.json({ result });
+      return res.json({ result, event });
     } catch (error) {
       if (error.status) return res.status(error.status).json({ error: error.message });
       console.error('Interview ML analysis failed:', error.message);
@@ -389,16 +442,12 @@ Ensure a balanced progression: start with an insightful technical warmup, advanc
       const focusEvent = ['tab_hidden', 'window_blur', 'fullscreen_exited'].includes(eventType);
       if (!screenEvent && !cameraEvent && !focusEvent) return res.status(400).json({error: 'Unsupported client event type'});
       if ((screenEvent && !session.screenConsentAt) || (cameraEvent && !session.cameraConsentAt) || (focusEvent && !session.screenConsentAt && !session.cameraConsentAt)) return res.status(403).json({error: 'Monitoring consent is required'});
-      const latest = await prisma.proctoringEvent.findFirst({where: {sessionId: session.id, eventType}, orderBy: {createdAt: 'desc'}});
-      const minimumInterval = eventType === 'screen_heartbeat' ? 10000 : 2000;
-      if (latest && Date.now() - new Date(latest.createdAt).getTime() < minimumInterval) return res.status(429).json({error: 'Monitoring event already recorded'});
       if (eventType === 'screen_heartbeat') {
         const previous = await prisma.proctoringEvent.findFirst({where: {sessionId: session.id, eventType: {in: ['screen_started', 'screen_stopped']}}, orderBy: [{createdAt: 'desc'}, {id: 'desc'}]});
         if (!previous || previous.eventType !== 'screen_started') return res.status(409).json({error: 'Start screen sharing first'});
       }
-      if (await prisma.proctoringEvent.count({where: {sessionId: session.id}}) >= 1200) return res.status(429).json({error: 'Monitoring event limit reached'});
-      const event = await prisma.proctoringEvent.create({data: {sessionId: session.id, eventType, severity: eventType === 'screen_started' || eventType === 'screen_heartbeat' ? 'info' : 'warning', details: {source: 'client'}}});
-      return res.status(201).json({ event });
+      const event = await recordEvent({sessionId: session.id, eventType, severity: eventType === 'screen_started' || eventType === 'screen_heartbeat' ? 'info' : 'warning', details: {source: 'client'}});
+      return res.status(event ? 201 : 200).json({event, duplicate: !event});
     } catch (error) {
       console.error('Save proctoring event failed:', error);
       return res.status(500).json({ error: 'Could not save proctoring event' });

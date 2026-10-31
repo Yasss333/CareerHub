@@ -41,11 +41,12 @@ test('candidate introduction is owned, bounded, saved separately and rejects clo
 });
 test('screen monitoring requires screen consent and stores only server-assigned client event metadata', async () => {
   const session = {...activeSession, screenConsentAt: new Date(), monitoringMode: 'proctored'}; const db = database(session); const rows = [];
-  db.proctoringEvent = {findFirst: async () => rows.at(-1), count: async () => rows.length, create: async ({data}) => {rows.push({...data, createdAt: new Date()}); return rows.at(-1);}};
+  db.proctoringEvent = {findFirst: async ({where}) => rows.filter(r => typeof where.eventType === 'string' ? r.eventType === where.eventType : where.eventType.in.includes(r.eventType)).at(-1), count: async () => rows.length, create: async ({data}) => {rows.push({...data, createdAt: new Date()}); return rows.at(-1);}};
   await withApi({database: db}, async (url, headers) => {
     const event = type => fetch(`${url}/sessions/session-a/proctor-events`, {method: 'POST', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({eventType: type, severity: 'critical', details: {screenshot: 'private pixels'}})});
     assert.equal((await event('screen_started')).status, 201); assert.equal(rows[0].severity, 'info'); assert.deepEqual(rows[0].details, {source: 'client'});
-    assert.equal((await event('screen_heartbeat')).status, 429);
+    assert.equal((await event('screen_heartbeat')).status, 201);
+    const duplicate = await event('screen_heartbeat'); assert.equal(duplicate.status,200); assert.equal((await duplicate.json()).duplicate,true); assert.equal(rows.length,2);
     assert.equal((await event('VERIFIED')).status, 400);
     session.screenConsentAt = null; assert.equal((await event('screen_stopped')).status, 403);
   });
@@ -192,5 +193,44 @@ test('session lifecycle saves answers, retries incomplete AI evaluation, and del
     assert.equal(questions.length, 0);
     assert.equal(emotions.length, 0);
     assert.equal((await send('/sessions/new-session', undefined, 'GET')).status, 404);
+  });
+});
+
+
+test('correlated focus events are one incident, including concurrent lagged requests', async () => {
+  const rows = []; const db = database({...activeSession, screenConsentAt: new Date()});
+  db.proctoringEvent = {
+    findFirst: async ({where}) => rows.filter(r => typeof where.eventType === 'string' ? r.eventType === where.eventType : where.eventType.in.includes(r.eventType)).at(-1),
+    count: async () => rows.length,
+    create: async ({data}) => {await new Promise(r => setTimeout(r, 20)); const row = {...data, id: String(rows.length), createdAt: new Date()}; rows.push(row); return row;}
+  };
+  await withApi({database: db}, async (url, headers) => {
+    const responses = await Promise.all(['window_blur', 'tab_hidden', 'fullscreen_exited', 'window_blur', 'tab_hidden'].map(eventType => fetch(`${url}/sessions/session-a/proctor-events`, {method: 'POST', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify({eventType})})));
+    assert.ok(responses.every(r => r.ok)); assert.equal(rows.length, 1);
+    rows[0].createdAt = new Date(Date.now() - 11000);
+    assert.equal((await fetch(`${url}/sessions/session-a/proctor-events`, {method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({eventType:'tab_hidden'})})).status,201);
+    assert.equal(rows.length, 2);
+  });
+});
+
+test('downloadable PDF is owner-only and does not expose an incomplete report', async () => {
+  const session = {...activeSession, status:'completed', questions:[], feedback:{overallScore:0}};
+  await withApi({database:database(session), renderReport:async value => {assert.equal(value.id,session.id);return Buffer.from('%PDF-qa');}}, async (url,headers) => {
+    const result = await fetch(`${url}/sessions/session-a/report.pdf`, {headers}); assert.equal(result.status,200); assert.match(result.headers.get('content-type'), /application\/pdf/); assert.match(result.headers.get('content-disposition'), /attachment/); assert.equal(await result.text(), '%PDF-qa');
+    assert.equal((await fetch(`${url}/sessions/foreign/report.pdf`,{headers})).status,404);
+    assert.equal((await fetch(`${url}/sessions/session-a/report.pdf`)).status,401);
+    session.status='in_progress'; assert.equal((await fetch(`${url}/sessions/session-a/report.pdf`,{headers})).status,409);
+  });
+});
+
+
+test('repeated face warnings count once and recovery permits a later incident', async () => {
+  const rows=[];const db=database({...activeSession,cameraConsentAt:new Date()});
+  db.proctoringEvent={findFirst:async({where})=>rows.filter(r=>where.eventType.in.includes(r.eventType)&&(!where.severity||r.severity===where.severity)).at(-1),count:async()=>rows.length,create:async({data})=>{const row={...data,id:String(rows.length),createdAt:new Date()};rows.push(row);return row;}};
+  let status='MULTIPLE_FACES';await withApi({database:db,analyze:async()=>({status,success:status==='VERIFIED',source:'ml'})},async(url,headers)=>{
+    const analyze=()=>fetch(`${url}/sessions/session-a/analysis/face-verify`,{method:'POST',headers});
+    await Promise.all(Array.from({length:5},analyze));assert.equal(rows.filter(e=>e.severity==='warning').length,1);
+    status='VERIFIED';await analyze();status='NO_FACE';await analyze();assert.equal(rows.filter(e=>e.severity==='warning').length,1,'brief classifier flips must not add incidents');
+    rows[0].createdAt=new Date(Date.now()-11000);await analyze();assert.equal(rows.filter(e=>e.severity==='warning').length,2);
   });
 });

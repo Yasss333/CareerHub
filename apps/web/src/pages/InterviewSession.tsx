@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react'
 import InterviewMonitoring from '../components/InterviewMonitoring'
+import InterviewIncidents from '../components/InterviewIncidents'
 import {useInterviewMedia} from '../contexts/useInterviewMedia'
 import AIInterviewerAvatar from '../components/AIInterviewerAvatar'
 import {
@@ -348,11 +349,15 @@ export default function InterviewSessionPage() {
     }
   }, [isCameraActive, cameraPermission])
 
+  const cameraAnalysisBusy = useRef(false)
+  const [cameraAnalysisRunning,setCameraAnalysisRunning] = useState(false)
   // Facial Emotion & Face Verification loop
   const analyzeCameraFrame = useCallback(async () => {
     const video = videoRef.current
-    if (!video || video.readyState < 2 || video.videoWidth === 0 || !isCameraActive) return
-
+    if (cameraAnalysisBusy.current || disposedRef.current || sessionRef.current?.status !== 'in_progress' || !video || video.readyState < 2 || video.videoWidth === 0 || !isCameraActive) return
+    cameraAnalysisBusy.current = true
+    setCameraAnalysisRunning(true)
+    try {
     const canvas = document.createElement('canvas')
     canvas.width = Math.min(video.videoWidth, 640)
     canvas.height = Math.round((canvas.width * video.videoHeight) / video.videoWidth)
@@ -365,57 +370,42 @@ export default function InterviewSessionPage() {
     )
     if (!frameBlob) return
 
-    // 1. Analyze facial emotion only when the service advertises it.
-    if (capabilities?.face) try {
-      const { result: emotionRes } = await analyzeInterviewMedia(id, 'face', frameBlob, 'face.jpg')
-      if (emotionRes?.emotion) {
-        setFacialEmotion({
-          emotion: String(emotionRes.emotion),
-          confidence: typeof emotionRes.confidence === 'number' ? emotionRes.confidence : undefined,
-        })
-      }
-    } catch {
-      // fallback handled gracefully
+    // Registration must not wait behind a potentially cold emotion model.
+    const verify = async () => {
+      if (!capabilities) {setProctorStatus('Checking identity service…'); return}
+      if (!capabilities.proctoring) {setProctorStatus('Identity verification unavailable · service needs session isolation'); return}
+      setProctorStatus(faceRegisteredRef.current ? 'Checking identity…' : 'Registering your face…')
+      try {
+        const registering = !faceRegisteredRef.current
+        const {result} = await analyzeInterviewMedia(id, registering ? 'face-register' : 'face-verify', frameBlob, 'frame.jpg')
+        if (disposedRef.current) return
+        const labels: Record<string,string> = {VERIFIED: registering ? 'Face baseline registered' : 'Identity matched', NO_FACE:'No face detected · Face the camera in good light', MULTIPLE_FACES:'Multiple faces detected · Only one person should be visible', UNAUTHORIZED_FACE:'Candidate mismatch · Face the camera directly'}
+        if (result.status === 'VERIFIED' && registering) {faceRegisteredRef.current = true; setFaceRegistered(true)}
+        setProctorStatus(labels[String(result.status)] || 'Verification unavailable · Retry shortly')
+      } catch {if (!disposedRef.current) setProctorStatus('Verification temporarily unavailable · Retrying automatically')}
     }
-
-    // 2. Only a session-isolated verifier can establish identity.
-    if (!capabilities?.proctoring) { setProctorStatus('Verification unavailable'); return }
-    try {
-      const modality = faceRegisteredRef.current ? 'face-verify' : 'face-register'
-      const { result: proctorRes } = await analyzeInterviewMedia(id, modality, frameBlob, 'frame.jpg')
-      if (!faceRegisteredRef.current) {
-        if (proctorRes.status === 'VERIFIED') {
-          setFaceRegistered(true)
-          setProctorStatus('Identity Verified')
-        } else {
-          setProctorStatus(typeof proctorRes.message === 'string' ? proctorRes.message : 'Position your face')
-        }
-      } else {
-        const status = String(proctorRes.status || '')
-        if (status === 'VERIFIED') {
-          setProctorStatus('Identity Verified')
-        } else if (status === 'NO_FACE') {
-          setProctorStatus('No face detected')
-        } else if (status === 'UNAUTHORIZED_FACE') {
-          setProctorStatus('Candidate mismatch')
-        } else if (status === 'MULTIPLE_FACES') {
-          setProctorStatus('Multiple faces detected')
-        }
-      }
-    } catch {
-      setProctorStatus('Verification unavailable')
+    const emotion = async () => {
+      if (!capabilities?.face) return
+      try {
+        const {result} = await analyzeInterviewMedia(id,'face',frameBlob,'face.jpg')
+        if (!disposedRef.current && result.emotion) setFacialEmotion({emotion:String(result.emotion),confidence:typeof result.confidence === 'number' ? result.confidence : undefined})
+      } catch { /* Optional emotion inference does not delay identity registration. */ }
     }
-  }, [id, isCameraActive, capabilities])
+    await Promise.allSettled([verify(),emotion()])
+    } finally {cameraAnalysisBusy.current = false; if (!disposedRef.current) setCameraAnalysisRunning(false)}
+  }, [id,isCameraActive,capabilities])
 
   useEffect(() => {
     if (!isCameraActive || cameraPermission !== 'granted') return
-    const initialTimer = setTimeout(() => void analyzeCameraFrame(), 1500)
-    const interval = setInterval(() => void analyzeCameraFrame(), 15000)
-    return () => {
-      clearTimeout(initialTimer)
-      clearInterval(interval)
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout>
+    const next = async () => {
+      await analyzeCameraFrame()
+      if (!cancelled) timer = setTimeout(() => void next(),15000)
     }
-  }, [analyzeCameraFrame, isCameraActive, cameraPermission])
+    timer = setTimeout(() => void next(),1500)
+    return () => {cancelled = true; clearTimeout(timer)}
+  }, [analyzeCameraFrame,isCameraActive,cameraPermission])
 
   // Audio chunk recording for ML voice emotion with Calibrated Web Audio VAD
   const startVoiceRecording = useCallback(async () => {
@@ -1054,6 +1044,7 @@ export default function InterviewSessionPage() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-4 pb-12 select-none">
       {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error} Your saved answers are retained; you can retry.</div>}
+      <InterviewIncidents session={session} />
       <InterviewMonitoring id={id} active={session.monitoringMode === 'proctored' && session.status === 'in_progress'} onReady={setMonitoringReady} onResume={() => speakQuestion(currentQuestion.questionText)} />
       {session.monitoringMode === 'proctored' && (!isCameraActive || isMicMuted || !microphoneReady) && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm">Proctored mode requires your camera and microphone. Turn them on below; after sharing, select Replay & resume to start audio capture.</p>}
       {/* Top Video Call Header Bar */}
@@ -1246,7 +1237,7 @@ export default function InterviewSessionPage() {
           <div className="absolute bottom-3 left-3 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
               <ShieldCheck className="size-3.5 text-primary" />
-              <span>{session.cameraEnabled ? proctorStatus : 'Camera off · enable when ready'}</span>
+              <span>{session.cameraEnabled ? proctorStatus : 'Camera off · enable when ready'}</span>{isCameraActive && capabilities?.proctoring && <button type="button" onClick={() => void analyzeCameraFrame()} disabled={cameraAnalysisRunning} className="ml-2 underline disabled:opacity-50">{cameraAnalysisRunning ? 'Check in progress…' : 'Retry check'}</button>}
             </div>
 
             {facialEmotion?.emotion && (

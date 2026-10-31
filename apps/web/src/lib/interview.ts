@@ -69,13 +69,23 @@ export const saveInterviewAnswer = (id: string, answerText: string) => api<{ que
 export const saveInterviewIntroduction = (id: string, text: string) => api<{session: InterviewSession}>(`/interview/sessions/${id}/introduction`, {method: 'PUT', body: {text}})
 export const evaluateInterview = (id: string) => api<{ session: InterviewSession }>(`/interview/sessions/${id}/evaluate`, { method: 'POST', body: {} })
 
+export type ProctorEvent = NonNullable<InterviewSession['proctoringEvents']>[number] & {sessionId?: string}
+function announceEvent(event: ProctorEvent | null, sessionId: string) {
+  if (event) window.dispatchEvent(new CustomEvent('careerhub:monitoring-event', {detail:{...event,sessionId}}))
+}
 export async function analyzeInterviewMedia(id: string, modality: string, media: Blob | Record<string, unknown>, filename = 'capture.bin') {
   if (media instanceof Blob) {
     const form = new FormData()
     form.set('media', media, filename)
-    return api<{ result: Record<string, unknown> }>(`/interview/sessions/${id}/analysis/${modality}`, { method: 'POST', body: form })
+    const response = await api<{result: Record<string, unknown>; event?: ProctorEvent}>(`/interview/sessions/${id}/analysis/${modality}`, {method:'POST',body:form})
+    announceEvent(response.event,id)
+    return response
   }
   return api<{ result: Record<string, unknown> }>(`/interview/sessions/${id}/analysis/${modality}`, { method: 'POST', body: media })
 }
 
-export const saveProctorEvent = (id: string, eventType: string, severity = 'info') => api(`/interview/sessions/${id}/proctor-events`, { method: 'POST', body: { eventType, severity } })
+export async function saveProctorEvent(id: string, eventType: string, severity = 'info') {
+  const response = await api<{event: ProctorEvent | null}>(`/interview/sessions/${id}/proctor-events`, {method:'POST',body:{eventType,severity}})
+  announceEvent(response.event,id)
+  return response
+}

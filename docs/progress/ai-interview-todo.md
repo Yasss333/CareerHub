@@ -285,3 +285,12 @@ This is the most complex migration due to:
 5. Frontend migration (user-facing)
 6. Privacy and security implementation (compliance)
 7. Testing and validation (quality assurance)
+
+## 2026-10-31 reliability fixes
+- [x] Add downloadable interview PDF with answers, analytics and monitoring.
+- [x] Enter fullscreen on Start; provide recovery for denied/unsupported fullscreen.
+- [x] Show live monitoring incidents and coalesce focus/camera bursts.
+- [x] Serialize camera inference, prioritize registration, and explain verifier availability.
+- [x] Browser-test downloads, device flow, lag and incident recovery.
+
+- [ ] Deploy and verify the session-isolated Cloud Run service before enabling production identity checks (deployment steps prepared at user request).
