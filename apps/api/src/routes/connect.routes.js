@@ -1,4 +1,5 @@
 import express from 'express';
+import {notifyBookingCreated,notifySessionCancelled} from '../services/session-notifications.js';
 import { slotDateTime } from '../../../../packages/shared/src/utils/slot-time.js';
 import { mentorApplicationState, canManageMentorFeatures } from '../services/mentor-approval.service.js';
 import jwt from 'jsonwebtoken';
@@ -1075,7 +1076,7 @@ router.post('/sessions', authenticate, async (req, res) => {
         }
       });
     
-      await tx.notification.create({ data: { userId: seniorUserId, type: 'session_request', title: 'New Session Request', message: `${req.user.name || 'A junior'} wants to book a session with you on ${topic}`, data: { bookingId: session.id, juniorId: req.user.id } } });
+      await notifyBookingCreated(tx,session);
       return session;
     }, { isolationLevel: 'Serializable', timeout: 15000 });
     res.status(201).json(session);
@@ -1106,23 +1107,18 @@ router.delete('/sessions/:id', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Session is already closed' });
     }
     
-    // Free the availability slot
-    if (session.availabilitySlotId) {
-      await prisma.availabilitySlot.update({
-        where: { id: session.availabilitySlotId },
-        data: { isBooked: false }
-      });
-    }
-    
-    const updated = await prisma.sessionBooking.update({
-      where: { id: req.params.id },
-      data: { status: 'cancelled' }
+    const updated = await prisma.$transaction(async tx => {
+      const changed = await tx.sessionBooking.updateMany({where:{id:session.id,status:session.status},data:{status:'cancelled'}});
+      if (changed.count !== 1) throw requestError(409,'Session changed. Refresh and retry.');
+      if (session.availabilitySlotId) await tx.availabilitySlot.update({where:{id:session.availabilitySlotId},data:{isBooked:false}});
+      await notifySessionCancelled(tx,session,req.user.id);
+      return tx.sessionBooking.findUnique({where:{id:session.id}});
     });
-    
+
     res.json(updated);
   } catch (error) {
     console.error('Cancel session error:', error);
-    res.status(500).json({ error: 'Failed to cancel session' });
+    res.status(error.status || 500).json({ error: error.status ? error.message : 'Failed to cancel session' });
   }
 });
 
@@ -1150,38 +1146,24 @@ router.put('/sessions/:id/status', authenticate, requireAlumniMentor, async (req
       return res.status(400).json({ error: 'Only pending sessions can be accepted or rejected' });
     }
     
-    // Free the availability slot when rejecting or cancelling
-    if ((status === 'rejected' || status === 'cancelled') && session.availabilitySlotId) {
-      await prisma.availabilitySlot.update({
-        where: { id: session.availabilitySlotId },
-        data: { isBooked: false }
-      });
-    }
-    
-    const updatedSession = await prisma.sessionBooking.update({
-      where: { id: req.params.id },
-      data: { status },
-      include: {
-        junior: { select: { id: true, name: true, avatar: true, university: true } },
-        senior: { select: { id: true, name: true, avatar: true, title: true, company: true } }
-      }
+    const updatedSession = await prisma.$transaction(async tx => {
+      const changed = await tx.sessionBooking.updateMany({where:{id:session.id,status:'pending'},data:{status}});
+      if (changed.count !== 1) throw requestError(409,'Session changed. Refresh and retry.');
+      if (status !== 'accepted' && session.availabilitySlotId) await tx.availabilitySlot.update({where:{id:session.availabilitySlotId},data:{isBooked:false}});
+      await tx.notification.create({data:{
+        userId:session.juniorId,
+        type:status === 'accepted' ? 'session_accepted' : status === 'cancelled' ? 'session_cancelled' : 'session_rejected',
+        title:status === 'accepted' ? 'Session Accepted' : status === 'cancelled' ? 'Session Cancelled' : 'Session Rejected',
+        message:`Your mentor ${status === 'accepted' ? 'accepted' : status === 'cancelled' ? 'cancelled' : 'declined'} your session about "${session.topic}".`,
+        data:{bookingId:session.id,seniorId:req.user.id}
+      }});
+      return tx.sessionBooking.findUnique({where:{id:session.id},include:{junior:{select:{id:true,name:true,avatar:true,university:true}},senior:{select:{id:true,name:true,avatar:true,title:true,company:true}}}});
     });
-
-    // Create notification for junior
-    await createNotification(
-      session.juniorId,
-      status === 'accepted' ? 'session_accepted' : 'session_rejected',
-      status === 'accepted' ? 'Session Accepted' : 'Session Rejected',
-      status === 'accepted'
-        ? `Your session request has been accepted by ${req.user.name || 'your mentor'}`
-        : `Your session request has been declined by ${req.user.name || 'your mentor'}`,
-      { bookingId: session.id, seniorId: req.user.id }
-    );
 
     res.json(updatedSession);
   } catch (error) {
     console.error('Update session status error:', error);
-    res.status(500).json({ error: 'Failed to update session status' });
+    res.status(error.status || 500).json({ error: error.status ? error.message : 'Failed to update session status' });
   }
 });
 
@@ -1350,38 +1332,15 @@ router.post('/sessions/:id/messages', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Session not found or unauthorized' });
     }
 
-    const created = await prisma.sessionMessage.create({
-      data: {
-        sessionId: session.id,
-        senderId: req.user.id,
-        message: message.trim()
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true,
-            role: true
-          }
-        }
-      }
+    const created = await prisma.$transaction(async tx => {
+      const messageRow = await tx.sessionMessage.create({
+        data:{sessionId:session.id,senderId:req.user.id,message:message.trim()},
+        include:{sender:{select:{id:true,name:true,avatar:true,role:true}}}
+      });
+      const recipientId = req.user.id === session.juniorId ? session.seniorId : session.juniorId;
+      await tx.notification.create({data:{userId:recipientId,type:'session_message',title:'New Message',message:`${messageRow.sender?.name || 'A participant'} sent you a message for "${session.topic}"`,data:{bookingId:session.id}}});
+      return messageRow;
     });
-
-    // Notify the other participant
-    const recipientId = req.user.id === session.juniorId ? session.seniorId : session.juniorId;
-    const senderUser = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: { name: true }
-    });
-
-    await createNotification(
-      recipientId,
-      'session_message',
-      'New Message',
-      `${senderUser?.name || 'Someone'} sent you a message for "${session.topic}"`,
-      { bookingId: session.id }
-    );
 
     res.status(201).json(created);
   } catch (error) {

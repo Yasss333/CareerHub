@@ -184,6 +184,8 @@ export default function SeniorConnectSessions() {
   const [activeChatSession, setActiveChatSession] = useState<Session | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const joinParam = searchParams.get('join')
+  const chatParam = searchParams.get('chat')
+  const sessionParam = searchParams.get('session')
 
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
 
@@ -283,6 +285,18 @@ export default function SeniorConnectSessions() {
       }
     }
   }, [joinParam, sessions])
+
+  useEffect(() => {
+    const target = chatParam || sessionParam
+    if (!target || loading) return
+    const matched = sessions.find(s => s.id === target)
+    if (!matched) return
+    setViewMode('list')
+    if (chatParam) setActiveChatSession(matched)
+    const timer = window.setTimeout(() => document.getElementById(`session-${target}`)?.scrollIntoView({block:'center',behavior:'smooth'}),0)
+    const next = new URLSearchParams(searchParams);next.delete('chat');next.delete('session');setSearchParams(next,{replace:true})
+    return () => clearTimeout(timer)
+  }, [chatParam,sessionParam,loading,sessions,searchParams,setSearchParams])
 
   const apiCall = async (method: string, url: string, body?: object) => {
     const token = localStorage.getItem('token')
@@ -615,6 +629,7 @@ export default function SeniorConnectSessions() {
             return (
               <div
                 key={session.id}
+                id={`session-${session.id}`}
                 className={`rounded-2xl shadow-sm border p-6 transition-all ${
                   session.status === 'started'
                     ? 'bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-card border-emerald-500/40 ring-2 ring-emerald-500/30 shadow-md'

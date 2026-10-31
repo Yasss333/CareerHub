@@ -204,3 +204,9 @@ This document tracks the implementation progress of the Senior Connect module mi
 - [x] Add retryable mentor and session loading errors without hiding page context
 - [x] Announce loading and save feedback for mentor profile workflows
 - [x] Warn before leaving mentor profile edits that have not been saved
+
+## 2026-10-31 notification reliability
+- [x] Notify both participants of booking and cancellation; poll inbox while open.
+- [x] Make booking, cancellation, status and chat notifications transactional.
+- [x] Verify notification links, read failures, responsive inbox and real local API/browser workflows.
+- Email integration deferred by the user; recommend a free provider separately.

@@ -1,7 +1,8 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, FileText, MessageSquare, Code, Users, LogOut, Bell, Moon, Sun, Map, ShieldCheck, Settings, PanelLeftClose, PanelLeftOpen, Video, X } from 'lucide-react'
+import { Home, FileText, MessageSquare, Code, Users, LogOut, Moon, Sun, Map, ShieldCheck, Settings, PanelLeftClose, PanelLeftOpen, Video, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import NotificationsPanel from './NotificationsPanel'
+import NotificationBell from './NotificationBell'
 import ReportFeedback from './ReportFeedback'
 import CareerHubLogo from './CareerHubLogo'
 import { DarkModeProvider, useDarkMode } from '../contexts/DarkModeContext'
@@ -127,13 +128,7 @@ function LayoutContent() {
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            <button
-              onClick={() => setNotificationsOpen(true)}
-              className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-              title="Notifications"
-            >
-              <Bell className="w-5 h-5" />
-            </button>
+            <NotificationBell onOpen={() => setNotificationsOpen(true)} />
             <span className="hidden text-sm text-muted-foreground sm:inline">Welcome, {user.name || 'User'}</span>
             <ReportFeedback historyPath={feedbackPath} />
             <button
