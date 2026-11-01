@@ -69,6 +69,8 @@ export const saveInterviewAnswer = (id: string, answerText: string) => api<{ que
 export const saveInterviewIntroduction = (id: string, text: string) => api<{session: InterviewSession}>(`/interview/sessions/${id}/introduction`, {method: 'PUT', body: {text}})
 export const evaluateInterview = (id: string) => api<{ session: InterviewSession }>(`/interview/sessions/${id}/evaluate`, { method: 'POST', body: {} })
 
+export const getProctorEvents = (id:string) => api<{events:ProctorEvent[]}>(`/interview/sessions/${id}/proctor-events`)
+
 export type ProctorEvent = NonNullable<InterviewSession['proctoringEvents']>[number] & {sessionId?: string}
 function announceEvent(event: ProctorEvent | null, sessionId: string) {
   if (event) window.dispatchEvent(new CustomEvent('careerhub:monitoring-event', {detail:{...event,sessionId}}))

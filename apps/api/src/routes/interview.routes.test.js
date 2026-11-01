@@ -234,3 +234,9 @@ test('repeated face warnings count once and recovery permits a later incident', 
     rows[0].createdAt=new Date(Date.now()-11000);await analyze();assert.equal(rows.filter(e=>e.severity==='warning').length,2);
   });
 });
+
+
+test('live monitoring reads are owner-scoped and bounded',async()=>{
+ const db=database(activeSession);db.proctoringEvent={findMany:async({where,take})=>{assert.equal(where.sessionId,activeSession.id);assert.equal(take,1200);return [{id:'warning',eventType:'face_no_face',severity:'warning'}];}};
+ await withApi({database:db},async(url,headers)=>{const response=await fetch(`${url}/sessions/session-a/proctor-events`,{headers});assert.equal(response.status,200);assert.equal((await response.json()).events[0].id,'warning');assert.equal((await fetch(`${url}/sessions/foreign/proctor-events`,{headers})).status,404);assert.equal((await fetch(`${url}/sessions/session-a/proctor-events`)).status,401);});
+});

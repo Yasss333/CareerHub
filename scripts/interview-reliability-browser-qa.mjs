@@ -59,6 +59,7 @@ page.on('request', async req => {
   else if(url.pathname.endsWith('/read') && url.pathname.includes('/notifications/')) {if(failRead){status=503;data={error:'Fixture read failed'};}else{const n=noticeRows.find(n=>url.pathname.includes(n.id));if(n)n.isRead=true;data={success:true};}}
   else if(url.pathname.startsWith('/api/connect/sessions')) data=url.pathname.endsWith('/messages')?[]:[booking];
   else if (url.pathname === '/api/interview/sessions' && req.method() === 'POST') {session = {...makeSession(), ...body(), cameraEnabled: body().consent.camera, microphoneEnabled: body().consent.microphone}; data = {session}; status = 201;}
+  else if(url.pathname.endsWith('/proctor-events') && req.method()==='GET')data={events:session.proctoringEvents};
   else if (url.pathname.endsWith('/proctor-events')) {const type=body().eventType;events.push(type);const event={id:'browser-'+events.length,sessionId:session.id,eventType:type,severity:['screen_started','screen_heartbeat'].includes(type)?'info':'warning',details:{source:'client'},createdAt:now()};session.proctoringEvents.push(event);data={event};status=201;}
   else if (url.pathname.endsWith('/introduction')) {introductionSaves++; session.candidateIntroduction = body().text; session.introductionCompletedAt = now(); data = {session};}
   else if (url.pathname.endsWith('/answer')) {answerSaves++; session.questions[0].answerText = body().answerText; data = {question: session.questions[0]};}

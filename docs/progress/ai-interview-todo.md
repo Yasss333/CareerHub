@@ -294,3 +294,9 @@ This is the most complex migration due to:
 - [x] Browser-test downloads, device flow, lag and incident recovery.
 
 - [ ] Deploy and verify the session-isolated Cloud Run service before enabling production identity checks (deployment steps prepared at user request).
+
+## 2026-11-01 deployed interview recovery
+- [x] Reproduce missing fullscreen/download/live violations in the in-app browser.
+- [x] Require an explicit fullscreen entry on resumed interviews and expose browser refusal.
+- [x] Keep report download discoverable and show live monitoring while answering.
+- [ ] Browser-test and verify the deployed release.

@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import InterviewMonitoring from '../components/InterviewMonitoring'
 import InterviewIncidents from '../components/InterviewIncidents'
+import InterviewStartGate from '../components/InterviewStartGate'
+import {useInterviewFullscreen} from '../contexts/useInterviewFullscreen'
 import {useInterviewMedia} from '../contexts/useInterviewMedia'
 import AIInterviewerAvatar from '../components/AIInterviewerAvatar'
 import {
@@ -75,6 +77,7 @@ export default function InterviewSessionPage() {
   const location = useLocation()
 
   const media = useInterviewMedia()
+  const fullscreen = useInterviewFullscreen()
   const takeDevice = media.takeDevice
   const [monitoringReady, setMonitoringReady] = useState(false)
   const monitoringBlockedRef = useRef(false)
@@ -84,7 +87,7 @@ export default function InterviewSessionPage() {
   const [session, setSession] = useState<SessionData | null>(null)
   const sessionRef = useRef<SessionData | null>(null)
   sessionRef.current = session
-  monitoringBlockedRef.current = session?.monitoringMode === 'proctored' && (!media.sharing || !monitoringReady)
+  monitoringBlockedRef.current = !fullscreen.ready || !fullscreen.fullscreen || session?.monitoringMode === 'proctored' && (!media.sharing || !monitoringReady)
   const disposedRef = useRef(false)
   const [capabilities, setCapabilities] = useState<InterviewCapabilities | null>(null)
   const [analysisNotice, setAnalysisNotice] = useState('')
@@ -335,12 +338,12 @@ export default function InterviewSessionPage() {
   }, [])
 
   useEffect(() => {
-    if (!session?.cameraEnabled || session.status !== 'in_progress') return
+    if (!fullscreen.ready || !session?.cameraEnabled || session.status !== 'in_progress') return
     void startCamera()
     return () => {
       stopCamera()
     }
-  }, [startCamera, stopCamera, session?.cameraEnabled, session?.status])
+  }, [startCamera, stopCamera, session?.cameraEnabled, session?.status, fullscreen.ready])
 
   useEffect(() => {
     if (isCameraActive && videoRef.current && streamRef.current) {
@@ -801,14 +804,14 @@ export default function InterviewSessionPage() {
     if (!monitoringBlockedRef.current && pendingSpeechRef.current) {
       const text = pendingSpeechRef.current; pendingSpeechRef.current = ''; speakQuestionRef.current(text)
     }
-  }, [media.sharing, monitoringReady])
+  }, [media.sharing, monitoringReady, fullscreen.ready, fullscreen.fullscreen])
 
   useEffect(() => {
     if (!monitoringBlockedRef.current) return
     window.speechSynthesis?.cancel()
     aiPhaseRef.current = 'idle'; setAiPhase('idle')
     void stopListening()
-  }, [media.sharing, monitoringReady, stopListening])
+  }, [media.sharing, monitoringReady, stopListening, fullscreen.ready, fullscreen.fullscreen])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -824,7 +827,7 @@ export default function InterviewSessionPage() {
   // Advance to next question or complete interview
   const handleNextOrFinish = async () => {
     if (!currentQuestion || saving || ending) return
-    if (monitoringBlockedRef.current || session?.monitoringMode === 'proctored' && (!isCameraActive || isMicMuted || !microphoneReady)) {setError('Restore your camera, microphone and entire-screen sharing before continuing.'); return}
+    if (monitoringBlockedRef.current || session?.monitoringMode === 'proctored' && (!isCameraActive || isMicMuted || !microphoneReady)) {setError('Enter fullscreen and restore any required camera, microphone and entire-screen sharing before continuing.'); return}
     captureSuspendedRef.current = true
     setSaving(true)
     setError('')
@@ -1044,7 +1047,9 @@ export default function InterviewSessionPage() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-4 pb-12 select-none">
       {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error} Your saved answers are retained; you can retry.</div>}
+      {!fullscreen.ready && <InterviewStartGate enter={fullscreen.enter} entering={fullscreen.entering} error={fullscreen.error} />}
       <InterviewIncidents session={session} />
+      {fullscreen.ready && !fullscreen.fullscreen && <p role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">Interview paused. Select Enter fullscreen above to continue; your answer is retained.</p>}
       <InterviewMonitoring id={id} active={session.monitoringMode === 'proctored' && session.status === 'in_progress'} onReady={setMonitoringReady} onResume={() => speakQuestion(currentQuestion.questionText)} />
       {session.monitoringMode === 'proctored' && (!isCameraActive || isMicMuted || !microphoneReady) && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm">Proctored mode requires your camera and microphone. Turn them on below; after sharing, select Replay & resume to start audio capture.</p>}
       {/* Top Video Call Header Bar */}
@@ -1418,7 +1423,8 @@ export default function InterviewSessionPage() {
         {/* Next Question / Finish Interview CTA */}
         <button
           type="button"
-          disabled={saving || ending || session.monitoringMode === 'proctored' && (monitoringBlockedRef.current || !isCameraActive || isMicMuted || !microphoneReady)}
+          data-interview-next
+          disabled={saving || ending || !fullscreen.ready || !fullscreen.fullscreen || session.monitoringMode === 'proctored' && (monitoringBlockedRef.current || !isCameraActive || isMicMuted || !microphoneReady)}
           onClick={() => void handleNextOrFinish()}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 disabled:opacity-50"
         >

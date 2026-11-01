@@ -38,7 +38,12 @@ export default function InterviewSetup() {
     if ((proctored || microphoneConsent) && !ready.microphone) {setError('Enable microphone consent and test your microphone before joining.'); return}
     if (proctored && !media.sharing) {setError('Share an entire screen before joining a proctored interview.'); return}
     // Fullscreen needs the Start click's user activation, before network awaits.
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) void document.documentElement.requestFullscreen().catch(() => undefined)
+    if (!document.fullscreenElement) {
+      try {
+        if(!document.documentElement.requestFullscreen) throw new Error('Fullscreen unavailable')
+        await document.documentElement.requestFullscreen({navigationUI:'hide'})
+      } catch {setError('Your browser blocked fullscreen. Select Start interview again or use desktop Chrome or Edge.');return}
+    }
     setLoading(true); setError('')
     try {
       const { session } = await api<{ session: InterviewSession }>('/interview/sessions', { method: 'POST', body: { type, topics: topicList, role, experienceLevel, difficulty, plannedDuration, monitoringMode: proctored ? 'proctored' : 'practice', introductionRequired: true, consent: { camera: cameraConsent, microphone: microphoneConsent, screen: proctored && media.sharing } } })

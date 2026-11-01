@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Report a bug / suggestion from every signed-in interface, private feedback history, and administrator triage with reporter-visible updates and JSON export. Reports use durable PostgreSQL JSON, bounded input/context, duplicate-safe retries and account-based submission limits.
 
 ### Fixed
+- Fixed deployed interview PDF failures by rendering directly in Node instead of launching Chromium. Kept the report download control visible with a PDF label.
+- Required fullscreen entry on direct/resumed interviews, surfaced browser refusal, and paused continuation after fullscreen exits without losing draft answers.
+- Pinned live monitoring warnings while answering and added owner-scoped server-event refresh so externally recorded incidents appear before the final report.
 - Coalesced lagged focus/camera and repeated ML warnings, serialized incident writes and camera inference, and started face registration independently of slow emotion analysis. Documented the remaining session-safe Cloud Run deployment requirement.
 - Made mentoring booking, cancellation, status and chat notices transactional; added unread badges, inbox refresh and direct session/conversation links.
 - Require the current account role in problem-library authorization and remove the manual seed endpoint’s known default/query/JWT-secret bypass. Seed-key access now requires a separate explicitly configured strong header secret.

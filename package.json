@@ -18,7 +18,7 @@
     "seed:api": "npm run prisma:seed --workspace=apps/api",
     "test": "npm run test --workspaces",
     "test:interview": "node --test apps/api/src/routes/interview.routes.test.js apps/api/src/services/interview-evaluation.test.js apps/api/src/services/interview-ml.service.test.js apps/web/tests/interview-analysis.test.mjs apps/api/src/services/interview-report.test.js",
-    "test:interview:browser": "node --test scripts/interview-browser.test.mjs",
+    "test:interview:browser": "node --test --test-concurrency=1 scripts/interview-browser.test.mjs scripts/interview-start-recovery.test.mjs",
     "test:feedback": "node --test apps/api/src/routes/feedback.routes.test.js",
     "test:feedback:database": "node scripts/feedback-database-qa.mjs",
     "test:feedback:browser": "node scripts/feedback-browser-qa.mjs",

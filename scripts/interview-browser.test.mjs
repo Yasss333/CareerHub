@@ -85,6 +85,15 @@ async function withInterviewBrowser(run, staleLoadDelay = 0, allowDevices = fals
     }
     throw new Error(`Button not found: ${text}`);
   };
+  const enterSession = async () => {
+    if (!page.url().includes('/interview/session/')) return;
+    await page.waitForSelector('[data-enter-interview], textarea');
+    const entry = await page.$('[data-enter-interview]');
+    if (entry) {await entry.click();await page.waitForFunction(()=>!!document.fullscreenElement);}
+  };
+  const navigate = page.goto.bind(page), reload = page.reload.bind(page);
+  page.goto = async (...args) => {const response=await navigate(...args);await enterSession();return response;};
+  page.reload = async (...args) => {const response=await reload(...args);await enterSession();return response;};
   try {
     await run({ page, session, clickText, setFailEvaluation: (value) => { failEvaluation = value; }, setFailConsent: value=>{failConsent=value;} });
     assert.deepEqual(errors, [], 'interview pages must not throw runtime errors');

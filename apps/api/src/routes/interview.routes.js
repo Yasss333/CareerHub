@@ -431,6 +431,15 @@ Ensure a balanced progression: start with an insightful technical warmup, advanc
     }
   });
 
+  router.get('/sessions/:id/proctor-events', authenticate, async (req,res) => {
+    try {
+      const owned = await prisma.interviewSession.findFirst({where:{id:req.params.id,userId:req.user.id},select:{id:true}});
+      if(!owned)return res.status(404).json({error:'Interview session not found'});
+      const events = await prisma.proctoringEvent.findMany({where:{sessionId:owned.id},orderBy:[{createdAt:'asc'},{id:'asc'}],take:1200});
+      res.set('Cache-Control','private, no-store');return res.json({events});
+    }catch(error){console.error('Load live monitoring failed:',error.message);return res.status(503).json({error:'Live monitoring could not refresh'});}
+  });
+
   router.post('/sessions/:id/proctor-events', authenticate, async (req, res) => {
     try {
       const session = await requireOwned(req, res);
