@@ -17,4 +17,13 @@ Validation:
 
 The dependency audit found no findings in the added PDFKit chain. Existing baseline advisories (2 critical, 11 high, 2 moderate, 1 low) are not remediated in this interview fix; review separately by 8 November 2026. No schema migration, ML deployment or code-execution testing is part of this change.
 
-Production verification is recorded separately after deployment. The face-verifier service remains the separately managed ML deployment.
+## Production verification
+
+Verified commit 791ce79 on the deployed site in the Codex in-app browser:
+- Direct/resumed interview shows the fullscreen gate and disables Finish until entry. Clicking the gate activates native fullscreen.
+- One synthetic server warning appears in the pinned live panel without opening the report, and the unsaved typed answer remains intact.
+- Download report (PDF) saves a real file to Downloads. Its two pages were parsed and the saved answer/75% score verified. The endpoint returns HTTP 200 application/pdf instead of the reproduced 503.
+- The private live-event endpoint returns HTTP 200. The full 17-case interview/browser flow also passes with the native PDF renderer.
+- The disposable QA account, interviews and their warning were deleted after testing. No real candidate report or biometric image was used.
+
+Screenshots and the downloaded sample are in the workspace outputs folder. The face-verifier service remains the separately managed ML deployment.

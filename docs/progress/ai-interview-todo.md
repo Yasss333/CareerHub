@@ -299,4 +299,4 @@ This is the most complex migration due to:
 - [x] Reproduce missing fullscreen/download/live violations in the in-app browser.
 - [x] Require an explicit fullscreen entry on resumed interviews and expose browser refusal.
 - [x] Keep report download discoverable and show live monitoring while answering.
-- [ ] Browser-test and verify the deployed release.
+- [x] Browser-test and verify the deployed release (791ce79): native fullscreen join, successful in-app PDF download and a pinned synthetic server warning with draft retained.
