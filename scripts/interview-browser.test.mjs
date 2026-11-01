@@ -90,6 +90,7 @@ async function withInterviewBrowser(run, staleLoadDelay = 0, allowDevices = fals
     await page.waitForSelector('[data-enter-interview], textarea');
     const entry = await page.$('[data-enter-interview]');
     if (entry) {await entry.click();await page.waitForFunction(()=>!!document.fullscreenElement);}
+    if(!await page.$('textarea'))await page.click('[title="Toggle Text Editor"]');
   };
   const navigate = page.goto.bind(page), reload = page.reload.bind(page);
   page.goto = async (...args) => {const response=await navigate(...args);await enterSession();return response;};
@@ -114,7 +115,7 @@ test('quick mock setup defaults to explicit consent and text-only interviews com
   await clickText('Start interview');
   await page.waitForFunction(() => location.pathname.includes('/interview/session/'));
   const answerEditor = 'textarea[placeholder="Type or refine your response here..."]';
-  await page.waitForSelector(answerEditor);
+  await page.waitForSelector('[title="Toggle Text Editor"]');if(!await page.$(answerEditor))await page.locator('[title="Toggle Text Editor"]').click();await page.waitForSelector(answerEditor);
   await page.type(answerEditor, 'I am a test candidate practicing databases.');
   await clickText('Begin Questions');
   await page.waitForFunction(() => !document.body.textContent.includes('Begin Questions'));
@@ -163,7 +164,7 @@ test('device consent save errors remain retryable and never start capture before
 
 test('a stale initial request cannot erase text entered after the latest load', {timeout:120000},()=>withInterviewBrowser(async({page})=>{
   await page.goto('http://127.0.0.1:5173/interview/session/fixture-session',{waitUntil:'domcontentloaded'});
-  const editor=await page.waitForSelector('textarea');await editor.type('My complete answer must survive a late response.',{delay:15});
+  if(!await page.$('textarea'))await page.click('[title="Toggle Text Editor"]');const editor=await page.waitForSelector('textarea');await editor.type('My complete answer must survive a late response.',{delay:15});
   await new Promise(resolve=>setTimeout(resolve,2200));
   assert.equal(await editor.evaluate(node=>node.value),'My complete answer must survive a late response.');
 },2000));
@@ -183,8 +184,8 @@ test('resume edits survive a late initial response and untouched resumes are not
 test('an answered interview resumes at the final question for evaluation retry', {timeout:120000},()=>withInterviewBrowser(async({page,session})=>{
   session.questions[0].answerText='First saved answer';session.questions.push({...session.questions[0],id:'question-2',questionText:'Second question',questionIndex:1,answerText:'Final saved answer'});
   await page.goto('http://127.0.0.1:5173/interview/session/fixture-session',{waitUntil:'networkidle0'});
-  await page.waitForSelector('textarea');assert.equal(await page.$eval('textarea',n=>n.value),'Final saved answer');
-  assert.match(await page.$eval('main',n=>n.textContent),/Question 2 of 2/);
+  if(!await page.$('textarea'))await page.click('[title="Toggle Text Editor"]');await page.waitForSelector('textarea');assert.equal(await page.$eval('textarea',n=>n.value),'Final saved answer');
+  assert.match(await page.$eval('[aria-label="Interview room"]',n=>n.textContent),/Question 2 of 2/);
 }));
 
 test('device denial offers typed answers and never shows false identity verification', { timeout: 120000 }, () => withInterviewBrowser(async ({ page, session }) => {

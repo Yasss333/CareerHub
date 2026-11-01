@@ -3,13 +3,14 @@ import {MonitorUp, ShieldCheck} from 'lucide-react'
 import {useInterviewMedia} from '../contexts/useInterviewMedia'
 import {saveProctorEvent} from '../lib/interview'
 
-export default function InterviewMonitoring({id, active, onReady, onResume}: {id: string; active: boolean; onReady: (ready: boolean) => void; onResume: () => void}) {
+export default function InterviewMonitoring({id, active, onReady, onResume, compact=false}: {compact?:boolean; id: string; active: boolean; onReady: (ready: boolean) => void; onResume: () => void}) {
   const media = useInterviewMedia()
   const picking = useRef(false)
   const previous = useRef<MediaStream | null>(null)
   const callback = useRef(onReady); callback.current = onReady
   const [synced, setSynced] = useState(false)
   const [error, setError] = useState('')
+  const [needsResume,setNeedsResume]=useState(false)
   useEffect(() => {
     if (!active) return
     let disposed = false
@@ -17,6 +18,7 @@ export default function InterviewMonitoring({id, active, onReady, onResume}: {id
     previous.current = media.screen
     setSynced(false); callback.current(false)
     if (!media.sharing) {
+      if(stopped)setNeedsResume(true)
       if (stopped) void saveProctorEvent(id, 'screen_stopped').catch(() => undefined)
       return
     }
@@ -64,6 +66,12 @@ export default function InterviewMonitoring({id, active, onReady, onResume}: {id
     return () => {clearTimeout(timer); document.removeEventListener('visibilitychange',visibility); window.removeEventListener('blur',blur); document.removeEventListener('fullscreenchange',fullscreen)}
   }, [id,active])
   if (!active) return null
+  if(compact)return <section aria-label="Screen monitoring" className="flex shrink-0 items-center justify-center gap-3 text-[11px]">
+    <span className={media.sharing&&synced?'text-emerald-400':'text-amber-300'}>{media.sharing&&synced?'Screen shared · Monitoring connected':'Interview paused · Screen sharing required'}</span>
+    {media.sharing&&synced&&needsResume&&<button type="button" onClick={()=>{setNeedsResume(false);onResume()}} className="font-semibold text-primary underline">Replay & resume</button>}
+    {(!media.sharing||!synced)&&<button type="button" onClick={async()=>{picking.current=true;try{await media.startScreen()}finally{picking.current=false}}} className="font-semibold text-primary underline">Share entire screen</button>}
+    {(media.screenError||error)&&<span role="alert" className="text-destructive">{media.screenError||error}</span>}
+  </section>
   return <section aria-label="Screen monitoring" className={`rounded-2xl border p-4 ${media.sharing && synced ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-amber-500/40 bg-amber-500/10'}`}>
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="size-4"/>{media.sharing && synced ? 'Entire screen shared · Monitoring connected' : 'Interview paused · Screen sharing required'}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{media.sharing ? 'Sharing status and focus events are recorded. Screen images stay on your device.' : 'Reshare an entire monitor to continue. Your current answer is retained.'}</p></div><button type="button" onClick={async () => {picking.current = true; try {await media.startScreen()} finally {picking.current = false}}} className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold"><MonitorUp className="size-4"/>{media.sharing ? 'Change screen' : 'Share entire screen'}</button>{media.sharing && synced && <button type="button" onClick={onResume} className="text-sm font-semibold text-primary underline">Replay & resume</button>}</div>
     {(media.screenError || error) && <p role="alert" className="mt-2 text-sm text-destructive">{media.screenError || error}</p>}

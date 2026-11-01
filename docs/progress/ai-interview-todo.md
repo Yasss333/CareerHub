@@ -300,3 +300,11 @@ This is the most complex migration due to:
 - [x] Require an explicit fullscreen entry on resumed interviews and expose browser refusal.
 - [x] Keep report download discoverable and show live monitoring while answering.
 - [x] Browser-test and verify the deployed release (791ce79): native fullscreen join, successful in-app PDF download and a pinned synthetic server warning with draft retained.
+
+## Focused interview room
+- [x] Remove the dashboard shell from active interview routes.
+- [x] Fit the AI speaker and camera to the viewport with essential controls only.
+- [x] Keep question/editor on demand and monitoring warnings compact.
+- [x] Verify desktop/mobile room, device controls and fullscreen in the browser.
+
+Verification: 12 interview browser regressions passed; focused room checks cover 320/390/768/1440 widths, landscape, question visibility and retained editor drafts. The 17-check synthetic-device flow passed, including media handoff, native fullscreen, live incident deduplication, stop/reshare, saved answers and PDF downloads. Changed-file lint, TypeScript and production build passed. Real hardware and ML identity accuracy were not re-tested by this layout change.

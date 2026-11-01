@@ -40,7 +40,7 @@ await page.evaluateOnNewDocument(() => {
     window.__screen = stream; window.__streams.push(stream); return stream;
   }});
   Object.defineProperty(window, 'SpeechRecognition', {value: undefined}); Object.defineProperty(window, 'webkitSpeechRecognition', {value: undefined});
-  Object.defineProperty(window, 'speechSynthesis', {value: {getVoices: () => [], cancel: () => {}, speaking: false, speak: utterance => {window.recordSpeech(utterance.text); utterance.onstart?.(); setTimeout(() => utterance.onend?.(), 100)}, pause: () => {}, resume: () => {}}});
+  Object.defineProperty(window, 'speechSynthesis', {value: {getVoices: () => [], cancel: () => {}, speaking: false, speak: utterance => {window.__spoken = utterance.text;window.recordSpeech(utterance.text); utterance.onstart?.(); setTimeout(() => utterance.onend?.(), 100)}, pause: () => {}, resume: () => {}}});
 });
 await page.setRequestInterception(true);
 page.on('request', async req => {
@@ -75,7 +75,7 @@ page.on('request', async req => {
 });
 const click = async text => {const button = await page.waitForFunction(text => [...document.querySelectorAll('button')].find(b => b.textContent.trim().includes(text)), {}, text); await button.asElement().click();};
 const waitText = text => page.waitForFunction(text => document.body.textContent.includes(text), {}, text);
-const fill = async text => {const input = await page.waitForSelector('textarea[placeholder]'); await input.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'})); await input.focus(); await page.keyboard.down('Control');await page.keyboard.press('a');await page.keyboard.up('Control');await input.type(text,{delay:5});};
+const fill = async text => {if(!await page.$('textarea'))await page.click('[title="Toggle Text Editor"]');const input = await page.waitForSelector('textarea[placeholder]'); await input.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'})); await input.focus(); await page.keyboard.down('Control');await page.keyboard.press('a');await page.keyboard.up('Control');await input.type(text,{delay:5});};
 async function check(name, fn) {await fn(); checks.push({name, status: 'PASS'}); console.log('PASS:', name);}
 try {
   const client=await page.createCDPSession();const downloadDir=path.resolve('../outputs');await client.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:downloadDir,eventsEnabled:true});
@@ -90,7 +90,7 @@ try {
   await page.screenshot({path: out + '/interview-preflight.png', fullPage: true});
   const deviceRequestsAtJoin = await page.evaluate(() => window.__deviceRequests);
   await click('Start interview'); await waitText('Begin Questions');
-  await check('Screen capture survives setup→session; Maya starts with a brief introduction', async () => {await page.waitForFunction(() => document.querySelector('[aria-label="Screen monitoring"]')?.textContent.includes('Monitoring connected')); await page.waitForFunction(() => document.querySelector('textarea')); await waitText('Hi, I’m Maya'); assert.ok(events.includes('screen_started')); assert.ok(speeches.some(s => s.includes('I’m Maya'))); assert.equal(await page.evaluate(() => window.__deviceRequests), deviceRequestsAtJoin, 'Preflight device streams should hand off without reopening hardware');});
+  await check('Screen capture survives setup→session; Maya starts with a brief introduction', async () => {await page.waitForFunction(() => document.querySelector('[aria-label="Screen monitoring"]')?.textContent.includes('Monitoring connected')); await page.click('[title="Toggle Text Editor"]'); await page.waitForFunction(() => document.querySelector('textarea')); await waitText('Hi, I’m Maya'); assert.ok(events.includes('screen_started')); await page.waitForFunction(()=>window.__spoken?.includes('I’m Maya'));assert.ok(speeches.some(s => s.includes('I’m Maya'))); assert.equal(await page.evaluate(() => window.__deviceRequests), deviceRequestsAtJoin, 'Preflight device streams should hand off without reopening hardware');});
   await check('Start enters native fullscreen and registration does not wait for slow emotion inference',async()=>{
     assert.equal(await page.evaluate(()=>!!document.fullscreenElement),true);
     await waitText('No face detected · Face the camera in good light');assert.equal(registerCalls,1);assert.equal(emotionActive,1);

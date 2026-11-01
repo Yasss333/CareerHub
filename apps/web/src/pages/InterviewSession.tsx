@@ -39,6 +39,7 @@ import {
   saveProctorEvent,
 } from '../lib/interview'
 import { api } from '../lib/api'
+import '../styles/interview-room.css'
 
 interface SpeechRecognitionEventLike extends Event {
   results: SpeechRecognitionResultList
@@ -127,6 +128,7 @@ export default function InterviewSessionPage() {
   const [enablingDevice, setEnablingDevice] = useState(false)
   const [deviceConsentError, setDeviceConsentError] = useState('')
   const [showTextEditor, setShowTextEditor] = useState(false)
+  const [showQuestion,setShowQuestion] = useState(false)
 
   // AI & Voice phase: 'idle' | 'speaking' | 'listening'
   const [aiPhase, setAiPhase] = useState<'idle' | 'speaking' | 'listening'>('idle')
@@ -261,7 +263,7 @@ export default function InterviewSessionPage() {
       const q = current.questions || []
       setQuestions(q)
       startTimeRef.current = new Date(current.startedAt).getTime()
-      if (!current.microphoneEnabled) { setIsMicMuted(true); isMicMutedRef.current = true; setShowTextEditor(true) }
+      if (!current.microphoneEnabled) { setIsMicMuted(true); isMicMutedRef.current = true }
       if (current.status === 'abandoned') { navigate('/interview', { replace: true }); return }
       if (current.status === 'completed') {
         navigate(`/interview/results/${id}`, { replace: true })
@@ -578,7 +580,6 @@ export default function InterviewSessionPage() {
   const startListening = useCallback(() => {
     if (disposedRef.current || captureSuspendedRef.current || monitoringBlockedRef.current) return
     if (isMicMutedRef.current || !sessionRef.current?.microphoneEnabled) {
-      setShowTextEditor(true)
       setAiPhase('listening')
       return
     }
@@ -587,7 +588,6 @@ export default function InterviewSessionPage() {
     if (!SpeechRecognitionAPI || useServerTranscriptionRef.current) {
       useServerTranscriptionRef.current = true
       setAiPhase('listening')
-      setShowTextEditor(true)
       void startVoiceRecording()
       return
     }
@@ -636,7 +636,6 @@ export default function InterviewSessionPage() {
       useServerTranscriptionRef.current = true
       recognitionRef.current = null
       setInterimTranscript('')
-      setShowTextEditor(true)
       setAnalysisNotice('Live browser transcription is unavailable. Your recording can be transcribed when you continue, or you can type.')
     }
 
@@ -1045,80 +1044,26 @@ export default function InterviewSessionPage() {
   const progressPercent = introducing ? 0 : Math.round(((currentIndex + 1) / questions.length) * 100)
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-4 pb-12 select-none">
-      {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error} Your saved answers are retained; you can retry.</div>}
+    <div aria-label="Interview room" className="interview-room dark select-none">
+      {error && <div role="alert" className="room-notice border border-destructive/30 bg-destructive/10 text-destructive">{error} Your saved answers are retained; you can retry.</div>}
       {!fullscreen.ready && <InterviewStartGate enter={fullscreen.enter} entering={fullscreen.entering} error={fullscreen.error} />}
-      <InterviewIncidents session={session} />
-      {fullscreen.ready && !fullscreen.fullscreen && <p role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">Interview paused. Select Enter fullscreen above to continue; your answer is retained.</p>}
-      <InterviewMonitoring id={id} active={session.monitoringMode === 'proctored' && session.status === 'in_progress'} onReady={setMonitoringReady} onResume={() => speakQuestion(currentQuestion.questionText)} />
-      {session.monitoringMode === 'proctored' && (!isCameraActive || isMicMuted || !microphoneReady) && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm">Proctored mode requires your camera and microphone. Turn them on below; after sharing, select Replay & resume to start audio capture.</p>}
-      {/* Top Video Call Header Bar */}
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card/90 px-4 py-3 shadow-xs backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="relative flex size-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
-            </span>
-            <span className="text-xs font-bold tracking-wider uppercase text-emerald-600 dark:text-emerald-400">
-              Active Call
-            </span>
-          </div>
-          <span className="text-muted-foreground">|</span>
-          <span className="text-sm font-semibold text-card-foreground">
-            {session.role || 'AI Mock Interview'}
-          </span>
-          <span className="hidden text-xs text-muted-foreground sm:inline">
-            ({session.topics.slice(0, 2).join(', ')})
-          </span>
-        </div>
 
-        <div className="flex items-center gap-3">
-          {/* Call Elapsed Timer */}
-          <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1 font-mono text-xs font-medium text-foreground">
-            <Clock className="size-3.5 text-muted-foreground" />
-            <span>{formatTime(elapsed)}</span>
-          </div>
-
-          {/* Voice Selector */}
-          {availableVoices.length > 1 && (
-            <select
-              value={selectedVoice?.name || ''}
-              onChange={(e) => {
-                const found = availableVoices.find((v) => v.name === e.target.value)
-                if (found) setSelectedVoice(found)
-              }}
-              className="hidden rounded-lg border border-border bg-muted/60 px-2 py-1 text-xs font-medium text-foreground outline-none sm:inline-block max-w-[140px] truncate"
-              title="Choose AI Interviewer Voice"
-            >
-              {availableVoices.map((v) => (
-                <option key={v.name} value={v.name}>
-                  {v.name.replace(/Microsoft |Google |\(.*\)/g, '').trim()}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Question Index Pill */}
-          <div className="rounded-lg bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            {introducing ? 'Brief introduction' : `Question ${currentIndex + 1} of ${questions.length}`}
-          </div>
-
-          {/* End Call Button */}
-          <button
-            type="button"
-            onClick={() => setShowEndModal(true)}
-            disabled={ending}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive transition-colors hover:bg-destructive hover:text-white"
-          >
-            <PhoneOff className="size-3.5" />
-            <span>Leave</span>
-          </button>
+      {fullscreen.ready && !fullscreen.fullscreen && <p role="status" className="room-notice border border-amber-500/40 bg-amber-500/10 text-amber-200">Interview paused. Select Enter fullscreen above to continue; your answer is retained.</p>}
+      <InterviewMonitoring compact id={id} active={session.monitoringMode === 'proctored' && session.status === 'in_progress'} onReady={setMonitoringReady} onResume={() => speakQuestion(currentQuestion.questionText)} />
+      {session.monitoringMode === 'proctored' && (!isCameraActive || isMicMuted || !microphoneReady) && <p role="status" className="room-device-notice text-amber-200">Proctored mode requires your camera and microphone. Turn them on below; after sharing, select Replay & resume to start audio capture.</p>}
+      <header className="room-header">
+        <span className="hidden text-sm font-semibold sm:inline">AI Interview</span>
+        <span className="text-xs text-zinc-400">{introducing?'Introduction':`Question ${currentIndex+1} of ${questions.length}`}</span>
+        <span className="inline-flex items-center gap-1 font-mono text-xs text-zinc-400"><Clock className="size-3"/>{formatTime(elapsed)}</span>
+        <div className="ml-auto flex items-center gap-2">
+          <InterviewIncidents compact session={session}/>
+          <button type="button" aria-expanded={showQuestion} aria-controls="room-question" onClick={()=>setShowQuestion(!showQuestion)} className="room-question-toggle">{showQuestion?'Hide question':'Question'}</button>
         </div>
       </header>
 
+      {showQuestion && <>
       {/* Prominent Question Banner Overlay */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 sm:p-5">
+      <aside id="room-question" aria-label="Question and voice settings" className="room-question-panel">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
             <span>{currentQuestion.category || currentQuestion.questionType || 'Question'}</span>
@@ -1161,6 +1106,25 @@ export default function InterviewSessionPage() {
           {currentQuestion.questionText}
         </h1>
 
+          {/* Voice Selector */}
+          {availableVoices.length > 1 && (
+            <select
+              value={selectedVoice?.name || ''}
+              onChange={(e) => {
+                const found = availableVoices.find((v) => v.name === e.target.value)
+                if (found) setSelectedVoice(found)
+              }}
+              className="hidden rounded-lg border border-border bg-muted/60 px-2 py-1 text-xs font-medium text-foreground outline-none sm:inline-block max-w-[140px] truncate"
+              title="Choose AI Interviewer Voice"
+            >
+              {availableVoices.map((v) => (
+                <option key={v.name} value={v.name}>
+                  {v.name.replace(/Microsoft |Google |\(.*\)/g, '').trim()}
+                </option>
+              ))}
+            </select>
+          )}
+
         {/* Progress bar */}
         <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
@@ -1168,25 +1132,29 @@ export default function InterviewSessionPage() {
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-      </div>
+      </aside>
+
+      </>}
 
       {/* Main Dual Video Call Screen Grid */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div aria-label="Interview participants" className="room-stage">
         {/* Left Video Tile: AI Interviewer (Clicking allows instant interruption) */}
         <div
           onClick={aiPhase === 'speaking' ? interruptAi : undefined}
-          className={`relative aspect-video min-h-[300px] overflow-hidden rounded-3xl border border-border bg-zinc-950 shadow-md ${
+          className={`room-participant relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 ${
             aiPhase === 'speaking' ? 'cursor-pointer' : ''
           }`}
           title={aiPhase === 'speaking' ? 'Click to interrupt AI' : undefined}
         >
-          <AIInterviewerAvatar
+          <AIInterviewerAvatar compact
+            className="room-avatar"
             state={aiPhase}
             name="AI Interviewer"
             voiceName={selectedVoice ? selectedVoice.name.replace(/Microsoft |Google |\(.*\)/g, '').trim() : undefined}
           />
+          <h1 className="room-caption">{currentQuestion.questionText}</h1>
           {aiPhase === 'speaking' && (
-            <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-amber-300 backdrop-blur-md">
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-amber-300 backdrop-blur-md">
               <Hand className="size-3" />
               <span>Click or speak to interrupt</span>
             </div>
@@ -1194,7 +1162,7 @@ export default function InterviewSessionPage() {
         </div>
 
         {/* Right Video Tile: Candidate (You) */}
-        <div className="relative aspect-video min-h-[300px] overflow-hidden rounded-3xl border border-border bg-zinc-950 shadow-md">
+        <div className="room-participant relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-950">
           {isCameraActive && cameraPermission === 'granted' ? (
             <video
               ref={videoRef}
@@ -1242,10 +1210,10 @@ export default function InterviewSessionPage() {
           <div className="absolute bottom-3 left-3 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
               <ShieldCheck className="size-3.5 text-primary" />
-              <span>{session.cameraEnabled ? proctorStatus : 'Camera off · enable when ready'}</span>{isCameraActive && capabilities?.proctoring && <button type="button" onClick={() => void analyzeCameraFrame()} disabled={cameraAnalysisRunning} className="ml-2 underline disabled:opacity-50">{cameraAnalysisRunning ? 'Check in progress…' : 'Retry check'}</button>}
+              <span>{session.cameraEnabled ? proctorStatus.toLowerCase().includes('unavailable') ? 'Identity check unavailable' : proctorStatus : 'Camera off'}</span>{isCameraActive && capabilities?.proctoring && <button type="button" onClick={() => void analyzeCameraFrame()} disabled={cameraAnalysisRunning} className="ml-2 underline disabled:opacity-50">{cameraAnalysisRunning ? 'Check in progress…' : 'Retry check'}</button>}
             </div>
 
-            {facialEmotion?.emotion && (
+            {showQuestion && facialEmotion?.emotion && (
               <div className="inline-flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
                 <span className="text-muted-foreground">Face Affect:</span>
                 <span className="font-semibold capitalize text-primary">
@@ -1263,7 +1231,7 @@ export default function InterviewSessionPage() {
       </div>
 
       {/* Live Voice Caption & Transcription Banner */}
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
+      {showTextEditor && <div aria-label="Answer editor panel" className="room-answer-panel">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div
@@ -1357,15 +1325,17 @@ export default function InterviewSessionPage() {
                 rows={4}
                 maxLength={introducing ? 4000 : 12000}
                 placeholder="Type or refine your response here..."
-                className="mt-1.5 w-full resize-y rounded-xl border border-border bg-background p-3 text-sm leading-6 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="mt-1.5 w-full resize-none rounded-xl border border-border bg-background p-3 text-sm leading-6 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </label>
           </div>
         )}
       </div>
 
+      }
+
       {/* Floating Bottom Video Call Controls Bar */}
-      <div className="sticky bottom-4 z-30 mx-auto flex w-full max-w-2xl items-center justify-between rounded-2xl border border-border bg-card/95 px-5 py-3 shadow-xl backdrop-blur-lg">
+      <div className="room-controls">
         {/* Mic Control */}
         <button
           type="button"

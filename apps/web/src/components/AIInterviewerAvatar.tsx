@@ -1,10 +1,11 @@
-import { Volume2, Mic, Bot, Sparkles, AudioWaveform } from 'lucide-react'
+import { Mic, Bot, Sparkles, AudioWaveform } from 'lucide-react'
 
 export interface AIInterviewerAvatarProps {
   state: 'idle' | 'speaking' | 'listening'
   className?: string
   name?: string
   voiceName?: string
+  compact?: boolean
 }
 
 export default function AIInterviewerAvatar({
@@ -12,13 +13,14 @@ export default function AIInterviewerAvatar({
   className = '',
   name = 'AI Interview Coach',
   voiceName,
+  compact = false,
 }: AIInterviewerAvatarProps) {
   const isSpeaking = state === 'speaking'
   const isListening = state === 'listening'
 
   return (
     <div
-      className={`relative flex h-full min-h-[300px] w-full flex-col items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-b from-zinc-900 via-zinc-950 to-black p-6 select-none ${className}`}
+      className={`relative flex h-full ${compact ? 'min-h-0' : 'min-h-[300px]'} w-full flex-col items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-b from-zinc-900 via-zinc-950 to-black p-6 select-none ${className}`}
     >
       {/* Dynamic ambient background glow */}
       <div
@@ -43,7 +45,7 @@ export default function AIInterviewerAvatar({
       </div>
 
       {/* Concentric AI animated pulsating aura */}
-      <div className="relative flex size-44 items-center justify-center sm:size-52">
+      <div className="relative flex size-44 items-center justify-center sm:size-52" style={compact?{width:'min(180px, 30vh)',height:'min(180px, 30vh)'}:undefined}>
         {/* Outer expanding ring */}
         <div
           className={`absolute inset-0 rounded-full border transition-all duration-700 ${

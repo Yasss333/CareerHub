@@ -80,6 +80,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="feedback" element={<Feedback />} />
         </Route>
+        <Route path="/interview/session/:id" element={<ProtectedRoute allowedRoles={['USER', 'ADMIN']}><InterviewSession /></ProtectedRoute>} />
         <Route path="/" element={<AppRootLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="settings" element={<Settings />} />
@@ -104,7 +105,6 @@ function App() {
           <Route path="roadmaps/:id" element={<RoadmapDetail />} />
           <Route path="interview" element={<Interview />} />
           <Route path="interview/setup" element={<InterviewSetup />} />
-          <Route path="interview/session/:id" element={<InterviewSession />} />
           <Route path="interview/results/:id" element={<InterviewResults />} />
           {/* Add more routes as we implement other modules */}
         </Route>
