@@ -17,4 +17,6 @@ Evidence: 84 API, security, analysis and core checks, 11 new isolated Chrome jou
 
 ## Permanent account deletion — 2026-11-18
 - [x] Add confirmed admin-only user deletion with related-data cleanup and audit.
-- [ ] Verify API, browser, build, and publish GitHub/Vercel.
+- [x] Verify API, browser, build, and publish GitHub/Vercel.
+
+Published as `400a8a3` on GitHub main. Vercel production deployment `dpl_Ev5zT7eEg1iKWgXh4vFbjqkp3LsH` is READY on careerhub-navy.vercel.app. The deployed browser journey passes with synthetic API fixtures, Render readiness returns 200/database connected, and unauthenticated admin access returns 401. Actual production deletion and the Render backend commit rollout were not verified; local PostgreSQL deletion/rollback was verified.
