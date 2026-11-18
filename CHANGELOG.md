@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added permanent user deletion in Admin → People with email confirmation, reason, current-role enforcement, administrator-account protection, transactional related-data cleanup and an audit entry. Shared coding exercises remain available.
 - Added a dedicated viewport-sized interview room with two participant tiles, essential call controls, optional question and answer panels, and compact live monitoring. Active interviews no longer mount the dashboard navigation or sidebar.
 - Added private interview PDF downloads, native fullscreen entry/recovery and a live monitoring incident panel.
 - Added the supplied shield-and-three-arrows logo in the CareerHub indigo/violet/purple gradient across the landing page, dashboards, authentication screens and favicon, plus a landing-footer developer credit linking to Yasss333 on GitHub.

@@ -8,7 +8,7 @@ async function withApi(run) {
   const calls = [];
   const users = {admin: {id: 'admin', role: 'ADMIN'}, student: {id: 'student', role: 'USER'}, mentor: {id: 'mentor', role: 'MENTOR', isAlumniMentor: true}};
   const db = {
-    user: {findUnique: async ({where}) => users[where.id], findMany: async () => Object.values(users), count: async () => 3, update: async ({where, data}) => Object.assign(users[where.id], data)},
+    user: {findUnique: async ({where}) => users[where.id], findMany: async () => Object.values(users), count: async () => 3, update: async ({where, data}) => Object.assign(users[where.id], data), delete: async ({where}) => {calls.push(['user.delete', where]); delete users[where.id];}},
     seniorProfile: {deleteMany: async args => {calls.push(['profile', args]); return {count: 1};}},
     availabilitySlot: {deleteMany: async args => {calls.push(['slots', args]); return {count: 2};}},
     sessionBooking: {findMany: async () => [{id: 'future', juniorId: 'student'}], updateMany: async args => {calls.push(['bookings', args]); return {count: 1};}},
@@ -16,6 +16,10 @@ async function withApi(run) {
     adminAudit: {create: async args => {calls.push(['audit', args]); return args.data;}, findMany: async () => []},
     roadmap: {findMany: async () => [{id: 'roadmap', progress: 99, milestones: [{id: 'one', isCompleted: true}, {id: 'two', isCompleted: false}]}]},
   };
+  for (const model of ['sessionFeedback', 'credibilityScore']) db[model] = {deleteMany: async args => {calls.push([model, args]); return {count: 1};}};
+  db.sessionBooking.deleteMany = async args => {calls.push(['booking.delete', args]); return {count: 1};};
+  db.problem = {updateMany: async args => {calls.push(['problem.transfer', args]); return {count: 1};}};
+  db.availabilitySlot.updateMany = async args => {calls.push(['slot.release', args]); return {count: 1};};
   db.$transaction = async fn => fn(db);
   const app = express(); app.use(express.json()); app.use('/admin', createAdminRouter({database: db}));
   const server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r));
@@ -49,4 +53,28 @@ test('mentor removal is confirmed, transactional, audited and preserves the user
 }));
 test('admin list pagination rejects malformed boundaries', () => withApi(async send => {
   for (const query of ['?page=-1', '?page=NaN', '?q=' + 'x'.repeat(121)]) assert.equal((await send('/users' + query)).status, 400);
+}));
+
+test('account deletion rejects unauthenticated, non-admin, unconfirmed, self and admin targets', () => withApi(async (send, db, calls, users) => {
+  const body = {confirmation: 'student', reason: 'Account deletion requested'};
+  assert.equal((await send('/users/student', null, body, 'DELETE')).status, 401);
+  for (const actor of ['student', 'mentor']) assert.equal((await send('/users/student', actor, body, 'DELETE')).status, 403);
+  for (const invalid of [{}, {...body, confirmation: 'wrong'}, {...body, reason: 'x'}, {...body, reason: 'x'.repeat(501)}]) assert.equal((await send('/users/student', 'admin', invalid, 'DELETE')).status, 400);
+  assert.equal((await send('/users/admin', 'admin', {...body, confirmation: 'admin'}, 'DELETE')).status, 409);
+  users.otherAdmin = {id: 'otherAdmin', role: 'ADMIN'};
+  assert.equal((await send('/users/otherAdmin', 'admin', {...body, confirmation: 'otherAdmin'}, 'DELETE')).status, 409);
+  assert.equal(calls.length, 0);
+}));
+
+test('account deletion removes dependent bookings, releases slots, preserves shared problems and revokes access', () => withApi(async (send, db, calls, users) => {
+  const body = {confirmation: 'student', reason: 'Account deletion requested'};
+  const result = await send('/users/student', 'admin', body, 'DELETE');
+  assert.equal(result.status, 200); assert.equal(result.data.deleted, true); assert.equal(users.student, undefined);
+  assert.deepEqual(calls.find(c => c[0] === 'problem.transfer')[1], {where: {userID: 'student'}, data: {userID: 'admin'}});
+  assert.deepEqual(calls.find(c => c[0] === 'booking.delete')[1].where, {OR: [{juniorId: 'student'}, {seniorId: 'student'}]});
+  assert.ok(calls.findIndex(c => c[0] === 'sessionFeedback') < calls.findIndex(c => c[0] === 'booking.delete'));
+  assert.ok(calls.findIndex(c => c[0] === 'booking.delete') < calls.findIndex(c => c[0] === 'user.delete'));
+  assert.equal(calls.find(c => c[0] === 'audit')[1].data.action, 'user.deleted');
+  assert.equal((await send('/users', 'student')).status, 401);
+  assert.equal((await send('/users/student', 'admin', body, 'DELETE')).status, 404);
 }));

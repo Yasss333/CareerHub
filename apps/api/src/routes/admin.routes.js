@@ -48,6 +48,28 @@ export function createAdminRouter({database = new PrismaClient()} = {}) {
       res.json(listResult(rows, page));
     } catch (error) {next(error);}
   });
+  router.delete('/users/:id', async (req, res, next) => {
+    try {
+      const {confirmation, reason} = req.body || {};
+      if (confirmation !== req.params.id || typeof reason !== 'string' || reason.trim().length < 5 || reason.length > 500) throw badInput('Confirm this account and enter a reason of 5–500 characters');
+      const result = await db.$transaction(async tx => {
+        const user = await tx.user.findUnique({where: {id: req.params.id}, select: {id: true, role: true}});
+        if (!user) throw Object.assign(new Error('Account not found'), {status: 404});
+        if (user.id === req.adminId || user.role === 'ADMIN') throw Object.assign(new Error('Administrator accounts cannot be deleted here'), {status: 409});
+        const bookings = {OR: [{juniorId: user.id}, {seniorId: user.id}]};
+        await tx.availabilitySlot.updateMany({where: {seniorId: {not: user.id}, bookings: {some: {juniorId: user.id, status: {in: ['pending', 'accepted']}}}}, data: {isBooked: false}});
+        await tx.sessionFeedback.deleteMany({where: {booking: bookings}});
+        await tx.sessionBooking.deleteMany({where: bookings});
+        await tx.credibilityScore.deleteMany({where: {userId: user.id}});
+        // Keep shared exercises and other candidates' submissions when removing their author.
+        await tx.problem.updateMany({where: {userID: user.id}, data: {userID: req.adminId}});
+        await tx.user.delete({where: {id: user.id}});
+        await tx.adminAudit.create({data: {actorId: req.adminId, action: 'user.deleted', targetId: user.id, details: {reason: reason.trim()}}});
+        return {deleted: true};
+      }, {isolationLevel: 'Serializable'});
+      res.json(result);
+    } catch (error) {next(error);}
+  });
   router.get('/mentors', async (req, res, next) => {
     try {
       const {page, q, skip} = pageOptions(req);

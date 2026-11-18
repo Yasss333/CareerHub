@@ -14,3 +14,7 @@
 Details: docs/interview-admin-upgrade.md. User explicitly authorized role-based admin controls and the requested account. Course progress means existing roadmaps/milestones, confirmed by the user. No unrelated production records may be deleted or rewritten.
 
 Evidence: 84 API, security, analysis and core checks, 11 new isolated Chrome journeys, six live API/provider checks, seven deployed feedback checks and isolated migration verification. Existing browser regression suite passed 8/8 with sequential device sessions. Changed frontend files have zero lint errors/warnings. TypeScript and production web build passed. New code is local on feat/interview-mvp-admin; the additive migration and admin account are provisioned. Hardware chooser/quality and session-isolated deployed identity verification are not established.
+
+## Permanent account deletion — 2026-11-18
+- [x] Add confirmed admin-only user deletion with related-data cleanup and audit.
+- [ ] Verify API, browser, build, and publish GitHub/Vercel.
